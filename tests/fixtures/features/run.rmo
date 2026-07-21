@@ -1,0 +1,25 @@
+# run.rmo — `run` is a block of matches. Statements run in order; the first
+# `pattern = value` that does not match ends the block and *is* its result,
+# so a chain of validations reads flat instead of as nested cases.
+
+# Bindings flow to later statements; the result is the last one's value, or
+# the value that failed to match, e.g. (:error, (:invalid_price, "...")).
+# The block starts on the line after `=`, as every assigned block must.
+total =
+  run
+    (:ok, price) = fetch_price(item)
+    (:ok, qty) = fetch_quantity(item)
+    price * qty
+
+# A `run` may close with a `case` written without a subject: the block's
+# result is the subject, so success and failure are handled side by side.
+run
+  :ok = validate_id(data)
+  :ok = validate_name(data)
+  :ok = validate_age(data)
+case
+  :ok ->
+    print("valid")
+
+  err ->
+    print("rejected: #{err}")

@@ -1,0 +1,19 @@
+# cond.rmo — `cond` takes the first arm whose condition is truthy. It is
+# `case` over a sequence of guards, for when no single value is matched.
+
+x = 5
+
+# A block whose value is assigned starts on the line after `=`.
+sign =
+  cond
+    x > 0 -> :positive
+    x < 0 -> :negative
+    true -> :zero
+
+# `true ->` is the idiomatic catch-all arm. Arms take blocks too.
+label =
+  cond
+    x > 100 ->
+      big = x * 2
+      "big: #{big}"
+    true -> "small"

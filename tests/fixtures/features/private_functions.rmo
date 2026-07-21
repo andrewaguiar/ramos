@@ -1,0 +1,9 @@
+# private_functions.rmo — `fnp` defines a private function, callable only from
+# inside its own module. `fn` is public.
+
+module Accounts
+  fn create(name)
+    (:ok, normalize(name))   # a public function may call a private one
+
+  fnp normalize(name)
+    String.downcase(name)

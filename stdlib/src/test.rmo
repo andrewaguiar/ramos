@@ -1,0 +1,36 @@
+trait Test
+  # @module_doc
+  #
+  # Test — the trait that marks a module as a test module.
+  #
+  # A test module is an ordinary module that implements `Test`. Every public
+  # function whose name begins with `test_` is a test, and `ramos test` runs
+  # them. Nothing registers itself and there is no test DSL: a test is a
+  # function, and a failing `assert` is what makes it fail.
+  #
+  #   # src/test/my_app/user_test.rmo
+  #   module MyApp.UserTest
+  #     implements Test
+  #
+  #     alias MyApp.User
+  #
+  #     fn test_user_hello()
+  #       user = User{name: "Andrew"}
+  #       assert(user.hello() == "Ola Andrew")
+  #
+  # Tests live under `src/test/`, and follow the same rules as any other file:
+  # the namespace is the path, so `MyApp.UserTest` is
+  # `src/test/my_app/user_test.rmo`. A test module's name must end in `Test`,
+  # which is what makes it read as one in a failure report. A test reaches the
+  # code it exercises through the ordinary `alias`, resolved against `src/`.
+  #
+  # `ramos test` with no argument runs everything under `src/test/`; with a file
+  # argument it runs just that file.
+  #
+  # The trait requires nothing — it is a marker, so being run is something a
+  # module opts into rather than something its name causes. A test module may
+  # define helpers alongside its tests; only public `test_` functions are
+  # called, and each is called with no arguments.
+  #
+  # A test stops at its first failed `assert`, and the run continues with the
+  # next test. See `Kernel.assert` for what a failure reports.

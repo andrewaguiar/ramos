@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Map — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html" class="current">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">Map</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>Map — operations on key/value maps.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>Map — operations on key/value maps.</p>
+<p><code>{name: &quot;andrew&quot;}</code> is a <code><a href="Map.html">Map</a></code>. A key is an <code><a href="Integer.html">Integer</a></code>, a <code><a href="String.html">String</a></code> or a <code>Symbol</code> — nothing else, so every map can be written as a literal: <code>{name: 1}</code> (the bare-name shorthand for the symbol <code>:name</code>), <code>{&quot;host&quot;: 1}</code> and <code>{8080: 1}</code>. Putting a key of any other type is an error.</p>
+<p>Maps are immutable and insertion-ordered: <code>put</code> on an existing key replaces its value in place, a new key is appended, and every operation returns a new map rather than changing the one it was given.</p>
+<pre><code>config = {host: <span class="tok-str">&quot;localhost&quot;</span>, port: <span class="tok-lit">8080</span>}
+<span class="tok-type">Map</span>.get(config, <span class="tok-lit">:host</span>, <span class="tok-str">&quot;?&quot;</span>)   <span class="tok-com"># == &quot;localhost&quot;</span></code></pre>
+<p>The basics — <code>put</code>, <code>get</code>, <code>delete</code>, <code>has_key</code>, <code>keys</code>, <code>entries</code>, <code>from_list</code> — are host primitives. Everything that takes a lambda is written in Ramos on top of them, because a native cannot call back into the interpreter to run one.</p>
+<p>Kernel already covers the rest, so this module does not repeat it: <code>size(m)</code> counts the pairs and <code>to_list(m)</code> gives the values (also <code>values</code>, below, which reads as <code><a href="Map.html">Map</a></code>&#39;s own the way <code>keys</code> does). For the pairs themselves, use <code>entries</code>.</p>
+<p>Conventions:</p>
+<ul><li><code>get</code> takes the value to fall back to, so a miss is never a surprise.</li><li>key types never collide: <code>{a: 1}</code> and <code>{&quot;a&quot;: 1}</code> are different maps.</li><li>a predicate always takes the <code>(key, value)</code> pair and comes last: <code>filter</code> and <code>reject</code> screen the whole map with one.</li><li>merging is the <code>++</code> operator, with the right map winning a clash; reach for <code>merge_with</code> when a clash should combine instead of overwrite.</li><li>equality ignores order: <code>{a: 1, b: 2} == {b: 2, a: 1}</code> is <code>true</code>.</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#entries/1" class="fn-sig"><code>fn entries(map)</code></a>
+    <span class="fn-summary">The map&#39;s <code>(key, value)</code> pairs, in insertion order.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#put/3" class="fn-sig"><code>fn put(map, key, value)</code></a>
+    <span class="fn-summary">A new map with <code>key</code> set to <code>value</code>. An existing key keeps its position; a new one is appended. The key must be an <code><a href="Integer.html">Integer</a></code>, <code><a href="String.html">String</a></code> or <code>Symbol</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#get/3" class="fn-sig"><code>fn get(map, key, default)</code></a>
+    <span class="fn-summary">The value stored under <code>key</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#has_key/2" class="fn-sig"><code>fn has_key(map, key)</code></a>
+    <span class="fn-summary">Whether <code>map</code> holds <code>key</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#keys/1" class="fn-sig"><code>fn keys(map)</code></a>
+    <span class="fn-summary">The map&#39;s keys, in insertion order.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#values/1" class="fn-sig"><code>fn values(map)</code></a>
+    <span class="fn-summary">The map&#39;s values, in insertion order — the counterpart to <code>keys</code>. <code><a href="Kernel.html#to_list">Kernel.to_list(map)</a></code> gives the same list; this is the name that reads as <code><a href="Map.html">Map</a></code>&#39;s own, the way <code>keys</code> does.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#delete/2" class="fn-sig"><code>fn delete(map, key)</code></a>
+    <span class="fn-summary">A new map without <code>key</code>. Removing a key that is not there is not an error.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#update/3" class="fn-sig"><code>fn update(map, key, f)</code></a>
+    <span class="fn-summary">A new map with <code>key</code>&#39;s value replaced by <code>f</code> applied to it. A key that is not there is left alone, so <code>update</code> never adds one.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#put_new/3" class="fn-sig"><code>fn put_new(map, key, value)</code></a>
+    <span class="fn-summary">A new map with <code>key</code> set to <code>value</code>, but only when <code>key</code> is not already there — the insert-only counterpart to <code>update</code>, which only touches a key that already exists. An existing key is left exactly as it was.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#merge_with/3" class="fn-sig"><code>fn merge_with(a, b, f)</code></a>
+    <span class="fn-summary">Merges <code>a</code> and <code>b</code> like <code>++</code>, except a key present in both is resolved by <code>f(a_value, b_value)</code> instead of <code>b</code>&#39;s value silently winning. A key present in only one map keeps its value untouched.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#merge_pair/3" class="fn-sig"><code>fnp merge_pair(acc, pair, f)</code></a>
+    <span class="fn-summary">(private) One step of <code>merge_with</code>&#39;s fold: puts <code>pair</code>&#39;s key into <code>acc</code>, combining with the existing value through <code>f</code> when the key already exists there.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#filter/2" class="fn-sig"><code>fn filter(map, f)</code></a>
+    <span class="fn-summary">The pairs for which <code>f</code> is truthy, in order.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#reject/2" class="fn-sig"><code>fn reject(map, f)</code></a>
+    <span class="fn-summary">Inverse of <code>filter</code>: the pairs for which <code>f</code> is falsy.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#apply_pair/2" class="fn-sig"><code>fnp apply_pair(f, pair)</code></a>
+    <span class="fn-summary"></span>
+  </div>
+  <div class="fn-row">
+    <a href="#map_values/2" class="fn-sig"><code>fn map_values(map, f)</code></a>
+    <span class="fn-summary">A new map with each value replaced by <code>f</code> applied to it. Keys are kept.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#map_keys/2" class="fn-sig"><code>fn map_keys(map, f)</code></a>
+    <span class="fn-summary">A new map with each key replaced by <code>f</code> applied to it. Values are kept; if <code>f</code> maps two keys onto one, the later pair wins.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#map_entries/2" class="fn-sig"><code>fn map_entries(map, f)</code></a>
+    <span class="fn-summary">A new map built by replacing each pair with the <code>(key, value)</code> tuple <code>f</code> returns for it.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#from_list/1" class="fn-sig"><code>fn from_list(pairs)</code></a>
+    <span class="fn-summary">A map built from a list of <code>(key, value)</code> tuples, in order. A repeated key keeps its first position and takes its last value.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="entries/1">
+  <h3 class="fn-title"><code>fn entries(map)</code> <a class="anchor" href="#entries/1">¶</a></h3>
+<p>The map&#39;s <code>(key, value)</code> pairs, in insertion order.</p>
+<pre><code><span class="tok-type">Map</span>.entries({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>})   <span class="tok-com"># == [(:a, 1), (:b, 2)]</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to read</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of <code>(key, value)</code> tuples, in insertion order</p>
+</div>
+<div class="fn-detail" id="put/3">
+  <h3 class="fn-title"><code>fn put(map, key, value)</code> <a class="anchor" href="#put/3">¶</a></h3>
+<p>A new map with <code>key</code> set to <code>value</code>. An existing key keeps its position; a new one is appended. The key must be an <code><a href="Integer.html">Integer</a></code>, <code><a href="String.html">String</a></code> or <code>Symbol</code>.</p>
+<pre><code><span class="tok-type">Map</span>.put({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:b</span>, <span class="tok-lit">2</span>)   <span class="tok-com"># == {a: 1, b: 2}</span>
+<span class="tok-type">Map</span>.put({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:a</span>, <span class="tok-lit">9</span>)   <span class="tok-com"># == {a: 9}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to build on</dd>
+  <dt><code>key</code></dt>
+  <dd>the key to set</dd>
+  <dt><code>value</code></dt>
+  <dd>the value to store</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> with <code>key</code> set to <code>value</code></p>
+</div>
+<div class="fn-detail" id="get/3">
+  <h3 class="fn-title"><code>fn get(map, key, default)</code> <a class="anchor" href="#get/3">¶</a></h3>
+<p>The value stored under <code>key</code>.</p>
+<pre><code><span class="tok-type">Map</span>.get({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:a</span>, <span class="tok-lit">0</span>)   <span class="tok-com"># == 1</span>
+<span class="tok-type">Map</span>.get({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:b</span>, <span class="tok-lit">0</span>)   <span class="tok-com"># == 0</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to read</dd>
+  <dt><code>key</code></dt>
+  <dd>the key to look up</dd>
+  <dt><code>default</code></dt>
+  <dd>what to return when the map has no such key</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the value under <code>key</code>, or <code>default</code> when there is none</p>
+</div>
+<div class="fn-detail" id="has_key/2">
+  <h3 class="fn-title"><code>fn has_key(map, key)</code> <a class="anchor" href="#has_key/2">¶</a></h3>
+<p>Whether <code>map</code> holds <code>key</code>.</p>
+<pre><code><span class="tok-type">Map</span>.has_key({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:a</span>)   <span class="tok-com"># == true</span>
+<span class="tok-type">Map</span>.has_key({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:b</span>)   <span class="tok-com"># == false</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to test</dd>
+  <dt><code>key</code></dt>
+  <dd>the key to look for</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>true</code> when the key is present, <code>false</code> otherwise</p>
+</div>
+<div class="fn-detail" id="keys/1">
+  <h3 class="fn-title"><code>fn keys(map)</code> <a class="anchor" href="#keys/1">¶</a></h3>
+<p>The map&#39;s keys, in insertion order.</p>
+<pre><code><span class="tok-type">Map</span>.keys({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>})   <span class="tok-com"># == [:a, :b]</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to read</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of the keys, in insertion order</p>
+</div>
+<div class="fn-detail" id="values/1">
+  <h3 class="fn-title"><code>fn values(map)</code> <a class="anchor" href="#values/1">¶</a></h3>
+<p>The map&#39;s values, in insertion order — the counterpart to <code>keys</code>. <code><a href="Kernel.html#to_list">Kernel.to_list(map)</a></code> gives the same list; this is the name that reads as <code><a href="Map.html">Map</a></code>&#39;s own, the way <code>keys</code> does.</p>
+<pre><code><span class="tok-type">Map</span>.values({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>})   <span class="tok-com"># == [1, 2]</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to read</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of the values, in insertion order</p>
+</div>
+<div class="fn-detail" id="delete/2">
+  <h3 class="fn-title"><code>fn delete(map, key)</code> <a class="anchor" href="#delete/2">¶</a></h3>
+<p>A new map without <code>key</code>. Removing a key that is not there is not an error.</p>
+<pre><code><span class="tok-type">Map</span>.delete({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}, <span class="tok-lit">:a</span>)   <span class="tok-com"># == {b: 2}</span>
+<span class="tok-type">Map</span>.delete({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:z</span>)         <span class="tok-com"># == {a: 1}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to remove from</dd>
+  <dt><code>key</code></dt>
+  <dd>the key to drop</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> without <code>key</code></p>
+</div>
+<div class="fn-detail" id="update/3">
+  <h3 class="fn-title"><code>fn update(map, key, f)</code> <a class="anchor" href="#update/3">¶</a></h3>
+<p>A new map with <code>key</code>&#39;s value replaced by <code>f</code> applied to it. A key that is not there is left alone, so <code>update</code> never adds one.</p>
+<pre><code><span class="tok-type">Map</span>.update({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:a</span>, <span class="tok-kw">do</span> v -&gt; v + <span class="tok-lit">1</span>)   <span class="tok-com"># == {a: 2}</span>
+<span class="tok-type">Map</span>.update({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:z</span>, <span class="tok-kw">do</span> v -&gt; v + <span class="tok-lit">1</span>)   <span class="tok-com"># == {a: 1}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to update</dd>
+  <dt><code>key</code></dt>
+  <dd>the key whose value to replace</dd>
+  <dt><code>f</code></dt>
+  <dd>a lambda from the old value to the new one</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> with <code>key</code> updated, or the original when it is absent</p>
+</div>
+<div class="fn-detail" id="put_new/3">
+  <h3 class="fn-title"><code>fn put_new(map, key, value)</code> <a class="anchor" href="#put_new/3">¶</a></h3>
+<p>A new map with <code>key</code> set to <code>value</code>, but only when <code>key</code> is not already there — the insert-only counterpart to <code>update</code>, which only touches a key that already exists. An existing key is left exactly as it was.</p>
+<pre><code>`key` was already there</code></pre>
+<pre><code><span class="tok-type">Map</span>.put_new({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:b</span>, <span class="tok-lit">2</span>)   <span class="tok-com"># == {a: 1, b: 2}</span>
+<span class="tok-type">Map</span>.put_new({a: <span class="tok-lit">1</span>}, <span class="tok-lit">:a</span>, <span class="tok-lit">9</span>)   <span class="tok-com"># == {a: 1}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to build on</dd>
+  <dt><code>key</code></dt>
+  <dd>the key to set if absent</dd>
+  <dt><code>value</code></dt>
+  <dd>the value to store when <code>key</code> is not already present</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> with <code>key</code> set to <code>value</code>, or <code>map</code> unchanged if</p>
+</div>
+<div class="fn-detail" id="merge_with/3">
+  <h3 class="fn-title"><code>fn merge_with(a, b, f)</code> <a class="anchor" href="#merge_with/3">¶</a></h3>
+<p>Merges <code>a</code> and <code>b</code> like <code>++</code>, except a key present in both is resolved by <code>f(a_value, b_value)</code> instead of <code>b</code>&#39;s value silently winning. A key present in only one map keeps its value untouched.</p>
+<pre><code><span class="tok-type">Map</span>.merge_with({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}, {b: <span class="tok-lit">10</span>, c: <span class="tok-lit">3</span>}, <span class="tok-kw">do</span> x, y -&gt; x + y)
+<span class="tok-com"># == {a: 1, b: 12, c: 3}</span></code></pre>
+<dl class="params">
+  <dt><code>a</code></dt>
+  <dd>the base map</dd>
+  <dt><code>b</code></dt>
+  <dd>the map to merge in</dd>
+  <dt><code>f</code></dt>
+  <dd>a lambda <code>(a_value, b_value)</code> resolving a colliding key</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code>, <code>a</code> and <code>b</code> merged with <code>f</code> deciding collisions</p>
+</div>
+<div class="fn-detail" id="merge_pair/3">
+  <h3 class="fn-title"><code>fnp merge_pair(acc, pair, f)</code> <span class="badge private">private</span> <a class="anchor" href="#merge_pair/3">¶</a></h3>
+<p>(private) One step of <code>merge_with</code>&#39;s fold: puts <code>pair</code>&#39;s key into <code>acc</code>, combining with the existing value through <code>f</code> when the key already exists there.</p>
+</div>
+<div class="fn-detail" id="filter/2">
+  <h3 class="fn-title"><code>fn filter(map, f)</code> <a class="anchor" href="#filter/2">¶</a></h3>
+<p>The pairs for which <code>f</code> is truthy, in order.</p>
+<pre><code><span class="tok-type">Map</span>.filter({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}, <span class="tok-kw">do</span> k, v -&gt; v &gt; <span class="tok-lit">1</span>)   <span class="tok-com"># == {b: 2}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to filter</dd>
+  <dt><code>f</code></dt>
+  <dd>a predicate lambda <code>(key, value)</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> of the pairs <code>f</code> accepted</p>
+</div>
+<div class="fn-detail" id="reject/2">
+  <h3 class="fn-title"><code>fn reject(map, f)</code> <a class="anchor" href="#reject/2">¶</a></h3>
+<p>Inverse of <code>filter</code>: the pairs for which <code>f</code> is falsy.</p>
+<pre><code><span class="tok-type">Map</span>.reject({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}, <span class="tok-kw">do</span> k, v -&gt; v &gt; <span class="tok-lit">1</span>)   <span class="tok-com"># == {a: 1}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to filter</dd>
+  <dt><code>f</code></dt>
+  <dd>a predicate lambda <code>(key, value)</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> of the pairs <code>f</code> rejected</p>
+</div>
+<div class="fn-detail" id="apply_pair/2">
+  <h3 class="fn-title"><code>fnp apply_pair(f, pair)</code> <span class="badge private">private</span> <a class="anchor" href="#apply_pair/2">¶</a></h3>
+</div>
+<div class="fn-detail" id="map_values/2">
+  <h3 class="fn-title"><code>fn map_values(map, f)</code> <a class="anchor" href="#map_values/2">¶</a></h3>
+<p>A new map with each value replaced by <code>f</code> applied to it. Keys are kept.</p>
+<pre><code><span class="tok-type">Map</span>.map_values({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}, <span class="tok-kw">do</span> v -&gt; v * <span class="tok-lit">10</span>)   <span class="tok-com"># == {a: 10, b: 20}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to walk</dd>
+  <dt><code>f</code></dt>
+  <dd>a lambda from a value to its replacement</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> with the same keys and mapped values</p>
+</div>
+<div class="fn-detail" id="map_keys/2">
+  <h3 class="fn-title"><code>fn map_keys(map, f)</code> <a class="anchor" href="#map_keys/2">¶</a></h3>
+<p>A new map with each key replaced by <code>f</code> applied to it. Values are kept; if <code>f</code> maps two keys onto one, the later pair wins.</p>
+<pre><code><span class="tok-type">Map</span>.map_keys({<span class="tok-lit">1</span>: <span class="tok-lit">:a</span>, <span class="tok-lit">2</span>: <span class="tok-lit">:b</span>}, <span class="tok-kw">do</span> k -&gt; k * <span class="tok-lit">10</span>)   <span class="tok-com"># == {10: :a, 20: :b}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to walk</dd>
+  <dt><code>f</code></dt>
+  <dd>a lambda from a key to its replacement</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> with mapped keys and the same values</p>
+</div>
+<div class="fn-detail" id="map_entries/2">
+  <h3 class="fn-title"><code>fn map_entries(map, f)</code> <a class="anchor" href="#map_entries/2">¶</a></h3>
+<p>A new map built by replacing each pair with the <code>(key, value)</code> tuple <code>f</code> returns for it.</p>
+<pre><code><span class="tok-type">Map</span>.map_entries({a: <span class="tok-lit">1</span>}, <span class="tok-kw">do</span> k, v -&gt; (k, v + <span class="tok-lit">1</span>))   <span class="tok-com"># == {a: 2}</span></code></pre>
+<dl class="params">
+  <dt><code>map</code></dt>
+  <dd>the map to walk</dd>
+  <dt><code>f</code></dt>
+  <dd>a lambda <code>(key, value)</code> returning the replacement pair</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Map.html">Map</a></code> of the returned pairs</p>
+</div>
+<div class="fn-detail" id="from_list/1">
+  <h3 class="fn-title"><code>fn from_list(pairs)</code> <a class="anchor" href="#from_list/1">¶</a></h3>
+<p>A map built from a list of <code>(key, value)</code> tuples, in order. A repeated key keeps its first position and takes its last value.</p>
+<pre><code><span class="tok-type">Map</span>.from_list([(<span class="tok-lit">:a</span>, <span class="tok-lit">1</span>), (<span class="tok-lit">:b</span>, <span class="tok-lit">2</span>)])   <span class="tok-com"># == {a: 1, b: 2}</span>
+<span class="tok-type">Map</span>.from_list([])                   <span class="tok-com"># == {}</span></code></pre>
+<dl class="params">
+  <dt><code>pairs</code></dt>
+  <dd>a <code><a href="List.html">List</a></code> of <code>(key, value)</code> tuples</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the <code><a href="Map.html">Map</a></code> those pairs describe</p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

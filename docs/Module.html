@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Module — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html" class="current">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">Module</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>Module — introspecting and calling into modules by value.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>Module — introspecting and calling into modules by value.</p>
+<p>A module is itself a value in Ramos: <code><a href="Kernel.html">Kernel</a></code> (or <code><a href="Integer.html">Integer</a></code>, or any module written) can be bound, passed around, and stored — <code>is_module</code> tests for one and <code>type_of</code> names it. This module is what you do with one once you have it, when the function to call is not known at the call site.</p>
+<pre><code><span class="tok-com"># ramos doctest setup</span>
+<span class="tok-kw">module</span> <span class="tok-type">Greeter</span>
+  <span class="tok-kw">fn</span> hello(name)
+    <span class="tok-str">&quot;hi #{name}&quot;</span></code></pre>
+<pre><code><span class="tok-kw">fnp</span> secret()
+  <span class="tok-lit">42</span></code></pre>
+<pre><code><span class="tok-type">Module</span>.functions(<span class="tok-type">Greeter</span>)                    <span class="tok-com"># == [&quot;hello&quot;]</span>
+<span class="tok-type">Module</span>.apply(<span class="tok-type">Greeter</span>, <span class="tok-str">&quot;hello&quot;</span>, [<span class="tok-str">&quot;Andrew&quot;</span>])    <span class="tok-com"># == &quot;hi Andrew&quot;</span></code></pre>
+<p>Conventions:</p>
+<ul><li>both functions only ever see a module&#39;s <em>public</em> functions — <code>fnp</code> stays exactly as unreachable from here as it is from a written <code>Greeter.secret()</code> call outside the module.</li><li>a function is named with a <code><a href="String.html">String</a></code> (<code>&quot;hello&quot;</code>), not a <code>Symbol</code> — matching <code>type_of</code>, since a module&#39;s own name is a <code><a href="String.html">String</a></code> too.</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#functions/1" class="fn-sig"><code>fn functions(m)</code></a>
+    <span class="fn-summary">The names of the public functions <code>m</code> defines, in declaration order. <code>fnp</code> functions are never included — they are not callable from outside <code>m</code> either.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#apply/3" class="fn-sig"><code>fn apply(m, fn_name, args)</code></a>
+    <span class="fn-summary">Resolves <code>fn_name</code> on module <code>m</code> and calls it with <code>args</code>, a list of its arguments — like <code><a href="Kernel.html#apply">Kernel.apply</a></code>, but the function is looked up by name on a module rather than held as a lambda. Use it when <em>which</em> function to call is only known at runtime (a dispatch table, a plugin name read from config); otherwise call the function directly.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="functions/1">
+  <h3 class="fn-title"><code>fn functions(m)</code> <a class="anchor" href="#functions/1">¶</a></h3>
+<p>The names of the public functions <code>m</code> defines, in declaration order. <code>fnp</code> functions are never included — they are not callable from outside <code>m</code> either.</p>
+<pre><code><span class="tok-type">Module</span>.functions(<span class="tok-type">Greeter</span>)   <span class="tok-com"># == [&quot;hello&quot;]</span></code></pre>
+<dl class="params">
+  <dt><code>m</code></dt>
+  <dd>the module to inspect</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of <code><a href="String.html">String</a></code> function names, in declaration order</p>
+</div>
+<div class="fn-detail" id="apply/3">
+  <h3 class="fn-title"><code>fn apply(m, fn_name, args)</code> <a class="anchor" href="#apply/3">¶</a></h3>
+<p>Resolves <code>fn_name</code> on module <code>m</code> and calls it with <code>args</code>, a list of its arguments — like <code><a href="Kernel.html#apply">Kernel.apply</a></code>, but the function is looked up by name on a module rather than held as a lambda. Use it when <em>which</em> function to call is only known at runtime (a dispatch table, a plugin name read from config); otherwise call the function directly.</p>
+<p>Has no Ramos body: the interpreter intercepts the call, because resolving <code>fn_name</code> and running it needs the evaluator, which a native cannot reach. Raises if <code>m</code> has no public function named <code>fn_name</code>.</p>
+<pre><code><span class="tok-type">Module</span>.apply(<span class="tok-type">Integer</span>, <span class="tok-str">&quot;abs&quot;</span>, [-<span class="tok-lit">7</span>])   <span class="tok-com"># == 7</span></code></pre>
+<dl class="params">
+  <dt><code>m</code></dt>
+  <dd>the module to call a function on</dd>
+  <dt><code>fn_name</code></dt>
+  <dd>the function&#39;s name, as a <code><a href="String.html">String</a></code></dd>
+  <dt><code>args</code></dt>
+  <dd>a <code><a href="List.html">List</a></code> of the arguments to pass</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> whatever the resolved function returns</p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

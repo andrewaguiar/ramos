@@ -1,0 +1,267 @@
+struct Date
+  # @module_doc
+  #
+  # Date — a calendar date: year, month, and day, with no time-of-day or time
+  # zone. Built on the proleptic Gregorian calendar.
+  #
+  # Construct with `new`, `today`, `from_epoch_day`, or `parse`; read a field
+  # with dot access, like any struct:
+  #
+  #   d = Date.new(2024, 2, 29)
+  #   d.year    # == 2024
+  #   d.month   # == 2
+  #
+  # An out-of-range `day` normalizes rather than raising — `day: 0` is the
+  # last day of the previous month, one past the last day rolls into the
+  # next — so "the last day of this month" is just `Date.new(year, month + 1,
+  # 0)`. `month` itself must be `1`..`12`.
+  #
+  #   Date.new(2024, 3, 0)    # == Date{year: 2024, month: 2, day: 29}
+  #   Date.new(2024, 1, 32)   # == Date{year: 2024, month: 2, day: 1}
+  #
+  # Two dates compare structurally with `==`, like any other struct — but
+  # there is no built-in `<`/`>`, since arbitrary structs are not ordered.
+  # Use `compare` instead, or sort by `to_epoch_day`:
+  #
+  #   Date.new(2024, 1, 1) == Date.new(2024, 1, 1)               # == true
+  #   Date.compare(Date.new(2024, 1, 1), Date.new(2024, 1, 2))   # == -1
+  #
+  # Conventions:
+  #   - every date is proleptic Gregorian, with no time zone — `today` reads
+  #     the wall clock as UTC.
+  #   - `compare` follows `Integer.compare`/`Float.compare`: `-1`, `0`, `1`.
+  #   - the attributes default to the epoch, `1970-01-01`, so `Date{}` is a
+  #     real (if arbitrary) date rather than a half-built value.
+
+  attributes
+    year: 1970
+    month: 1
+    day: 1
+
+  fn new(year, month, day)
+    # @doc
+    #
+    # Builds a `Date`. `day` normalizes when it falls outside the month — `0`
+    # is the last day of the previous month, one past the last day rolls into
+    # the next.
+    #
+    # @param year: the calendar year, any integer
+    # @param month: the month, `1`..`12`
+    # @param day: the day of month; out-of-range values roll over
+    # @return a new `Date`
+    #
+    #   Date.new(2024, 2, 29)   # == Date{year: 2024, month: 2, day: 29}
+    #   Date.new(2024, 3, 0)    # == Date{year: 2024, month: 2, day: 29}
+    #   Date.new(2023, 2, 29)   # == Date{year: 2023, month: 3, day: 1}
+    assert(month >= 1 and month <= 12, "Date.new: month must be 1..12, got #{month}")
+    from_epoch_day(native("date_to_epoch_day", [year, month, day]))
+
+  fn today()
+    # @doc
+    #
+    # Today's date, read from the wall clock as UTC.
+    #
+    # @return the current `Date`
+    #
+    #   Date.today().year > 2000   # == true
+    from_epoch_day(now() / 86400000)
+
+  fn from_epoch_day(epoch_day)
+    # @doc
+    #
+    # The `Date` that is `epoch_day` days after 1970-01-01 (day `0`).
+    # Negative values reach before the epoch.
+    #
+    # @param epoch_day: days since 1970-01-01, as an `Integer`
+    # @return the corresponding `Date`
+    #
+    #   Date.from_epoch_day(0)    # == Date{year: 1970, month: 1, day: 1}
+    #   Date.from_epoch_day(-1)   # == Date{year: 1969, month: 12, day: 31}
+    (year, month, day) = native("date_from_epoch_day", [epoch_day])
+    Date{year: year, month: month, day: day}
+
+  fn parse(text)
+    # @doc
+    #
+    # Parses an ISO-8601 calendar date, `"YYYY-MM-DD"`.
+    #
+    # @param text: a date in `"YYYY-MM-DD"` form
+    # @return the corresponding `Date`
+    #
+    #   Date.parse("2024-02-29")   # == Date{year: 2024, month: 2, day: 29}
+    [year, month, day] = String.split(text, "-")
+    new(to_integer(year), to_integer(month), to_integer(day))
+
+  fn to_epoch_day(self)
+    # @doc
+    #
+    # `self` as the number of days since 1970-01-01 — the bridge to
+    # arithmetic and comparison.
+    #
+    # @param self: the date to convert
+    # @return an `Integer` day count, negative before the epoch
+    #
+    #   Date.to_epoch_day(Date{year: 1970, month: 1, day: 1})     # == 0
+    #   Date.to_epoch_day(Date{year: 1969, month: 12, day: 31})   # == -1
+    native("date_to_epoch_day", [self.year, self.month, self.day])
+
+  fn to_iso(self)
+    # @doc
+    #
+    # `self` rendered as `"YYYY-MM-DD"` (ISO-8601), zero-padded.
+    #
+    # @param self: the date to render
+    # @return the ISO-8601 string
+    #
+    #   Date.to_iso(Date{year: 2024, month: 2, day: 9})   # == "2024-02-09"
+    "#{pad(self.year, 4)}-#{pad(self.month, 2)}-#{pad(self.day, 2)}"
+
+  fn add_days(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` days — negative moves backward.
+    #
+    # @param self: the starting date
+    # @param n: how many days to add (negative subtracts)
+    # @return a new `Date`
+    #
+    #   Date.add_days(Date{year: 2024, month: 2, day: 28}, 1)    # == Date{year: 2024, month: 2, day: 29}
+    #   Date.add_days(Date{year: 2024, month: 1, day: 1}, -1)    # == Date{year: 2023, month: 12, day: 31}
+    from_epoch_day(to_epoch_day(self) + n)
+
+  fn add_years(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` years, keeping the month and day — except a leap
+    # day (`month: 2, day: 29`) landing on a non-leap year, which rolls to
+    # March 1, the same normalization `new` does for any other overflowing
+    # day.
+    #
+    # @param self: the starting date
+    # @param n: how many years to add (negative subtracts)
+    # @return a new `Date`
+    #
+    #   Date.add_years(Date{year: 2024, month: 2, day: 29}, 1)    # == Date{year: 2025, month: 3, day: 1}
+    #   Date.add_years(Date{year: 2020, month: 6, day: 15}, -5)   # == Date{year: 2015, month: 6, day: 15}
+    new(self.year + n, self.month, self.day)
+
+  fn add_weeks(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` weeks (`n * 7` days) — negative moves backward.
+    #
+    # @param self: the starting date
+    # @param n: how many weeks to add (negative subtracts)
+    # @return a new `Date`
+    #
+    #   Date.add_weeks(Date{year: 2024, month: 1, day: 1}, 1)    # == Date{year: 2024, month: 1, day: 8}
+    #   Date.add_weeks(Date{year: 2024, month: 1, day: 8}, -1)   # == Date{year: 2024, month: 1, day: 1}
+    add_days(self, n * 7)
+
+  fn add_months(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` months, carrying into the year and normalizing an
+    # overflowing day the same way `new` does — "same day next month" for
+    # `day: 31` run against a 30-day month rolls into the one after.
+    #
+    # @param self: the starting date
+    # @param n: how many months to add (negative subtracts)
+    # @return a new `Date`
+    #
+    #   Date.add_months(Date{year: 2024, month: 1, day: 15}, 1)    # == Date{year: 2024, month: 2, day: 15}
+    #   Date.add_months(Date{year: 2024, month: 11, day: 15}, 3)   # == Date{year: 2025, month: 2, day: 15}
+    #   Date.add_months(Date{year: 2024, month: 1, day: 15}, -1)   # == Date{year: 2023, month: 12, day: 15}
+    total_months = self.year * 12 + (self.month - 1) + n
+    year = (total_months - total_months % 12) / 12
+    month = total_months % 12 + 1
+    new(year, month, self.day)
+
+  fn compare(self, other)
+    # @doc
+    #
+    # Orders two dates as `-1`, `0` or `1` — the shape `Integer.compare` and
+    # `Float.compare` use, since there is no built-in `<`/`>` for structs.
+    #
+    # @param self: the first date
+    # @param other: the second date
+    # @return `-1` when `self` is earlier, `1` when later, `0` when equal
+    #
+    #   Date.compare(Date{year: 2024, month: 1, day: 1}, Date{year: 2024, month: 1, day: 2})   # == -1
+    #   Date.compare(Date{year: 2024, month: 1, day: 2}, Date{year: 2024, month: 1, day: 1})   # == 1
+    #   Date.compare(Date{year: 2024, month: 1, day: 1}, Date{year: 2024, month: 1, day: 1})   # == 0
+    cond
+      to_epoch_day(self) < to_epoch_day(other) -> -1
+      to_epoch_day(self) > to_epoch_day(other) -> 1
+      true -> 0
+
+  fn diff_days(self, other)
+    # @doc
+    #
+    # The number of days from `other` to `self` — positive when `self` is
+    # later, negative when earlier.
+    #
+    # @param self: the later (or earlier) date
+    # @param other: the date to measure from
+    # @return an `Integer` day count
+    #
+    #   Date.diff_days(Date{year: 2024, month: 1, day: 10}, Date{year: 2024, month: 1, day: 1})   # == 9
+    #   Date.diff_days(Date{year: 2024, month: 1, day: 1}, Date{year: 2024, month: 1, day: 10})   # == -9
+    to_epoch_day(self) - to_epoch_day(other)
+
+  fn day_of_week(self)
+    # @doc
+    #
+    # The day of the week `self` falls on.
+    #
+    # @param self: the date to inspect
+    # @return one of `:sunday`, `:monday`, `:tuesday`, `:wednesday`,
+    #   `:thursday`, `:friday`, `:saturday`
+    #
+    #   Date.day_of_week(Date{year: 1970, month: 1, day: 1})   # == :thursday
+    #   Date.day_of_week(Date{year: 2024, month: 1, day: 1})   # == :monday
+    names = [:sunday, :monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
+    at(names, (to_epoch_day(self) + 4) % 7)
+
+  fn is_leap_year(year)
+    # @doc
+    #
+    # Whether `year` has a February 29th, by the proleptic Gregorian rule:
+    # divisible by 4, except centuries, unless also divisible by 400.
+    #
+    # @param year: the calendar year to test
+    # @return `true` when `year` is a leap year
+    #
+    #   Date.is_leap_year(2024)   # == true
+    #   Date.is_leap_year(1900)   # == false
+    #   Date.is_leap_year(2000)   # == true
+    year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+
+  fn days_in_month(self)
+    # @doc
+    #
+    # How many days are in `self`'s month.
+    #
+    # @param self: the date whose month to measure
+    # @return `28`-`31`
+    #
+    #   Date.days_in_month(Date{year: 2024, month: 2, day: 1})   # == 29
+    #   Date.days_in_month(Date{year: 2023, month: 2, day: 1})   # == 28
+    feb =
+      if is_leap_year(self.year)
+        29
+      else
+        28
+    lengths = [31, feb, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    at(lengths, self.month - 1)
+
+  fnp pad(n, width)
+    # @doc
+    #
+    # (private) `n` rendered as decimal digits, left-padded with zeros to at
+    # least `width` characters. Backs `to_iso`.
+    #
+    # @param n: the non-negative integer to render
+    # @param width: the minimum number of digits
+    # @return `n`'s decimal digits, zero-padded to `width`
+    String.pad_left(to_string(n), width, "0")

@@ -1,0 +1,23 @@
+# Pipelines, folds and the map/filter family over a list of records.
+sales = [
+  {product: "chair", units: 4, price: 25},
+  {product: "desk", units: 2, price: 120},
+  {product: "lamp", units: 9, price: 15}
+]
+
+total =
+  sales
+  | List.map(do s -> Map.get(s, :units, 0) * Map.get(s, :price, 0))
+  | List.sum()
+
+println("total: #{total}")
+
+big =
+  sales
+  | List.filter(do s -> Map.get(s, :units, 0) > 3)
+  | List.map(do s -> Map.get(s, :product, "?"))
+  | List.join(", ")
+
+println("moved more than three: #{big}")
+println(List.sort([3, 1, 2]))
+println(Map.keys({a: 1, b: 2}))

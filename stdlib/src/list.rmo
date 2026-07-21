@@ -1,0 +1,1126 @@
+module List
+  # @module_doc
+  #
+  # List — operations on persistent, immutable lists.
+  #
+  # Lists in Ramos are singly-linked and pattern matched against the empty list
+  # `[]` and the cons cell `[head | tail]`. Every function here returns a new
+  # list rather than mutating its input — values in Ramos are immutable.
+  #
+  # The module is built around a few small combinators — `map`, `filter`,
+  # `reduce` — from which most of the rest are derived. This keeps the
+  # implementation tiny and makes the functions compose cleanly through pipes:
+  #
+  #   [1, 2, 3, 4]
+  #   | List.filter(do x -> Integer.is_even(x))
+  #   | List.map(do x -> x * 10)            # == [20, 40]
+  #
+  # Conventions:
+  #   - predicates use Ramos truthiness — only `false` and `nil` are falsy.
+  #   - search functions that may miss return `nil`.
+  #   - index arguments are zero-based.
+  #   - a `_by` suffix (`sort_by`, `max_by`, `min_by`, `dedup_by`) means the
+  #     plain version's comparison is replaced by a key `f` returns, not the
+  #     elements themselves.
+  #   - a function whose own recursive call is not the last thing it does
+  #     (`[f(head)] ++ recurse(tail)`, say) is written instead as a private
+  #     `_loop` helper carrying a reverse-order accumulator, so the recursion
+  #     is tail-recursive and runs in constant native-stack space; the public
+  #     function then `reverse`s the result once. `each`, `reduce`, `find`,
+  #     `drop`, and the other functions whose own recursive call already *is*
+  #     the last thing they do need no such helper.
+
+  fn range(from, to)
+    # @doc
+    #
+    # The integers from `from` to `to`, inclusive at both ends, moving in
+    # whichever direction gets there: ascending when `from <= to`, descending
+    # when `from > to` — the one function for both counting up and counting
+    # down.
+    #
+    # @param from: the first integer
+    # @param to: the last integer
+    # @return a `List` counting from `from` to `to`, inclusive at both ends
+    #
+    #   List.range(1, 5)   # == [1, 2, 3, 4, 5]
+    #   List.range(5, 1)   # == [5, 4, 3, 2, 1]
+    #   List.range(3, 3)   # == [3]
+    cond
+      from < to -> reverse(range_loop(from, to, 1, []))
+      from > to -> reverse(range_loop(from, to, -1, []))
+      true -> [from]
+
+  fnp range_loop(current, stop, step, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `range`, counting from `current` to
+    # `stop` by `step` and building the run in reverse for `range` to
+    # `reverse` back into order.
+    cond
+      current == stop -> [current] ++ acc
+      true -> range_loop(current + step, stop, step, [current] ++ acc)
+
+  fn map(list, f)
+    # @doc
+    #
+    # Applies `f` to every element of `list`, returning a new list of the
+    # results. Preserves order and length.
+    #
+    # @param list: the list to map over
+    # @param f: a lambda applied to each element
+    # @return a new list of `f` applied to each element, same order and length
+    #
+    #   List.map([1, 2, 3], do x -> x * 2)   # == [2, 4, 6]
+    reverse(map_loop(list, f, []))
+
+  fnp map_loop(list, f, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `map`, building the mapped results
+    # in reverse.
+    case list
+      [] -> acc
+      [head | tail] -> map_loop(tail, f, [f(head)] ++ acc)
+
+  fn each(list, f)
+    # @doc
+    #
+    # Calls `f` once per element, discarding the results. Intended for side
+    # effects (printing, etc.); returns `nil`.
+    #
+    # @param list: the list to iterate over
+    # @param f: a lambda called once per element for its side effect
+    # @return `nil`
+    #
+    #   List.each(["a", "b"], do x -> print(x))
+    case list
+      [] -> nil
+      [head | tail] ->
+        f(head)
+        each(tail, f)
+
+  fn with_index(list)
+    # @doc
+    #
+    # Pairs every element of `list` with its zero-based index.
+    #
+    # @param list: the list to index
+    # @return a `List` of `(element, index)` tuples, in order
+    #
+    #   List.with_index(["a", "b", "c"])   # == [("a", 0), ("b", 1), ("c", 2)]
+    reverse(with_index_loop(list, 0, []))
+
+  fnp with_index_loop(list, index, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper carrying the current `index` and a
+    # reverse-order accumulator for `with_index`.
+    case list
+      [] -> acc
+      [head | tail] -> with_index_loop(tail, index + 1, [(head, index)] ++ acc)
+
+  fn map_with_index(list, f)
+    # @doc
+    #
+    # Like `map`, but `f` also receives the zero-based index of the element it
+    # is applied to.
+    #
+    # @param list: the list to map over
+    # @param f: a lambda `(element, index)` returning the replacement
+    # @return a new list of `f` applied to each `(element, index)` pair
+    #
+    #   List.map_with_index(["a", "b"], do x, i -> "#{i}:#{x}")   # == ["0:a", "1:b"]
+    reverse(map_with_index_loop(list, f, 0, []))
+
+  fnp map_with_index_loop(list, f, index, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper carrying the current `index` and a
+    # reverse-order accumulator for `map_with_index`.
+    case list
+      [] -> acc
+      [head | tail] ->
+        map_with_index_loop(tail, f, index + 1, [f(head, index)] ++ acc)
+
+  fn each_with_index(list, f)
+    # @doc
+    #
+    # Like `each`, but `f` also receives the zero-based index of the element
+    # it is called with. Intended for side effects; returns `nil`.
+    #
+    # @param list: the list to iterate over
+    # @param f: a lambda `(element, index)` called once per element
+    # @return `nil`
+    #
+    #   List.each_with_index(["a", "b"], do x, i -> print("#{i}:#{x}"))
+    each_with_index_loop(list, f, 0)
+
+  fnp each_with_index_loop(list, f, index)
+    # @doc
+    #
+    # (private) Tail-recursive helper carrying the current `index` for
+    # `each_with_index`.
+    case list
+      [] -> nil
+      [head | tail] ->
+        f(head, index)
+        each_with_index_loop(tail, f, index + 1)
+
+  fn reduce(list, acc, f)
+    # @doc
+    #
+    # Folds `list` left-to-right, threading an accumulator. `f` receives the
+    # accumulator and the current element, and its return becomes the next
+    # accumulator. Returns the final accumulator.
+    #
+    # @param list: the list to fold
+    # @param acc: the initial accumulator value
+    # @param f: a lambda `(acc, element)` returning the next accumulator
+    # @return the final accumulator after folding every element
+    #
+    #   List.reduce([1, 2, 3], 0, do acc, x -> acc + x)   # == 6
+    case list
+      [] -> acc
+      [head | tail] -> reduce(tail, f(acc, head), f)
+
+  fn sum(list)
+    # @doc
+    #
+    # Returns the sum of the elements of `list` (numeric). The sum of `[]` is 0.
+    #
+    # @param list: a list of numbers
+    # @return the numeric sum (`0` for an empty list)
+    #
+    #   List.sum([1, 2, 3])   # == 6
+    reduce(list, 0, do acc, x -> acc + x)
+
+  fn product(list)
+    # @doc
+    #
+    # Returns the product of the elements of `list` (numeric). The product of
+    # `[]` is 1.
+    #
+    # @param list: a list of numbers
+    # @return the numeric product (`1` for an empty list)
+    #
+    #   List.product([2, 3, 4])   # == 24
+    reduce(list, 1, do acc, x -> acc * x)
+
+  fn count(list, f)
+    # @doc
+    #
+    # Returns the number of elements for which `f` is truthy.
+    #
+    # @param list: the list to test
+    # @param f: a predicate lambda applied to each element
+    # @return the `Integer` count of elements for which `f` is truthy
+    #
+    #   List.count([1, 2, 3, 4], do x -> Integer.is_even(x))   # == 2
+    size(filter(list, f))
+
+  fn min(list)
+    # @doc
+    #
+    # Returns the smallest element of `list`, or `nil` if empty.
+    #
+    # @param list: a list of mutually comparable elements
+    # @return the smallest element, or `nil` if `list` is empty
+    #
+    #   List.min([3, 1, 2])   # == 1
+    reduce(list, nil, do a, b -> min_of(a, b))
+
+  fn max(list)
+    # @doc
+    #
+    # Returns the largest element of `list`, or `nil` if empty.
+    #
+    # @param list: a list of mutually comparable elements
+    # @return the largest element, or `nil` if `list` is empty
+    #
+    #   List.max([3, 1, 2])   # == 3
+    reduce(list, nil, do a, b -> max_of(a, b))
+
+  fnp min_of(a, b)
+    # @doc
+    #
+    # (private) Two-argument minimum that tolerates a `nil` operand, used as the
+    # reducing step for `min`.
+    #
+    # @param a: the accumulated minimum so far (or `nil`)
+    # @param b: the current element
+    # @return the smaller of `a` and `b`, treating `nil` as absent
+    cond
+      a == nil -> b
+      b == nil -> a
+      a < b    -> a
+      true     -> b
+
+  fnp max_of(a, b)
+    # @doc
+    #
+    # (private) Two-argument maximum that tolerates a `nil` operand, used as the
+    # reducing step for `max`.
+    #
+    # @param a: the accumulated maximum so far (or `nil`)
+    # @param b: the current element
+    # @return the larger of `a` and `b`, treating `nil` as absent
+    cond
+      a == nil -> b
+      b == nil -> a
+      a > b    -> a
+      true     -> b
+
+  fn filter(list, f)
+    # @doc
+    #
+    # Returns a new list containing only the elements of `list` for which `f` is
+    # truthy, in their original order.
+    #
+    # @param list: the list to filter
+    # @param f: a predicate lambda applied to each element
+    # @return a new list of the elements for which `f` is truthy, in order
+    #
+    #   List.filter([1, 2, 3, 4], do x -> Integer.is_even(x))   # == [2, 4]
+    reverse(filter_loop(list, f, []))
+
+  fnp filter_loop(list, f, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `filter`, building the kept
+    # elements in reverse.
+    case list
+      [] -> acc
+      [head | tail] ->
+        cond
+          f(head) -> filter_loop(tail, f, [head] ++ acc)
+          true -> filter_loop(tail, f, acc)
+
+  fn reject(list, f)
+    # @doc
+    #
+    # Inverse of `filter`: returns the elements for which `f` is falsy.
+    #
+    # @param list: the list to filter
+    # @param f: a predicate lambda applied to each element
+    # @return a new list of the elements for which `f` is falsy, in order
+    #
+    #   List.reject([1, 2, 3, 4], do x -> Integer.is_even(x))   # == [1, 3]
+    filter(list, do x -> not f(x))
+
+  fn partition(list, f)
+    # @doc
+    #
+    # Splits `list` into a tuple of two lists: those for which `f` is truthy and
+    # those for which it is falsy. Relative order is preserved in each half.
+    #
+    # @param list: the list to split
+    # @param f: a predicate lambda applied to each element
+    # @return a `(truthy, falsy)` tuple of two lists, each in original order
+    #
+    #   List.partition([1, 2, 3, 4], do x -> Integer.is_even(x))
+    #   # == ([2, 4], [1, 3])
+    (filter(list, f), reject(list, f))
+
+  fn uniq(list)
+    # @doc
+    #
+    # Returns a new list with duplicate values removed, keeping the first
+    # occurrence of each. Equality uses `==`.
+    #
+    # @param list: the list to deduplicate
+    # @return a new list with duplicates removed, keeping first occurrences
+    #
+    #   List.uniq([1, 2, 1, 3, 2])   # == [1, 2, 3]
+    reverse(uniq_loop(list, []))
+
+  fnp uniq_loop(list, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `uniq`, building the kept
+    # first-occurrences in reverse.
+    case list
+      [] -> acc
+      [head | tail] -> uniq_loop(filter(tail, do x -> x != head), [head] ++ acc)
+
+  fn dedup(list)
+    # @doc
+    #
+    # Returns a new list with *consecutive* duplicate values collapsed to
+    # one, using `==`. Unlike `uniq`, a repeat elsewhere in the list (not
+    # adjacent to its first occurrence) is left alone.
+    #
+    # @param list: the list to collapse
+    # @return a new list with consecutive duplicates removed
+    #
+    #   List.dedup([1, 1, 2, 1, 1, 3])   # == [1, 2, 1, 3]
+    #   List.uniq([1, 1, 2, 1, 1, 3])    # == [1, 2, 3]
+    case list
+      [] -> []
+      [head | tail] -> reverse(dedup_from(tail, head, [head]))
+
+  fnp dedup_from(list, last, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `dedup`, carrying the last element
+    # kept — so an arbitrarily long run collapses to its first element rather
+    # than comparing only adjacent pairs — and a reverse-order accumulator.
+    case list
+      [] -> acc
+      [head | tail] ->
+        cond
+          head == last -> dedup_from(tail, last, acc)
+          true -> dedup_from(tail, head, [head] ++ acc)
+
+  fn dedup_by(list, f)
+    # @doc
+    #
+    # Like `dedup`, but two elements collapse when `f` returns the same key
+    # for both, rather than when they are themselves `==`. Keeps the first
+    # element of each run, like `dedup`.
+    #
+    # @param list: the list to collapse
+    # @param f: a lambda returning the key to compare consecutive elements by
+    # @return a new list with consecutive same-key elements removed
+    #
+    #   List.dedup_by([1, 3, 2, 4, 5], do x -> Integer.is_even(x))
+    #   # == [1, 2, 5]
+    case list
+      [] -> []
+      [head | tail] -> reverse(dedup_by_from(tail, f(head), f, [head]))
+
+  fnp dedup_by_from(list, key, f, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `dedup_by`, carrying the key of the
+    # last element kept and a reverse-order accumulator.
+    case list
+      [] -> acc
+      [head | tail] ->
+        cond
+          f(head) == key -> dedup_by_from(tail, key, f, acc)
+          true -> dedup_by_from(tail, f(head), f, [head] ++ acc)
+
+  fn concat(list)
+    # @doc
+    #
+    # Flattens one level: given a list of lists, concatenates them in order.
+    #
+    # @param list: a list whose elements are themselves lists
+    # @return a single list, the inner lists concatenated in order
+    #
+    #   List.concat([[1, 2], [3], [4, 5]])   # == [1, 2, 3, 4, 5]
+    reduce(list, [], do acc, x -> acc ++ x)
+
+  fn flatten(list)
+    # @doc
+    #
+    # Flattens `list` all the way down, however deeply its elements are
+    # themselves nested lists — unlike `concat`, which only drops one level.
+    # A non-list element is kept as-is.
+    #
+    # @param list: a list, possibly containing nested lists at any depth
+    # @return a single flat list of every non-list element, in order
+    #
+    #   List.flatten([1, [2, [3, 4]], [5]])   # == [1, 2, 3, 4, 5]
+    reverse(flatten_loop(list, []))
+
+  fnp flatten_loop(list, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `flatten`: walks `list` one element
+    # at a time, so stack use is bounded by `list`'s own length rather than
+    # its total (flattened) element count — a nested list still recurses into
+    # `flatten` itself, bounded instead by its nesting depth.
+    case list
+      [] -> acc
+      [head | tail] ->
+        cond
+          is_list(head) -> flatten_loop(tail, reverse(flatten(head)) ++ acc)
+          true -> flatten_loop(tail, [head] ++ acc)
+
+  fn flat_map(list, f)
+    # @doc
+    #
+    # Maps `f` over `list` and flattens the result one level. Equivalent to
+    # `concat(map(list, f))` — handy when `f` returns a list per element.
+    #
+    # @param list: the list to map over
+    # @param f: a lambda returning a list for each element
+    # @return the mapped lists concatenated in order
+    #
+    #   List.flat_map([1, 2], do x -> [x, x])   # == [1, 1, 2, 2]
+    concat(map(list, f))
+
+  fn zip(a, b)
+    # @doc
+    #
+    # Pairs up `a` and `b` element-wise. Stops at the shorter list — a
+    # trailing tail on the longer one has nothing to pair with, so it is
+    # dropped.
+    #
+    # @param a: the first list
+    # @param b: the second list
+    # @return a `List` of `(a_element, b_element)` tuples, one per shared index
+    #
+    #   List.zip([1, 2, 3], [:a, :b])   # == [(1, :a), (2, :b)]
+    reverse(zip_loop(a, b, []))
+
+  fnp zip_loop(a, b, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `zip`, building pairs in reverse.
+    case a
+      [] -> acc
+      [ha | ta] ->
+        case b
+          [] -> acc
+          [hb | tb] -> zip_loop(ta, tb, [(ha, hb)] ++ acc)
+
+  fn zip_with(a, b, f)
+    # @doc
+    #
+    # Combines `a` and `b` element-wise through `f` instead of pairing them
+    # into tuples. Stops at the shorter list, same as `zip`.
+    #
+    # @param a: the first list
+    # @param b: the second list
+    # @param f: a lambda `(a_element, b_element)` returning the combined value
+    # @return a `List` of `f` applied to each pair, one per shared index
+    #
+    #   List.zip_with([1, 2, 3], [10, 20], do x, y -> x + y)   # == [11, 22]
+    reverse(zip_with_loop(a, b, f, []))
+
+  fnp zip_with_loop(a, b, f, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `zip_with`, building results in
+    # reverse.
+    case a
+      [] -> acc
+      [ha | ta] ->
+        case b
+          [] -> acc
+          [hb | tb] -> zip_with_loop(ta, tb, f, [f(ha, hb)] ++ acc)
+
+  fn unzip(pairs)
+    # @doc
+    #
+    # Splits a list of `(x, y)` tuples into a tuple of two lists — the
+    # inverse of `zip`.
+    #
+    # @param pairs: a list of two-element tuples
+    # @return a `(xs, ys)` tuple: the first elements, then the second elements
+    #
+    #   List.unzip([(1, :a), (2, :b)])   # == ([1, 2], [:a, :b])
+    (map(pairs, do pair -> at(pair, 0)), map(pairs, do pair -> at(pair, 1)))
+
+  fn reverse(list)
+    # @doc
+    #
+    # Returns a new list with the elements of `list` in reverse order.
+    #
+    # @param list: the list to reverse
+    # @return a new list with the elements in reverse order
+    #
+    #   List.reverse([1, 2, 3])   # == [3, 2, 1]
+    reduce(list, [], do acc, x -> [x] ++ acc)
+
+  fn sort(list)
+    # @doc
+    #
+    # Returns a new list with the elements of `list` sorted in ascending order
+    # using `<`. Elements must be mutually comparable.
+    #
+    # @param list: a list of mutually comparable elements
+    # @return a new list sorted in ascending order
+    #
+    #   List.sort([3, 1, 2])   # == [1, 2, 3]
+    reduce(list, [], do acc, x -> sorted_insert(acc, x))
+
+  fnp sorted_insert(list, x)
+    # @doc
+    #
+    # (private) Inserts `x` into the already-sorted `list` at the first position
+    # where it is `<=` the current head, preserving order. Named apart from the
+    # public `insert`, which places a value at an index.
+    #
+    # @param list: an already-sorted list
+    # @param x: the element to insert
+    # @return `list` with `x` inserted so the result stays sorted
+    sorted_insert_loop(list, x, [])
+
+  fnp sorted_insert_loop(list, x, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `sorted_insert`, carrying the
+    # already-passed prefix in reverse until it finds where `x` belongs.
+    case list
+      [] -> reverse([x] ++ acc)
+      [head | tail] when x <= head -> reverse(acc) ++ [x] ++ list
+      [head | tail] -> sorted_insert_loop(tail, x, [head] ++ acc)
+
+  fn sort_by(list, f)
+    # @doc
+    #
+    # Returns a new list sorted in ascending order of `f(element)`, rather
+    # than the elements themselves — the way to sort a list of structs or
+    # tuples by one field.
+    #
+    # @param list: the list to sort
+    # @param f: a lambda returning the key to sort by
+    # @return a new list sorted in ascending order of `f`'s result
+    #
+    #   List.sort_by(["ccc", "a", "bb"], do s -> String.length(s))
+    #   # == ["a", "bb", "ccc"]
+    reduce(list, [], do acc, x -> sorted_insert_by(acc, x, f))
+
+  fnp sorted_insert_by(list, x, f)
+    # @doc
+    #
+    # (private) Inserts `x` into the already-`sort_by`-sorted `list` at the
+    # first position where `f(x)` is `<=` the current head's key.
+    sorted_insert_by_loop(list, x, f, [])
+
+  fnp sorted_insert_by_loop(list, x, f, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `sorted_insert_by`, carrying the
+    # already-passed prefix in reverse until it finds where `x` belongs.
+    case list
+      [] -> reverse([x] ++ acc)
+      [head | tail] when f(x) <= f(head) -> reverse(acc) ++ [x] ++ list
+      [head | tail] -> sorted_insert_by_loop(tail, x, f, [head] ++ acc)
+
+  fn max_by(list, f)
+    # @doc
+    #
+    # Returns the element of `list` for which `f` is largest, or `nil` if
+    # empty. The way to find the largest of a list of structs or tuples by
+    # one field.
+    #
+    # @param list: the list to search
+    # @param f: a lambda returning the key to compare by
+    # @return the element with the largest `f`, or `nil` if `list` is empty
+    #
+    #   List.max_by(["a", "ccc", "bb"], do s -> String.length(s))   # == "ccc"
+    reduce(list, nil, do a, b -> max_of_by(a, b, f))
+
+  fn min_by(list, f)
+    # @doc
+    #
+    # Returns the element of `list` for which `f` is smallest, or `nil` if
+    # empty.
+    #
+    # @param list: the list to search
+    # @param f: a lambda returning the key to compare by
+    # @return the element with the smallest `f`, or `nil` if `list` is empty
+    #
+    #   List.min_by(["ccc", "a", "bb"], do s -> String.length(s))   # == "a"
+    reduce(list, nil, do a, b -> min_of_by(a, b, f))
+
+  fnp max_of_by(a, b, f)
+    # @doc
+    #
+    # (private) Two-argument, key-based maximum tolerating a `nil` operand —
+    # the reducing step for `max_by`.
+    cond
+      a == nil -> b
+      b == nil -> a
+      f(a) > f(b) -> a
+      true -> b
+
+  fnp min_of_by(a, b, f)
+    # @doc
+    #
+    # (private) Two-argument, key-based minimum tolerating a `nil` operand —
+    # the reducing step for `min_by`.
+    cond
+      a == nil -> b
+      b == nil -> a
+      f(a) < f(b) -> a
+      true -> b
+
+  fn find(list, f)
+    # @doc
+    #
+    # Returns the first element for which `f` is truthy, or `nil` if none match.
+    #
+    # @param list: the list to search
+    # @param f: a predicate lambda applied to each element
+    # @return the first element for which `f` is truthy, or `nil` if none match
+    #
+    #   List.find([1, 2, 3, 4], do x -> x > 2)   # == 3
+    case list
+      [] -> nil
+      [head | tail] ->
+        cond
+          f(head) -> head
+          true -> find(tail, f)
+
+  fn find_index(list, f)
+    # @doc
+    #
+    # Returns the zero-based index of the first element for which `f` is truthy,
+    # or `nil` if none match.
+    #
+    # @param list: the list to search
+    # @param f: a predicate lambda applied to each element
+    # @return the zero-based `Integer` index of the first match, or `nil` if none
+    #
+    #   List.find_index([1, 2, 3, 4], do x -> x > 2)   # == 2
+    find_index_loop(list, f, 0)
+
+  fnp find_index_loop(list, f, index)
+    # @doc
+    #
+    # (private) Tail-recursive helper carrying the current `index` for
+    # `find_index`.
+    #
+    # @param list: the remaining list to search
+    # @param f: the predicate do
+    # @param index: the index of `list`'s head in the original list
+    # @return the index of the first match, or `nil` if none match
+    case list
+      [] -> nil
+      [head | tail] ->
+        cond
+          f(head) -> index
+          true -> find_index_loop(tail, f, index + 1)
+
+  fn index_of(list, value)
+    # @doc
+    #
+    # Returns the zero-based index of the first element equal to `value`
+    # (using `==`), or `nil` if it is not present. `find_index` takes a
+    # predicate; this is the by-value shorthand, matching `contains`'s
+    # by-value search.
+    #
+    # @param list: the list to search
+    # @param value: the value to look for (compared with `==`)
+    # @return the zero-based `Integer` index of the first match, or `nil` if none
+    #
+    #   List.index_of([1, 2, 3, 4], 3)   # == 2
+    #   List.index_of([1, 2, 3, 4], 9)   # == nil
+    find_index(list, do x -> x == value)
+
+  fn contains(list, value)
+    # @doc
+    #
+    # Returns `true` if `value` is present in `list` (using `==`), else `false`.
+    #
+    # @param list: the list to search
+    # @param value: the value to look for (compared with `==`)
+    # @return `true` if `value` is in `list`, else `false`
+    #
+    #   List.contains([1, 2, 3], 2)   # == true
+    case list
+      [] -> false
+      [head | tail] ->
+        cond
+          head == value -> true
+          true -> contains(tail, value)
+
+  fn all(list, f)
+    # @doc
+    #
+    # Returns `true` if `f` is truthy for every element (trivially `true` for an
+    # empty list). Short-circuits on the first falsy element.
+    #
+    # @param list: the list to test
+    # @param f: a predicate lambda applied to each element
+    # @return `true` if `f` is truthy for every element, else `false`
+    #
+    #   List.all([2, 4, 6], do x -> Integer.is_even(x))   # == true
+    case list
+      [] -> true
+      [head | tail] ->
+        cond
+          not f(head) -> false
+          true -> all(tail, f)
+
+  fn any(list, f)
+    # @doc
+    #
+    # Returns `true` if `f` is truthy for at least one element (`false` for an
+    # empty list). Short-circuits on the first truthy element.
+    #
+    # @param list: the list to test
+    # @param f: a predicate lambda applied to each element
+    # @return `true` if `f` is truthy for at least one element, else `false`
+    #
+    #   List.any([1, 3, 5], do x -> Integer.is_even(x))   # == false
+    case list
+      [] -> false
+      [head | tail] ->
+        cond
+          f(head) -> true
+          true -> any(tail, f)
+
+  fn first(list)
+    # @doc
+    #
+    # Returns the first element of `list`, or `nil` if empty.
+    #
+    # @param list: the list to read from
+    # @return the first element, or `nil` if `list` is empty
+    #
+    #   List.first([1, 2, 3])   # == 1
+    case list
+      [] -> nil
+      [head | _] -> head
+
+  fn last(list)
+    # @doc
+    #
+    # Returns the last element of `list`, or `nil` if empty. Walks the whole
+    # list.
+    #
+    # @param list: the list to read from
+    # @return the last element, or `nil` if `list` is empty
+    #
+    #   List.last([1, 2, 3])   # == 3
+    case list
+      [] -> nil
+      [x] -> x
+      [head | tail] -> last(tail)
+
+  fn insert(list, index, value)
+    # @doc
+    #
+    # Returns a new list with `value` placed at zero-based `index`, moving the
+    # element currently there and everything after it one position along.
+    #
+    # An `index` at or past the end appends, and a negative one inserts at the
+    # front — the position is clamped rather than being an error, which matches
+    # `take`/`drop` treating out-of-range counts as the nearest sensible edge.
+    #
+    # @param list: the list to insert into
+    # @param index: the zero-based position the value should end up at
+    # @param value: the value to insert
+    # @return a new list, one element longer
+    #
+    #   List.insert([1, 2, 3], 1, :x)    # == [1, :x, 2, 3]
+    #   List.insert([1, 2, 3], 0, :x)    # == [:x, 1, 2, 3]
+    #   List.insert([1, 2, 3], 99, :x)   # == [1, 2, 3, :x]
+    take(list, index) ++ [value] ++ drop(list, index)
+
+  fn delete(list, value)
+    # @doc
+    #
+    # Returns a new list with the first element equal to `value` (using `==`)
+    # removed. Every later occurrence, if any, is left alone — unlike
+    # `filter(list, do x -> x != value)`, which removes every match.
+    #
+    # @param list: the list to remove from
+    # @param value: the value to remove the first occurrence of
+    # @return a new list, one element shorter if `value` was found
+    #
+    #   List.delete([1, 2, 1, 3], 1)   # == [2, 1, 3]
+    #   List.delete([1, 2, 3], 9)      # == [1, 2, 3]
+    delete_loop(list, value, [])
+
+  fnp delete_loop(list, value, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `delete`, carrying the
+    # already-passed prefix in reverse until it finds `value`.
+    case list
+      [] -> reverse(acc)
+      [head | tail] ->
+        cond
+          head == value -> reverse(acc) ++ tail
+          true -> delete_loop(tail, value, [head] ++ acc)
+
+  fn delete_at(list, index)
+    # @doc
+    #
+    # Returns a new list with the element at zero-based `index` removed — the
+    # removal-side counterpart to `insert`. An out-of-range `index` (negative,
+    # or at or past the end) returns `list` unchanged.
+    #
+    # @param list: the list to remove from
+    # @param index: the zero-based position to remove
+    # @return a new list, one element shorter if `index` was in range
+    #
+    #   List.delete_at([1, 2, 3], 1)    # == [1, 3]
+    #   List.delete_at([1, 2, 3], 99)   # == [1, 2, 3]
+    take(list, index) ++ drop(list, index + 1)
+
+  fn update_at(list, index, f)
+    # @doc
+    #
+    # Returns a new list with the element at zero-based `index` replaced by
+    # `f` applied to it. An out-of-range `index` (negative, or at or past the
+    # end) returns `list` unchanged — `f` is never called.
+    #
+    # @param list: the list to update
+    # @param index: the zero-based position to replace
+    # @param f: a lambda from the old value to the new one
+    # @return a new list with `index` updated, or `list` unchanged if out of range
+    #
+    #   List.update_at([1, 2, 3], 1, do x -> x * 10)   # == [1, 20, 3]
+    #   List.update_at([1, 2, 3], 99, do x -> x * 10)  # == [1, 2, 3]
+    update_at_loop(list, index, f, [])
+
+  fnp update_at_loop(list, index, f, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `update_at`, carrying the
+    # already-passed prefix in reverse.
+    case list
+      [] -> reverse(acc)
+      [head | tail] ->
+        cond
+          index < 0 -> reverse(acc) ++ list
+          index == 0 -> reverse(acc) ++ [f(head)] ++ tail
+          true -> update_at_loop(tail, index - 1, f, [head] ++ acc)
+
+  fn take(list, n)
+    # @doc
+    #
+    # Returns the first `n` elements of `list`. Returns `[]` when `n` is zero or
+    # negative, or the whole list when `n` exceeds its length.
+    #
+    # @param list: the list to take from
+    # @param n: how many leading elements to keep
+    # @return a new list of the first `n` elements (fewer if `list` is shorter)
+    #
+    #   List.take([1, 2, 3, 4], 2)   # == [1, 2]
+    reverse(take_loop(list, n, []))
+
+  fnp take_loop(list, n, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `take`, building the kept prefix in
+    # reverse.
+    case list
+      [] -> acc
+      [head | tail] when n > 0 -> take_loop(tail, n - 1, [head] ++ acc)
+      [head | tail] -> acc
+
+  fn drop(list, n)
+    # @doc
+    #
+    # Returns `list` without its first `n` elements. When `n` is zero or
+    # negative, returns `list` unchanged; when `n` exceeds the length, returns
+    # `[]`.
+    #
+    # @param list: the list to drop from
+    # @param n: how many leading elements to skip
+    # @return `list` without its first `n` elements
+    #
+    #   List.drop([1, 2, 3, 4], 2)   # == [3, 4]
+    case list
+      [] -> []
+      [head | tail] when n > 0 -> drop(tail, n - 1)
+      [head | tail] -> list
+
+  fn take_while(list, f)
+    # @doc
+    #
+    # Returns the longest prefix of `list` for which `f` is truthy — a
+    # predicate-based cutoff where `take` is count-based. Stops at the first
+    # element for which `f` is falsy.
+    #
+    # @param list: the list to take from
+    # @param f: a predicate lambda applied to each element
+    # @return a new list of the leading elements for which `f` is truthy
+    #
+    #   List.take_while([2, 4, 5, 6], do x -> Integer.is_even(x))   # == [2, 4]
+    reverse(take_while_loop(list, f, []))
+
+  fnp take_while_loop(list, f, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `take_while`, building the kept
+    # prefix in reverse.
+    case list
+      [] -> acc
+      [head | tail] ->
+        cond
+          f(head) -> take_while_loop(tail, f, [head] ++ acc)
+          true -> acc
+
+  fn drop_while(list, f)
+    # @doc
+    #
+    # Returns `list` with its longest prefix for which `f` is truthy removed —
+    # a predicate-based cutoff where `drop` is count-based. Stops dropping at
+    # the first element for which `f` is falsy, and returns from there on.
+    #
+    # @param list: the list to drop from
+    # @param f: a predicate lambda applied to each element
+    # @return `list` without its leading elements for which `f` is truthy
+    #
+    #   List.drop_while([2, 4, 5, 6], do x -> Integer.is_even(x))   # == [5, 6]
+    case list
+      [] -> []
+      [head | tail] ->
+        cond
+          f(head) -> drop_while(tail, f)
+          true -> list
+
+  fn slice(list, start, count)
+    # @doc
+    #
+    # Returns `count` elements of `list` starting at zero-based `start`.
+    # Implemented as `take(drop(list, start), count)`.
+    #
+    # @param list: the list to slice
+    # @param start: the zero-based position to start at
+    # @param count: how many elements to take
+    # @return a new list of up to `count` elements from `start`
+    #
+    #   List.slice([1, 2, 3, 4, 5], 1, 3)   # == [2, 3, 4]
+    take(drop(list, start), count)
+
+  fn group_by(list, f)
+    # @doc
+    #
+    # Groups the elements of `list` by the key returned by `f`, returning a map
+    # from key to the list of elements sharing that key, in original order.
+    #
+    # @param list: the list to group
+    # @param f: a lambda returning the grouping key for an element
+    # @return a `Map` from key to the list of elements with that key, in order
+    #
+    # `f` must return a valid map key — an `Integer`, `String` or `Symbol`.
+    # A predicate returning a boolean is the common slip; yield a symbol
+    # instead:
+    #
+    #   List.group_by([:ok, :error, :ok], do x -> x)
+    #   # == {ok: [:ok, :ok], error: [:error]}
+    #
+    #   parity = do x -> cond
+    #     Integer.is_even(x) -> :even
+    #     true -> :odd
+    #   List.group_by([1, 2, 3, 4], parity)
+    #   # == {odd: [1, 3], even: [2, 4]}
+    Map.map_values(group_by_loop(list, f, {}), do group -> reverse(group))
+
+  fnp group_by_loop(list, f, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `group_by`. Builds each key's group
+    # in reverse (each new element is cheap to prepend); `group_by` fixes the
+    # order of every group with a final `reverse` once grouping is done.
+    case list
+      [] -> acc
+      [head | tail] ->
+        key = f(head)
+        group = Map.get(acc, key, [])
+        group_by_loop(tail, f, Map.put(acc, key, [head] ++ group))
+
+  fn chunk_every(list, n)
+    # @doc
+    #
+    # Splits `list` into consecutive chunks of `n` elements each; the final
+    # chunk may be shorter than `n`. `n` must be positive.
+    #
+    # @param list: the list to chunk
+    # @param n: the (positive) chunk size
+    # @return a list of chunks, the last possibly shorter than `n`
+    #
+    #   List.chunk_every([1, 2, 3, 4, 5], 2)   # == [[1, 2], [3, 4], [5]]
+    reverse(chunk_every_loop(list, n, []))
+
+  fnp chunk_every_loop(list, n, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `chunk_every`, building the chunks
+    # in reverse.
+    cond
+      list == [] -> acc
+      true ->
+        chunk = take(list, n)
+        rest = drop(list, n)
+        chunk_every_loop(rest, n, [chunk] ++ acc)
+
+  fn join(list, sep)
+    # @doc
+    #
+    # Joins the elements of `list` into a single string separated by `sep`.
+    # Elements are assumed to be strings. The empty list yields `""`.
+    #
+    # @param list: a list of strings to join
+    # @param sep: the separator string placed between elements
+    # @return a single `String` of the elements joined by `sep` (`""` when empty)
+    #
+    #   List.join(["a", "b", "c"], ", ")   # == "a, b, c"
+    case list
+      [] -> ""
+      [head | tail] -> join_loop(tail, sep, head)
+
+  fnp join_loop(list, sep, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `join`, threading the string built
+    # so far as `acc`.
+    case list
+      [] -> acc
+      [head | tail] -> join_loop(tail, sep, acc <> sep <> head)
+
+  fn intersperse(list, sep)
+    # @doc
+    #
+    # Returns a new list with `sep` inserted between every pair of adjacent
+    # elements. The generic counterpart to `join`, which does the same thing
+    # but for strings specifically, concatenated into one.
+    #
+    # @param list: the list to intersperse
+    # @param sep: the value to insert between elements
+    # @return a new list with `sep` between every original pair of elements
+    #
+    #   List.intersperse([1, 2, 3], 0)   # == [1, 0, 2, 0, 3]
+    #   List.intersperse([1], 0)         # == [1]
+    #   List.intersperse([], 0)          # == []
+    reverse(intersperse_loop(list, sep, []))
+
+  fnp intersperse_loop(list, sep, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `intersperse`, building the result
+    # in reverse.
+    case list
+      [] -> acc
+      [x] -> [x] ++ acc
+      [head | tail] -> intersperse_loop(tail, sep, [sep, head] ++ acc)
+
+  fn sample(list)
+    # @doc
+    #
+    # Returns one element of `list`, chosen uniformly at random, or `nil` when
+    # `list` is empty. Not cryptographic — see `Kernel.random`.
+    #
+    # @param list: the list to sample from
+    # @return a randomly chosen element, or `nil` if `list` is empty
+    #
+    #   List.sample([:only])   # == :only
+    #   List.sample([])        # == nil
+    at(list, random_int(0, size(list) - 1))
+
+  fn shuffle(list)
+    # @doc
+    #
+    # Returns a new list with the elements of `list` in random order. Every
+    # ordering is equally likely. Not cryptographic — see `Kernel.random`.
+    #
+    # @param list: the list to shuffle
+    # @return a new list, `list`'s elements in random order
+    #
+    #   List.shuffle([1, 2, 3])
+    #   | List.sort()   # == [1, 2, 3]
+    reverse(shuffle_loop(list, []))
+
+  fnp shuffle_loop(list, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `shuffle`, building the shuffled
+    # result in reverse.
+    cond
+      list == [] -> acc
+      true ->
+        index = random_int(0, size(list) - 1)
+        picked = at(list, index)
+        rest = delete_at(list, index)
+        shuffle_loop(rest, [picked] ++ acc)

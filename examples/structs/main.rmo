@@ -1,0 +1,28 @@
+# main.rmo — structs end to end: attributes and methods, a trait with a
+# required function, struct-shaped error results destructured in `case`, and
+# `Struct`'s introspection functions. Run with `ramos run examples/structs/main.rmo`.
+
+module Main
+  fn main()
+    account = Account{owner: "Andrew", balance: 100}
+    println(account.summary())
+
+    account = account.deposit(50)
+    println(account.summary())
+
+    account = attempt_withdrawal(account, 30)
+    account = attempt_withdrawal(account, 1000)
+    account = attempt_withdrawal(account, -5)
+
+    println("fields: #{Struct.keys(account)}")
+    println("as a map: #{Struct.to_map(account)}")
+    println("is an Account: #{Struct.is_a(account, Account)}")
+
+  fnp attempt_withdrawal(account, amount)
+    case account.withdraw(amount)
+      (:ok, updated) ->
+        println("withdrew #{amount}, new balance #{updated.balance}")
+        updated
+      (:error, WithdrawalError{message: message}) ->
+        println("declined #{amount}: #{message}")
+        account

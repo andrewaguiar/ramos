@@ -1,0 +1,222 @@
+
+:root {
+--bg: #f6fbf7;
+--fg: #142b18;
+--muted: #5b6d60;
+--accent: #1a7f37;
+--accent-soft: #e3f3e6;
+--border: #d3e5d7;
+--code-bg: #eef6f0;
+--private: #b3184a;
+--link: #1a7f37;
+--syn-keyword: #cf222e;
+--syn-type: #953800;
+--syn-str: #0a3069;
+--syn-lit: #0550ae;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--fg);
+  background: var(--bg);
+}
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.9em;
+}
+code {
+  background: var(--code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+pre {
+  background: var(--code-bg);
+  padding: 0.9em 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  line-height: 1.45;
+}
+pre code { background: none; padding: 0; }
+/* Syntax highlighting inside a code example — see `Color::Html` in
+   src/color.rs, which paints the same five categories the `--dump` CLI
+   flags do. Only ever appears inside a highlighted <pre><code>, so the
+   selector doesn't need to be more specific than the class itself. */
+.tok-kw { color: var(--syn-keyword); }
+.tok-type { color: var(--syn-type); }
+.tok-str { color: var(--syn-str); }
+.tok-lit { color: var(--syn-lit); }
+.tok-com { color: var(--muted); font-style: italic; }
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 1rem;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  background: #081a10;
+}
+.sidebar .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #4ade80;
+}
+.sidebar .brand:hover { text-decoration: none; }
+.sidebar .brand-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+}
+.sidebar h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8fbf9c;
+  margin: 1.5rem 0 0.5rem;
+}
+.sidebar ul { list-style: none; margin: 0; padding: 0; }
+.sidebar li { margin: 0.1rem 0; }
+.sidebar a { color: #d8f3df; }
+.sidebar a.current { color: #4ade80; font-weight: 600; }
+.content { padding: 2rem 2.5rem; min-width: 0; }
+.content.index .module-header { display: none; }
+.module-header {
+  color: var(--accent);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.4rem;
+  margin-top: 0;
+}
+.content h2 {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3rem;
+  margin-top: 2.5rem;
+}
+.content > section:first-of-type h2 { margin-top: 1rem; }
+.module-summary { font-size: 1.1rem; color: var(--muted); }
+.content ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+.content li { margin: 0.2rem 0; }
+.content li > code:first-child { margin-right: 0.4em; }
+.functions-summary .fn-row {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.4rem 0;
+}
+.functions-summary .fn-row.private .fn-sig { color: var(--private); }
+.functions-summary .fn-sig code { background: var(--accent-soft); color: var(--accent); }
+.functions-summary .fn-summary { color: var(--muted); }
+.functions-summary .fn-row.private .fn-sig code { color: var(--private); background: transparent; }
+.functions-detail .fn-detail {
+  margin: 1.5rem 0 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.functions-detail .fn-detail:last-child { border-bottom: none; }
+.fn-title code { background: var(--accent-soft); color: var(--accent); font-size: 1.05em; }
+.fn-title .anchor {
+  margin-left: 0.5rem;
+  color: var(--muted);
+  opacity: 0;
+  text-decoration: none;
+}
+.fn-detail:hover .anchor { opacity: 1; }
+.badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1em 0.5em;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+.badge.private { background: transparent; color: var(--private); border: 1px solid var(--private); }
+dl.params { margin: 0.5rem 0; }
+dl.params dt { font-weight: 600; margin-top: 0.5rem; }
+dl.params dd { margin: 0 0 0 1rem; color: var(--muted); }
+.returns { margin-top: 0.75rem; }
+.guide .guide-toc {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 2.5rem;
+  columns: 2;
+  column-gap: 2rem;
+}
+.guide .guide-toc li { padding: 0.2rem 0; break-inside: avoid; }
+.guide h2 { color: var(--accent); }
+.guide h3 { margin-top: 2rem; }
+.guide blockquote {
+  margin: 1rem 0;
+  padding: 0.1rem 1rem;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+.guide hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+.guide img { max-width: 100%; }
+.table-wrap { overflow-x: auto; margin: 1rem 0; }
+.table-wrap table { border-collapse: collapse; width: 100%; }
+.table-wrap th, .table-wrap td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+.table-wrap th { background: var(--code-bg); }
+.examples .example-toc {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 2.5rem;
+}
+.examples .example-toc li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.examples .example-toc a { font-weight: 600; }
+.examples .example-summary { color: var(--muted); }
+.examples .example { scroll-margin-top: 1rem; }
+.examples .example > h2 { color: var(--accent); }
+.examples .example > p.example-summary { font-size: 1.05rem; }
+.examples .example .anchor {
+  color: var(--muted);
+  opacity: 0;
+  text-decoration: none;
+  font-size: 0.8em;
+}
+.examples .example:hover .anchor { opacity: 1; }
+.examples .example .program-file {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.index .module-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+.index .module-list li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.index .module-name { font-weight: 600; font-size: 1.1rem; }
+.index .module-summary { color: var(--muted); margin: 0.25rem 0 0; }
+@media (max-width: 720px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { position: static; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+}

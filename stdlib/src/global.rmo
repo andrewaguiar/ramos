@@ -1,0 +1,145 @@
+module Global
+  # @module_doc
+  #
+  # Global — one process-wide map, held by an actor.
+  #
+  # `Global` is a `Map` that every part of a program shares: one actor named
+  # `:global` holds it, and `get` / `put` / `clear` are messages to that actor.
+  # Nothing mutates — each `put` hands the actor a new map, and the actor keeps
+  # the newest one.
+  #
+  #   Global.start()
+  #   Global.put(:user, "andrew")
+  #   Global.get(:user)             # == "andrew"
+  #
+  # Only `get` waits. A write has no answer worth waiting for, so `put` and
+  # `clear` are casts: `:ok` comes back as soon as the message is sent. That
+  # costs nothing in correctness, because the actor takes its mailbox in order
+  # — a `get` sent after a `put` is handled after it, and sees the write.
+  #
+  # **Use it with caution.** It is shared mutable state wearing an actor's
+  # clothes, and it carries every cost that implies:
+  #
+  #   - **It hides a dependency.** A function that reads `Global` says nothing
+  #     about it in its signature, so callers cannot see what it needs or
+  #     substitute anything for a test. A parameter is almost always better.
+  #   - **It is a bottleneck.** One actor handles one message at a time, so
+  #     every reader and writer in the program queues behind the same thread.
+  #   - **It has no scoping.** One flat key space for the whole program, so two
+  #     unrelated parts picking the same key silently overwrite each other.
+  #   - **A read is a guess.** Between a `get` and the `put` that acts on it,
+  #     another caller may have written the key; only what happens inside one
+  #     handler is atomic.
+  #   - **Actors cannot reach it.** An actor's thread cannot see the actor
+  #     registry, so a handler cannot call `Global.get` — a message is the only
+  #     way state gets into an actor.
+  #
+  # Reach for it for what is genuinely process-wide and written once: config
+  # read at startup, a feature flag, a run id. For anything else, pass the value
+  # or give it its own actor with a name that says what it holds.
+  #
+  # `Global` is an ordinary `Actor` implementation, so `list_actors`,
+  # `actor_stats(:global)` and `stop_actor(:global)` all work on it.
+
+  implements Actor
+
+  fn call(f, args, state, config)
+    # @doc
+    #
+    # The server half of the one operation with something to say back: `:get`.
+    # Sent by `get`, never called directly.
+    #
+    # @param f: the operation — `:get`
+    # @param args: `[key]`, the key to look up
+    # @param state: the map as it stands
+    # @param config: unused — `Global` has nothing to configure
+    # @return a `(value, state)` tuple; a read leaves the map alone
+    case f
+      :get -> get_impl(args, state)
+
+  fn cast(f, args, state, config)
+    # @doc
+    #
+    # The server half of the two writes, `:put` and `:clear`. Neither replies,
+    # so the new map is the whole result.
+    #
+    # @param f: the operation — `:put` or `:clear`
+    # @param args: `[key, value]` for `:put`, `[key]` for `:clear`
+    # @param state: the map as it stands
+    # @param config: unused
+    # @return the map the write produced
+    case f
+      :put -> put_impl(args, state)
+      :clear -> clear_impl(args, state)
+
+  # client half — callers never write `call_actor` / `cast_actor`
+
+  fn start()
+    # @doc
+    #
+    # Start the `:global` actor with an empty map. Call it once, before
+    # anything reads or writes; starting it twice is an error.
+    #
+    # @return `:ok`
+    #
+    #   Global.start()   # == :ok
+    start_actor(:global, Global, {}, {})
+
+  fn get(key)
+    # @doc
+    #
+    # The value stored under `key`, waiting for the actor to answer. Every
+    # write sent before it has been handled by the time it reads.
+    #
+    # @param key: the key to look up — an `Integer`, `String` or `Symbol`
+    # @return the value under `key`, or `nil` when there is none
+    #
+    #   Global.start()
+    #   Global.put(:port, 8080)
+    #   Global.get(:port)     # == 8080
+    #   Global.get(:host)     # == nil
+    call_actor(:global, Global, :get, [key])
+
+  fn put(key, value)
+    # @doc
+    #
+    # Store `value` under `key`, replacing whatever was there, without waiting
+    # for the actor. `:ok` comes back at once and the next `get` still sees the
+    # write, because the actor handles its messages in order.
+    #
+    # @param key: the key to set — an `Integer`, `String` or `Symbol`
+    # @param value: the value to store
+    # @return `:ok`, as soon as the message is sent
+    #
+    #   Global.start()
+    #   Global.put(:user, "andrew")   # == :ok
+    cast_actor(:global, Global, :put, [key, value])
+
+  fn clear(key)
+    # @doc
+    #
+    # Drop `key` without waiting for the actor, on the same terms as `put`.
+    # Clearing a key that is not there is fine.
+    #
+    # @param key: the key to drop
+    # @return `:ok`, as soon as the message is sent
+    #
+    #   Global.start()
+    #   Global.put(:tmp, 1)
+    #   Global.clear(:tmp)   # == :ok
+    #   Global.get(:tmp)     # == nil
+    cast_actor(:global, Global, :clear, [key])
+
+  # private functions
+
+  fnp get_impl(args, state)
+    [key] = args
+    (Map.get(state, key, nil), state)
+
+  fnp put_impl(args, state)
+    [key, value] = args
+    Map.put(state, key, value)
+
+  fnp clear_impl(args, state)
+    [key] = args
+    Map.delete(state, key)

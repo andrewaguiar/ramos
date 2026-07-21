@@ -1,0 +1,243 @@
+module Integer
+  # @module_doc
+  #
+  # Integer — operations on whole numbers.
+  #
+  # `42` is an `Integer`. Arithmetic lives in the operators (`+`, `-`, `*`, `/`,
+  # `%`, `**`) rather than here; this module holds what reads better as a named
+  # function, especially the predicates passed to `List`:
+  #
+  #   [1, 2, 3, 4]
+  #   | List.filter(do x -> Integer.is_even(x))   # == [2, 4]
+  #
+  # Kernel already converts, so this module does not repeat it: use
+  # `to_integer(text)` to parse, `to_float(n)` to widen, `to_string(n)` to
+  # render.
+  #
+  # Conventions:
+  #   - integer division truncates toward zero, and `%` follows the sign of the
+  #     divisor — both are operator behaviour, documented in the README.
+
+  fn is_even(n)
+    # @doc
+    #
+    # Whether `n` is divisible by two.
+    #
+    # @param n: the integer to test
+    # @return `true` when `n` is even, `false` otherwise
+    #
+    #   Integer.is_even(4)    # == true
+    #   Integer.is_even(-3)   # == false
+    n % 2 == 0
+
+  fn is_odd(n)
+    # @doc
+    #
+    # Whether `n` leaves a remainder when divided by two.
+    #
+    # @param n: the integer to test
+    # @return `true` when `n` is odd, `false` otherwise
+    #
+    #   Integer.is_odd(3)   # == true
+    #   Integer.is_odd(4)   # == false
+    not is_even(n)
+
+  fn abs(n)
+    # @doc
+    #
+    # The magnitude of `n`, without its sign.
+    #
+    # @param n: the integer to take the absolute value of
+    # @return `n` when it is zero or positive, `-n` otherwise
+    #
+    #   Integer.abs(-7)   # == 7
+    #   Integer.abs(7)    # == 7
+    cond
+      n < 0 -> -n
+      true -> n
+
+  fn sign(n)
+    # @doc
+    #
+    # `-1`, `0` or `1` according to the sign of `n`.
+    #
+    # @param n: the integer to test
+    # @return `-1` when `n` is negative, `1` when positive, else `0`
+    #
+    #   Integer.sign(-7)   # == -1
+    #   Integer.sign(7)    # == 1
+    #   Integer.sign(0)    # == 0
+    cond
+      n < 0 -> -1
+      n > 0 -> 1
+      true -> 0
+
+  fn is_positive(n)
+    # @doc
+    #
+    # Whether `n` is strictly greater than zero.
+    #
+    # @param n: the integer to test
+    # @return `true` when `n > 0`, else `false`
+    #
+    #   Integer.is_positive(7)    # == true
+    #   Integer.is_positive(0)    # == false
+    #   Integer.is_positive(-7)   # == false
+    n > 0
+
+  fn is_negative(n)
+    # @doc
+    #
+    # Whether `n` is strictly less than zero.
+    #
+    # @param n: the integer to test
+    # @return `true` when `n < 0`, else `false`
+    #
+    #   Integer.is_negative(-7)   # == true
+    #   Integer.is_negative(0)    # == false
+    #   Integer.is_negative(7)    # == false
+    n < 0
+
+  fn is_zero(n)
+    # @doc
+    #
+    # Whether `n` is exactly zero.
+    #
+    # @param n: the integer to test
+    # @return `true` when `n == 0`, else `false`
+    #
+    #   Integer.is_zero(0)   # == true
+    #   Integer.is_zero(7)   # == false
+    n == 0
+
+  fn min(a, b)
+    # @doc
+    #
+    # The smaller of two integers.
+    #
+    # @param a: the first integer
+    # @param b: the second integer
+    # @return whichever of `a` and `b` is smaller
+    #
+    #   Integer.min(1, 2)   # == 1
+    if a < b
+      a
+    else
+      b
+
+  fn max(a, b)
+    # @doc
+    #
+    # The larger of two integers.
+    #
+    # @param a: the first integer
+    # @param b: the second integer
+    # @return whichever of `a` and `b` is larger
+    #
+    #   Integer.max(1, 2)   # == 2
+    if a > b
+      a
+    else
+      b
+
+  fn clamp(n, low, high)
+    # @doc
+    #
+    # `n` held inside the range `low`..`high`.
+    #
+    # @param n: the integer to clamp
+    # @param low: the lower bound
+    # @param high: the upper bound
+    # @return `low` when `n` is below it, `high` when above, else `n`
+    #
+    #   Integer.clamp(5, 1, 3)   # == 3
+    #   Integer.clamp(0, 1, 3)   # == 1
+    #   Integer.clamp(2, 1, 3)   # == 2
+    min(max(n, low), high)
+
+  fn compare(a, b)
+    # @doc
+    #
+    # Orders two integers as `-1`, `0` or `1` — the shape sorting wants.
+    #
+    # @param a: the first integer
+    # @param b: the second integer
+    # @return `-1` when `a < b`, `1` when `a > b`, `0` when they are equal
+    #
+    #   Integer.compare(1, 2)   # == -1
+    #   Integer.compare(2, 1)   # == 1
+    #   Integer.compare(1, 1)   # == 0
+    cond
+      a < b -> -1
+      a > b -> 1
+      true -> 0
+
+  fn gcd(a, b)
+    # @doc
+    #
+    # The greatest common divisor of `a` and `b`, by Euclid's algorithm. The
+    # result is never negative.
+    #
+    # @param a: the first integer
+    # @param b: the second integer
+    # @return the largest integer dividing both
+    #
+    #   Integer.gcd(12, 18)   # == 6
+    #   Integer.gcd(7, 13)    # == 1
+    #   Integer.gcd(-12, 18)  # == 6
+    if b == 0
+      abs(a)
+    else
+      gcd(b, a % b)
+
+  fn lcm(a, b)
+    # @doc
+    #
+    # The least common multiple of `a` and `b`. Zero with either operand zero.
+    #
+    # @param a: the first integer
+    # @param b: the second integer
+    # @return the smallest non-negative integer both divide
+    #
+    #   Integer.lcm(4, 6)   # == 12
+    #   Integer.lcm(0, 5)   # == 0
+    if a == 0 or b == 0
+      0
+    else
+      abs(a * b) / gcd(a, b)
+
+  fn times(n, f)
+    # @doc
+    #
+    # Applies `f` to each of `0`, `1`, ..., `n - 1`, collecting the results.
+    # Empty when `n` is zero or negative — checked directly, since
+    # `List.range(0, n - 1)` alone would count *down* from `0` once `n - 1`
+    # goes negative, rather than stopping at an empty list.
+    #
+    # @param n: how many times to apply `f`
+    # @param f: a lambda taking the zero-based index
+    # @return a `List` of the `n` results, in order
+    #
+    #   Integer.times(3, do i -> i * 2)   # == [0, 2, 4]
+    #   Integer.times(0, do i -> i)       # == []
+    cond
+      n <= 0 -> []
+      true -> List.map(List.range(0, n - 1), f)
+
+  fn digits(n)
+    # @doc
+    #
+    # The decimal digits of `n`, most significant first. The sign is dropped,
+    # and zero is a single `0` digit.
+    #
+    # @param n: the integer to split
+    # @return a `List` of the digits, most significant first
+    #
+    #   Integer.digits(123)    # == [1, 2, 3]
+    #   Integer.digits(-123)   # == [1, 2, 3]
+    #   Integer.digits(0)      # == [0]
+    positive = abs(n)
+    if positive < 10
+      [positive]
+    else
+      digits(positive / 10) ++ [positive % 10]

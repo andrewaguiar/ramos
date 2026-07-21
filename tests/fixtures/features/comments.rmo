@@ -1,0 +1,11 @@
+# comments.rmo — a comment runs from `#` to the end of the line.
+
+# A comment can stand on its own line, above the code it describes.
+x = 1  # ...or trail a statement.
+
+# Blank comment lines are ignored, and so are the blank lines around them:
+#
+
+# A `#` inside a string is just a character, not a comment.
+marker = "# not a comment"
+print(marker)

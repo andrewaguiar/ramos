@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Date — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html" class="current">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">Date</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>Date — a calendar date: year, month, and day, with no time-of-day or time zone. Built on the proleptic Gregorian calendar.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>Date — a calendar date: year, month, and day, with no time-of-day or time zone. Built on the proleptic Gregorian calendar.</p>
+<p>Construct with <code>new</code>, <code>today</code>, <code>from_epoch_day</code>, or <code>parse</code>; read a field with dot access, like any struct:</p>
+<pre><code>d = <span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">2</span>, <span class="tok-lit">29</span>)
+d.year    <span class="tok-com"># == 2024</span>
+d.month   <span class="tok-com"># == 2</span></code></pre>
+<p>An out-of-range <code>day</code> normalizes rather than raising — <code>day: 0</code> is the last day of the previous month, one past the last day rolls into the next — so &quot;the last day of this month&quot; is just <code><a href="Date.html#new">Date.new(year, month + 1, 0)</a></code>. <code>month</code> itself must be <code>1</code>..<code>12</code>.</p>
+<pre><code><span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">3</span>, <span class="tok-lit">0</span>)    <span class="tok-com"># == Date{year: 2024, month: 2, day: 29}</span>
+<span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">1</span>, <span class="tok-lit">32</span>)   <span class="tok-com"># == Date{year: 2024, month: 2, day: 1}</span></code></pre>
+<p>Two dates compare structurally with <code>==</code>, like any other struct — but there is no built-in <code>&lt;</code>/<code>&gt;</code>, since arbitrary structs are not ordered. Use <code>compare</code> instead, or sort by <code>to_epoch_day</code>:</p>
+<pre><code><span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">1</span>, <span class="tok-lit">1</span>) == <span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">1</span>, <span class="tok-lit">1</span>)               <span class="tok-com"># == true</span>
+<span class="tok-type">Date</span>.compare(<span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">1</span>, <span class="tok-lit">1</span>), <span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">1</span>, <span class="tok-lit">2</span>))   <span class="tok-com"># == -1</span></code></pre>
+<p>Conventions:</p>
+<ul><li>every date is proleptic Gregorian, with no time zone — <code>today</code> reads the wall clock as UTC.</li><li><code>compare</code> follows <code><a href="Integer.html#compare">Integer.compare</a></code>/<code><a href="Float.html#compare">Float.compare</a></code>: <code>-1</code>, <code>0</code>, <code>1</code>.</li><li>the attributes default to the epoch, <code>1970-01-01</code>, so <code>Date{}</code> is a real (if arbitrary) date rather than a half-built value.</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#new/3" class="fn-sig"><code>fn new(year, month, day)</code></a>
+    <span class="fn-summary">Builds a <code><a href="Date.html">Date</a></code>. <code>day</code> normalizes when it falls outside the month — <code>0</code> is the last day of the previous month, one past the last day rolls into the next.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#today/0" class="fn-sig"><code>fn today()</code></a>
+    <span class="fn-summary">Today&#39;s date, read from the wall clock as UTC.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#from_epoch_day/1" class="fn-sig"><code>fn from_epoch_day(epoch_day)</code></a>
+    <span class="fn-summary">The <code><a href="Date.html">Date</a></code> that is <code>epoch_day</code> days after 1970-01-01 (day <code>0</code>). Negative values reach before the epoch.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#parse/1" class="fn-sig"><code>fn parse(text)</code></a>
+    <span class="fn-summary">Parses an ISO-8601 calendar date, <code>&quot;YYYY-MM-DD&quot;</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_epoch_day/1" class="fn-sig"><code>fn to_epoch_day(self)</code></a>
+    <span class="fn-summary"><code>self</code> as the number of days since 1970-01-01 — the bridge to arithmetic and comparison.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_iso/1" class="fn-sig"><code>fn to_iso(self)</code></a>
+    <span class="fn-summary"><code>self</code> rendered as <code>&quot;YYYY-MM-DD&quot;</code> (ISO-8601), zero-padded.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_days/2" class="fn-sig"><code>fn add_days(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> days — negative moves backward.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_years/2" class="fn-sig"><code>fn add_years(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> years, keeping the month and day — except a leap day (<code>month: 2, day: 29</code>) landing on a non-leap year, which rolls to March 1, the same normalization <code>new</code> does for any other overflowing day.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_weeks/2" class="fn-sig"><code>fn add_weeks(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> weeks (<code>n * 7</code> days) — negative moves backward.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_months/2" class="fn-sig"><code>fn add_months(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> months, carrying into the year and normalizing an overflowing day the same way <code>new</code> does — &quot;same day next month&quot; for <code>day: 31</code> run against a 30-day month rolls into the one after.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#compare/2" class="fn-sig"><code>fn compare(self, other)</code></a>
+    <span class="fn-summary">Orders two dates as <code>-1</code>, <code>0</code> or <code>1</code> — the shape <code><a href="Integer.html#compare">Integer.compare</a></code> and <code><a href="Float.html#compare">Float.compare</a></code> use, since there is no built-in <code>&lt;</code>/<code>&gt;</code> for structs.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#diff_days/2" class="fn-sig"><code>fn diff_days(self, other)</code></a>
+    <span class="fn-summary">The number of days from <code>other</code> to <code>self</code> — positive when <code>self</code> is later, negative when earlier.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#day_of_week/1" class="fn-sig"><code>fn day_of_week(self)</code></a>
+    <span class="fn-summary">The day of the week <code>self</code> falls on.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#is_leap_year/1" class="fn-sig"><code>fn is_leap_year(year)</code></a>
+    <span class="fn-summary">Whether <code>year</code> has a February 29th, by the proleptic Gregorian rule: divisible by 4, except centuries, unless also divisible by 400.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#days_in_month/1" class="fn-sig"><code>fn days_in_month(self)</code></a>
+    <span class="fn-summary">How many days are in <code>self</code>&#39;s month.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#pad/2" class="fn-sig"><code>fnp pad(n, width)</code></a>
+    <span class="fn-summary">(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>to_iso</code>.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="new/3">
+  <h3 class="fn-title"><code>fn new(year, month, day)</code> <a class="anchor" href="#new/3">¶</a></h3>
+<p>Builds a <code><a href="Date.html">Date</a></code>. <code>day</code> normalizes when it falls outside the month — <code>0</code> is the last day of the previous month, one past the last day rolls into the next.</p>
+<pre><code><span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">2</span>, <span class="tok-lit">29</span>)   <span class="tok-com"># == Date{year: 2024, month: 2, day: 29}</span>
+<span class="tok-type">Date</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">3</span>, <span class="tok-lit">0</span>)    <span class="tok-com"># == Date{year: 2024, month: 2, day: 29}</span>
+<span class="tok-type">Date</span>.new(<span class="tok-lit">2023</span>, <span class="tok-lit">2</span>, <span class="tok-lit">29</span>)   <span class="tok-com"># == Date{year: 2023, month: 3, day: 1}</span></code></pre>
+<dl class="params">
+  <dt><code>year</code></dt>
+  <dd>the calendar year, any integer</dd>
+  <dt><code>month</code></dt>
+  <dd>the month, <code>1</code>..<code>12</code></dd>
+  <dt><code>day</code></dt>
+  <dd>the day of month; out-of-range values roll over</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Date.html">Date</a></code></p>
+</div>
+<div class="fn-detail" id="today/0">
+  <h3 class="fn-title"><code>fn today()</code> <a class="anchor" href="#today/0">¶</a></h3>
+<p>Today&#39;s date, read from the wall clock as UTC.</p>
+<pre><code><span class="tok-type">Date</span>.today().year &gt; <span class="tok-lit">2000</span>   <span class="tok-com"># == true</span></code></pre>
+<p class="returns"><strong>Returns:</strong> the current <code><a href="Date.html">Date</a></code></p>
+</div>
+<div class="fn-detail" id="from_epoch_day/1">
+  <h3 class="fn-title"><code>fn from_epoch_day(epoch_day)</code> <a class="anchor" href="#from_epoch_day/1">¶</a></h3>
+<p>The <code><a href="Date.html">Date</a></code> that is <code>epoch_day</code> days after 1970-01-01 (day <code>0</code>). Negative values reach before the epoch.</p>
+<pre><code><span class="tok-type">Date</span>.from_epoch_day(<span class="tok-lit">0</span>)    <span class="tok-com"># == Date{year: 1970, month: 1, day: 1}</span>
+<span class="tok-type">Date</span>.from_epoch_day(-<span class="tok-lit">1</span>)   <span class="tok-com"># == Date{year: 1969, month: 12, day: 31}</span></code></pre>
+<dl class="params">
+  <dt><code>epoch_day</code></dt>
+  <dd>days since 1970-01-01, as an <code><a href="Integer.html">Integer</a></code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the corresponding <code><a href="Date.html">Date</a></code></p>
+</div>
+<div class="fn-detail" id="parse/1">
+  <h3 class="fn-title"><code>fn parse(text)</code> <a class="anchor" href="#parse/1">¶</a></h3>
+<p>Parses an ISO-8601 calendar date, <code>&quot;YYYY-MM-DD&quot;</code>.</p>
+<pre><code><span class="tok-type">Date</span>.parse(<span class="tok-str">&quot;2024-02-29&quot;</span>)   <span class="tok-com"># == Date{year: 2024, month: 2, day: 29}</span></code></pre>
+<dl class="params">
+  <dt><code>text</code></dt>
+  <dd>a date in <code>&quot;YYYY-MM-DD&quot;</code> form</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the corresponding <code><a href="Date.html">Date</a></code></p>
+</div>
+<div class="fn-detail" id="to_epoch_day/1">
+  <h3 class="fn-title"><code>fn to_epoch_day(self)</code> <a class="anchor" href="#to_epoch_day/1">¶</a></h3>
+<p><code>self</code> as the number of days since 1970-01-01 — the bridge to arithmetic and comparison.</p>
+<pre><code><span class="tok-type">Date</span>.to_epoch_day(<span class="tok-type">Date</span>{year: <span class="tok-lit">1970</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})     <span class="tok-com"># == 0</span>
+<span class="tok-type">Date</span>.to_epoch_day(<span class="tok-type">Date</span>{year: <span class="tok-lit">1969</span>, month: <span class="tok-lit">12</span>, day: <span class="tok-lit">31</span>})   <span class="tok-com"># == -1</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date to convert</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> day count, negative before the epoch</p>
+</div>
+<div class="fn-detail" id="to_iso/1">
+  <h3 class="fn-title"><code>fn to_iso(self)</code> <a class="anchor" href="#to_iso/1">¶</a></h3>
+<p><code>self</code> rendered as <code>&quot;YYYY-MM-DD&quot;</code> (ISO-8601), zero-padded.</p>
+<pre><code><span class="tok-type">Date</span>.to_iso(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>})   <span class="tok-com"># == &quot;2024-02-09&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date to render</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the ISO-8601 string</p>
+</div>
+<div class="fn-detail" id="add_days/2">
+  <h3 class="fn-title"><code>fn add_days(self, n)</code> <a class="anchor" href="#add_days/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> days — negative moves backward.</p>
+<pre><code><span class="tok-type">Date</span>.add_days(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">28</span>}, <span class="tok-lit">1</span>)    <span class="tok-com"># == Date{year: 2024, month: 2, day: 29}</span>
+<span class="tok-type">Date</span>.add_days(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>}, -<span class="tok-lit">1</span>)    <span class="tok-com"># == Date{year: 2023, month: 12, day: 31}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date</dd>
+  <dt><code>n</code></dt>
+  <dd>how many days to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Date.html">Date</a></code></p>
+</div>
+<div class="fn-detail" id="add_years/2">
+  <h3 class="fn-title"><code>fn add_years(self, n)</code> <a class="anchor" href="#add_years/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> years, keeping the month and day — except a leap day (<code>month: 2, day: 29</code>) landing on a non-leap year, which rolls to March 1, the same normalization <code>new</code> does for any other overflowing day.</p>
+<pre><code><span class="tok-type">Date</span>.add_years(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">29</span>}, <span class="tok-lit">1</span>)    <span class="tok-com"># == Date{year: 2025, month: 3, day: 1}</span>
+<span class="tok-type">Date</span>.add_years(<span class="tok-type">Date</span>{year: <span class="tok-lit">2020</span>, month: <span class="tok-lit">6</span>, day: <span class="tok-lit">15</span>}, -<span class="tok-lit">5</span>)   <span class="tok-com"># == Date{year: 2015, month: 6, day: 15}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date</dd>
+  <dt><code>n</code></dt>
+  <dd>how many years to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Date.html">Date</a></code></p>
+</div>
+<div class="fn-detail" id="add_weeks/2">
+  <h3 class="fn-title"><code>fn add_weeks(self, n)</code> <a class="anchor" href="#add_weeks/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> weeks (<code>n * 7</code> days) — negative moves backward.</p>
+<pre><code><span class="tok-type">Date</span>.add_weeks(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>}, <span class="tok-lit">1</span>)    <span class="tok-com"># == Date{year: 2024, month: 1, day: 8}</span>
+<span class="tok-type">Date</span>.add_weeks(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">8</span>}, -<span class="tok-lit">1</span>)   <span class="tok-com"># == Date{year: 2024, month: 1, day: 1}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date</dd>
+  <dt><code>n</code></dt>
+  <dd>how many weeks to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Date.html">Date</a></code></p>
+</div>
+<div class="fn-detail" id="add_months/2">
+  <h3 class="fn-title"><code>fn add_months(self, n)</code> <a class="anchor" href="#add_months/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> months, carrying into the year and normalizing an overflowing day the same way <code>new</code> does — &quot;same day next month&quot; for <code>day: 31</code> run against a 30-day month rolls into the one after.</p>
+<pre><code><span class="tok-type">Date</span>.add_months(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">15</span>}, <span class="tok-lit">1</span>)    <span class="tok-com"># == Date{year: 2024, month: 2, day: 15}</span>
+<span class="tok-type">Date</span>.add_months(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">11</span>, day: <span class="tok-lit">15</span>}, <span class="tok-lit">3</span>)   <span class="tok-com"># == Date{year: 2025, month: 2, day: 15}</span>
+<span class="tok-type">Date</span>.add_months(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">15</span>}, -<span class="tok-lit">1</span>)   <span class="tok-com"># == Date{year: 2023, month: 12, day: 15}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date</dd>
+  <dt><code>n</code></dt>
+  <dd>how many months to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="Date.html">Date</a></code></p>
+</div>
+<div class="fn-detail" id="compare/2">
+  <h3 class="fn-title"><code>fn compare(self, other)</code> <a class="anchor" href="#compare/2">¶</a></h3>
+<p>Orders two dates as <code>-1</code>, <code>0</code> or <code>1</code> — the shape <code><a href="Integer.html#compare">Integer.compare</a></code> and <code><a href="Float.html#compare">Float.compare</a></code> use, since there is no built-in <code>&lt;</code>/<code>&gt;</code> for structs.</p>
+<pre><code><span class="tok-type">Date</span>.compare(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>}, <span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">2</span>})   <span class="tok-com"># == -1</span>
+<span class="tok-type">Date</span>.compare(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">2</span>}, <span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == 1</span>
+<span class="tok-type">Date</span>.compare(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>}, <span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == 0</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the first date</dd>
+  <dt><code>other</code></dt>
+  <dd>the second date</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>-1</code> when <code>self</code> is earlier, <code>1</code> when later, <code>0</code> when equal</p>
+</div>
+<div class="fn-detail" id="diff_days/2">
+  <h3 class="fn-title"><code>fn diff_days(self, other)</code> <a class="anchor" href="#diff_days/2">¶</a></h3>
+<p>The number of days from <code>other</code> to <code>self</code> — positive when <code>self</code> is later, negative when earlier.</p>
+<pre><code><span class="tok-type">Date</span>.diff_days(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">10</span>}, <span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == 9</span>
+<span class="tok-type">Date</span>.diff_days(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>}, <span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">10</span>})   <span class="tok-com"># == -9</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the later (or earlier) date</dd>
+  <dt><code>other</code></dt>
+  <dd>the date to measure from</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> day count</p>
+</div>
+<div class="fn-detail" id="day_of_week/1">
+  <h3 class="fn-title"><code>fn day_of_week(self)</code> <a class="anchor" href="#day_of_week/1">¶</a></h3>
+<p>The day of the week <code>self</code> falls on.</p>
+<pre><code>`:thursday`, `:friday`, `:saturday`</code></pre>
+<pre><code><span class="tok-type">Date</span>.day_of_week(<span class="tok-type">Date</span>{year: <span class="tok-lit">1970</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == :thursday</span>
+<span class="tok-type">Date</span>.day_of_week(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == :monday</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date to inspect</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> one of <code>:sunday</code>, <code>:monday</code>, <code>:tuesday</code>, <code>:wednesday</code>,</p>
+</div>
+<div class="fn-detail" id="is_leap_year/1">
+  <h3 class="fn-title"><code>fn is_leap_year(year)</code> <a class="anchor" href="#is_leap_year/1">¶</a></h3>
+<p>Whether <code>year</code> has a February 29th, by the proleptic Gregorian rule: divisible by 4, except centuries, unless also divisible by 400.</p>
+<pre><code><span class="tok-type">Date</span>.is_leap_year(<span class="tok-lit">2024</span>)   <span class="tok-com"># == true</span>
+<span class="tok-type">Date</span>.is_leap_year(<span class="tok-lit">1900</span>)   <span class="tok-com"># == false</span>
+<span class="tok-type">Date</span>.is_leap_year(<span class="tok-lit">2000</span>)   <span class="tok-com"># == true</span></code></pre>
+<dl class="params">
+  <dt><code>year</code></dt>
+  <dd>the calendar year to test</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>true</code> when <code>year</code> is a leap year</p>
+</div>
+<div class="fn-detail" id="days_in_month/1">
+  <h3 class="fn-title"><code>fn days_in_month(self)</code> <a class="anchor" href="#days_in_month/1">¶</a></h3>
+<p>How many days are in <code>self</code>&#39;s month.</p>
+<pre><code><span class="tok-type">Date</span>.days_in_month(<span class="tok-type">Date</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == 29</span>
+<span class="tok-type">Date</span>.days_in_month(<span class="tok-type">Date</span>{year: <span class="tok-lit">2023</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == 28</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date whose month to measure</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>28</code>-<code>31</code></p>
+</div>
+<div class="fn-detail" id="pad/2">
+  <h3 class="fn-title"><code>fnp pad(n, width)</code> <span class="badge private">private</span> <a class="anchor" href="#pad/2">¶</a></h3>
+<p>(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>to_iso</code>.</p>
+<dl class="params">
+  <dt><code>n</code></dt>
+  <dd>the non-negative integer to render</dd>
+  <dt><code>width</code></dt>
+  <dd>the minimum number of digits</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>n</code>&#39;s decimal digits, zero-padded to <code>width</code></p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

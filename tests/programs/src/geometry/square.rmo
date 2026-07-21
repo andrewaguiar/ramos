@@ -1,0 +1,11 @@
+struct Geometry.Square
+  implements Geometry.Describable
+
+  attributes
+    side: 0
+
+  fn area(self)
+    self.side * self.side
+
+  fn name(self)
+    "square"

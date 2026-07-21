@@ -1,0 +1,376 @@
+module Float
+  # @module_doc
+  #
+  # Float — operations on floating-point numbers.
+  #
+  # `3.14` is a `Float`. Arithmetic lives in the operators (`+`, `-`, `*`, `/`,
+  # `**`); this module holds the rounding, the constants, and the tests that
+  # read better as named functions.
+  #
+  #   Float.round(2.6)   # == 3
+  #   Float.pi()         # == 3.141592653589793
+  #
+  # An `Integer` and a `Float` never compare equal — `1 == 1.0` is `false` — so
+  # convert explicitly when you mean to compare across the two.
+  #
+  # Rounding is built on Kernel's `to_integer` (which truncates toward zero),
+  # and the special values fall out of the arithmetic itself — no native
+  # needed for either. `exp`/`log`/`log_two`/`log_ten`/`sin`/`cos`/`tan` are
+  # the exception: transcendental functions have no operator to build on, so
+  # those seven are the only natives behind this module. (No digit may appear
+  # in a Ramos identifier, which is why the base-2 and base-10 logs are
+  # spelled out rather than `log2`/`log10`.)
+  #
+  # Kernel already converts and truncates, so this module does not repeat it:
+  # use `to_integer(x)` to drop the fraction, `to_float(text)` to parse, and
+  # `to_string(x)` to render.
+  #
+  # Conventions:
+  #   - `floor`, `ceil` and `round` all return an `Integer`.
+  #   - `round` goes half *away from zero*: `2.5` rounds to `3`, `-2.5` to `-3`.
+
+  fn pi()
+    # @doc
+    #
+    # The ratio of a circle's circumference to its diameter.
+    #
+    # @return the `Float` pi
+    #
+    #   Float.pi()   # == 3.141592653589793
+    3.141592653589793
+
+  fn e()
+    # @doc
+    #
+    # Euler's number, the base of the natural logarithm.
+    #
+    # @return the `Float` e
+    #
+    #   Float.e()   # == 2.718281828459045
+    2.718281828459045
+
+  fn infinity()
+    # @doc
+    #
+    # Positive infinity. Negate it for the other end: `-Float.infinity()`.
+    #
+    # @return the `Float` infinity
+    #
+    #   Float.is_infinite(Float.infinity())   # == true
+    1.0 / 0.0
+
+  fn nan()
+    # @doc
+    #
+    # Not-a-number, the result of an undefined operation. It equals nothing,
+    # including itself, so test it with `is_nan` rather than `==`.
+    #
+    # @return the `Float` nan
+    #
+    #   Float.is_nan(Float.nan())   # == true
+    0.0 / 0.0
+
+  fn floor(x)
+    # @doc
+    #
+    # The largest integer not greater than `x`.
+    #
+    # @param x: the float to round down
+    # @return an `Integer` — `x` rounded toward negative infinity
+    #
+    #   Float.floor(2.9)    # == 2
+    #   Float.floor(-2.1)   # == -3
+    #   Float.floor(2.0)    # == 2
+    dropped = to_integer(x)
+    if x < 0.0 and to_float(dropped) != x
+      dropped - 1
+    else
+      dropped
+
+  fn ceil(x)
+    # @doc
+    #
+    # The smallest integer not less than `x`.
+    #
+    # @param x: the float to round up
+    # @return an `Integer` — `x` rounded toward positive infinity
+    #
+    #   Float.ceil(2.1)    # == 3
+    #   Float.ceil(-2.9)   # == -2
+    #   Float.ceil(2.0)    # == 2
+    dropped = to_integer(x)
+    if x > 0.0 and to_float(dropped) != x
+      dropped + 1
+    else
+      dropped
+
+  fn round(x)
+    # @doc
+    #
+    # `x` rounded to the nearest integer, halves going away from zero.
+    #
+    # @param x: the float to round
+    # @return an `Integer` — the nearest integer to `x`
+    #
+    #   Float.round(2.4)    # == 2
+    #   Float.round(2.6)    # == 3
+    #   Float.round(2.5)    # == 3
+    #   Float.round(-2.5)   # == -3
+    if x < 0.0
+      ceil(x - 0.5)
+    else
+      floor(x + 0.5)
+
+  fn abs(x)
+    # @doc
+    #
+    # The magnitude of `x`, without its sign.
+    #
+    # @param x: the float to take the absolute value of
+    # @return `x` when it is zero or positive, `-x` otherwise
+    #
+    #   Float.abs(-7.5)   # == 7.5
+    #   Float.abs(7.5)    # == 7.5
+    if x < 0.0
+      -x
+    else
+      x
+
+  fn sqrt(x)
+    # @doc
+    #
+    # The square root of `x`, via `x ** 0.5`. A negative `x` yields `nan`.
+    #
+    # @param x: the float to take the square root of
+    # @return the square root as a `Float`, or `nan` when `x` is negative
+    #
+    #   Float.sqrt(9.0)    # == 3.0
+    #   Float.sqrt(2.25)   # == 1.5
+    x ** 0.5
+
+  fn min(a, b)
+    # @doc
+    #
+    # The smaller of two floats.
+    #
+    # @param a: the first float
+    # @param b: the second float
+    # @return whichever of `a` and `b` is smaller
+    #
+    #   Float.min(1.5, 2.5)   # == 1.5
+    if a < b
+      a
+    else
+      b
+
+  fn max(a, b)
+    # @doc
+    #
+    # The larger of two floats.
+    #
+    # @param a: the first float
+    # @param b: the second float
+    # @return whichever of `a` and `b` is larger
+    #
+    #   Float.max(1.5, 2.5)   # == 2.5
+    if a > b
+      a
+    else
+      b
+
+  fn clamp(x, low, high)
+    # @doc
+    #
+    # `x` held inside the range `low`..`high`.
+    #
+    # @param x: the float to clamp
+    # @param low: the lower bound
+    # @param high: the upper bound
+    # @return `low` when `x` is below it, `high` when above, else `x`
+    #
+    #   Float.clamp(5.0, 1.0, 3.0)   # == 3.0
+    #   Float.clamp(0.5, 1.0, 3.0)   # == 1.0
+    #   Float.clamp(2.0, 1.0, 3.0)   # == 2.0
+    min(max(x, low), high)
+
+  fn compare(a, b)
+    # @doc
+    #
+    # Orders two floats as `-1`, `0` or `1` — the shape sorting wants.
+    #
+    # @param a: the first float
+    # @param b: the second float
+    # @return `-1` when `a < b`, `1` when `a > b`, `0` when they are equal
+    #
+    #   Float.compare(1.0, 2.0)   # == -1
+    #   Float.compare(2.0, 1.0)   # == 1
+    #   Float.compare(1.0, 1.0)   # == 0
+    cond
+      a < b -> -1
+      a > b -> 1
+      true -> 0
+
+  fn is_nan(x)
+    # @doc
+    #
+    # Whether `x` is the not-a-number value. `nan` is the one value not equal
+    # to itself, which is exactly how this is tested.
+    #
+    # @param x: the float to test
+    # @return `true` when `x` is `nan`, `false` otherwise
+    #
+    #   Float.is_nan(Float.nan())   # == true
+    #   Float.is_nan(1.0)         # == false
+    x != x
+
+  fn is_infinite(x)
+    # @doc
+    #
+    # Whether `x` is positive or negative infinity.
+    #
+    # @param x: the float to test
+    # @return `true` when `x` is infinite, `false` otherwise
+    #
+    #   Float.is_infinite(Float.infinity())    # == true
+    #   Float.is_infinite(-Float.infinity())   # == true
+    #   Float.is_infinite(1.0)               # == false
+    x == infinity() or x == -infinity()
+
+  fn is_finite(x)
+    # @doc
+    #
+    # Whether `x` is an ordinary number — neither infinite nor `nan`.
+    #
+    # @param x: the float to test
+    # @return `true` when `x` is finite, `false` otherwise
+    #
+    #   Float.is_finite(1.0)               # == true
+    #   Float.is_finite(Float.infinity())    # == false
+    #   Float.is_finite(Float.nan())         # == false
+    not (is_nan(x) or is_infinite(x))
+
+  fn sign(x)
+    # @doc
+    #
+    # `-1.0`, `0.0` or `1.0` according to the sign of `x`. Neither infinity nor
+    # `nan` gets special treatment: `sign` on an infinity follows its
+    # direction, same as any other float, and `nan < 0.0`/`nan > 0.0` are both
+    # false so `sign(Float.nan())` is `0.0` — the same convention `compare`
+    # already uses for `nan`.
+    #
+    # @param x: the float to test
+    # @return `-1.0` when `x` is negative, `1.0` when positive, else `0.0`
+    #
+    #   Float.sign(-7.5)   # == -1.0
+    #   Float.sign(7.5)    # == 1.0
+    #   Float.sign(0.0)    # == 0.0
+    cond
+      x < 0.0 -> -1.0
+      x > 0.0 -> 1.0
+      true -> 0.0
+
+  fn is_positive(x)
+    # @doc
+    #
+    # Whether `x` is strictly greater than zero.
+    #
+    # @param x: the float to test
+    # @return `true` when `x > 0.0`, else `false`
+    #
+    #   Float.is_positive(7.5)    # == true
+    #   Float.is_positive(0.0)    # == false
+    #   Float.is_positive(-7.5)   # == false
+    x > 0.0
+
+  fn is_negative(x)
+    # @doc
+    #
+    # Whether `x` is strictly less than zero.
+    #
+    # @param x: the float to test
+    # @return `true` when `x < 0.0`, else `false`
+    #
+    #   Float.is_negative(-7.5)   # == true
+    #   Float.is_negative(0.0)    # == false
+    #   Float.is_negative(7.5)    # == false
+    x < 0.0
+
+  fn exp(x)
+    # @doc
+    #
+    # Euler's number `e` raised to the power `x`. The one direction `**`
+    # cannot express directly, since the base there is the fixed operand.
+    #
+    # @param x: the exponent
+    # @return `e ** x`, as a `Float`
+    #
+    #   Float.exp(0.0)   # == 1.0
+    native("float_exp", [x])
+
+  fn log(x)
+    # @doc
+    #
+    # The natural logarithm of `x` (base `e`) — the inverse of `exp`. Negative
+    # `x` yields `nan`; `0.0` yields `-Float.infinity()`.
+    #
+    # @param x: the float to take the logarithm of
+    # @return the natural logarithm of `x`, as a `Float`
+    #
+    #   Float.log(1.0)   # == 0.0
+    native("float_log", [x])
+
+  fn log_two(x)
+    # @doc
+    #
+    # The base-2 logarithm of `x`. Same domain as `log`.
+    #
+    # @param x: the float to take the logarithm of
+    # @return the base-2 logarithm of `x`, as a `Float`
+    #
+    #   Float.log_two(8.0)   # == 3.0
+    native("float_log_two", [x])
+
+  fn log_ten(x)
+    # @doc
+    #
+    # The base-10 logarithm of `x`. Same domain as `log`.
+    #
+    # @param x: the float to take the logarithm of
+    # @return the base-10 logarithm of `x`, as a `Float`
+    #
+    #   Float.log_ten(100.0)   # == 2.0
+    native("float_log_ten", [x])
+
+  fn sin(x)
+    # @doc
+    #
+    # The sine of `x`, in radians.
+    #
+    # @param x: the angle, in radians
+    # @return the sine of `x`, as a `Float`
+    #
+    #   Float.sin(0.0)   # == 0.0
+    native("float_sin", [x])
+
+  fn cos(x)
+    # @doc
+    #
+    # The cosine of `x`, in radians.
+    #
+    # @param x: the angle, in radians
+    # @return the cosine of `x`, as a `Float`
+    #
+    #   Float.cos(0.0)   # == 1.0
+    native("float_cos", [x])
+
+  fn tan(x)
+    # @doc
+    #
+    # The tangent of `x`, in radians.
+    #
+    # @param x: the angle, in radians
+    # @return the tangent of `x`, as a `Float`
+    #
+    #   Float.tan(0.0)   # == 0.0
+    native("float_tan", [x])
+

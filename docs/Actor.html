@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Actor — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html" class="current">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">Actor</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>Actor — a named process that holds state and answers messages.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>Actor — a named process that holds state and answers messages.</p>
+<p>A module implements <code><a href="Actor.html">Actor</a></code> by defining one function, <code>call</code>, which takes the operation, its arguments, the actor&#39;s current state and its config, and returns a <code>(reply, new_state)</code> tuple. The actor&#39;s state is whatever the last <code>call</code> returned; nothing mutates, the actor simply holds the newest value.</p>
+<pre><code><span class="tok-kw">module</span> <span class="tok-type">Counter</span>
+  <span class="tok-kw">implements</span> <span class="tok-type">Actor</span></code></pre>
+<pre><code><span class="tok-kw">fn</span> call(f, args, state, config)
+  <span class="tok-kw">case</span> f
+    <span class="tok-lit">:bump</span> -&gt; (state + <span class="tok-lit">1</span>, state + <span class="tok-lit">1</span>)
+    <span class="tok-lit">:read</span> -&gt; (state, state)</code></pre>
+<pre><code><span class="tok-kw">fn</span> start()
+  start_actor(<span class="tok-lit">:counter</span>, <span class="tok-type">Counter</span>, <span class="tok-lit">0</span>, {})</code></pre>
+<pre><code><span class="tok-kw">fn</span> bump()
+  call_actor(<span class="tok-lit">:counter</span>, <span class="tok-type">Counter</span>, <span class="tok-lit">:bump</span>, [])</code></pre>
+<p>The convention is to keep <code>call</code> as the server half and wrap each operation in a plain function — the client half — so callers never write <code>call_actor</code> themselves.</p>
+<p>Each actor runs on <em></em>its own thread<em></em>, with its own memory: a fresh scope that cannot see the caller&#39;s bindings, and state reachable only by sending a message. One actor handles its own messages one at a time, in order, but different actors run in parallel.</p>
+<p>That memory does not include the actor registry, so a handler cannot send messages to another actor or to itself.</p>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#cast/4" class="fn-sig"><code>fn cast(f, args, state, config)</code></a>
+    <span class="fn-summary">Handle one message sent with <code>cast_actor</code>, returning only the new state — a cast has no reply to send anywhere, which is the whole difference from <code>call</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#call/4" class="fn-sig"><code>fn call(f, args, state, config)</code></a>
+    <span class="fn-summary">Handle one message. Required — every implementer defines it.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="cast/4">
+  <h3 class="fn-title"><code>fn cast(f, args, state, config)</code> <a class="anchor" href="#cast/4">¶</a></h3>
+<p>Handle one message sent with <code>cast_actor</code>, returning only the new state — a cast has no reply to send anywhere, which is the whole difference from <code>call</code>.</p>
+<p>The default runs the module&#39;s own <code>call</code> and discards the reply, so an actor that already handles an operation synchronously can be cast to without writing anything extra. Override it for work that only makes sense fire-and-forget.</p>
+<p><code>cast_actor</code> returns as soon as the message is sent, so the handler may still be running when the next statement starts.</p>
+<dl class="params">
+  <dt><code>f</code></dt>
+  <dd>the operation, conventionally a symbol</dd>
+  <dt><code>args</code></dt>
+  <dd>a <code><a href="List.html">List</a></code> of arguments for the operation</dd>
+  <dt><code>state</code></dt>
+  <dd>the actor&#39;s current state</dd>
+  <dt><code>config</code></dt>
+  <dd>the config given to <code>start_actor</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the actor&#39;s new state</p>
+</div>
+<div class="fn-detail" id="call/4">
+  <h3 class="fn-title"><code>fn call(f, args, state, config)</code> <a class="anchor" href="#call/4">¶</a></h3>
+<p>Handle one message. Required — every implementer defines it.</p>
+<pre><code>actor&#39;s lifetime
+and `new_state` becomes the actor&#39;s state</code></pre>
+<dl class="params">
+  <dt><code>f</code></dt>
+  <dd>the operation, conventionally a symbol such as <code>:get</code></dd>
+  <dt><code>args</code></dt>
+  <dd>a <code><a href="List.html">List</a></code> of arguments for the operation</dd>
+  <dt><code>state</code></dt>
+  <dd>the actor&#39;s current state</dd>
+  <dt><code>config</code></dt>
+  <dd>the config given to <code>start_actor</code>, unchanged for the</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code>(reply, new_state)</code> tuple: the reply goes back to the caller</p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

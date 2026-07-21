@@ -1,0 +1,29 @@
+# account.rmo — a struct with attributes, methods that take `self`, and a
+# trait it implements. Every update returns a new instance; nothing here
+# mutates.
+
+struct Account
+  implements Reportable
+
+  attributes
+    owner: nil
+    balance: 0
+
+  fn summary(self)
+    "#{self.owner}: #{self.balance}"
+
+  fn deposit(self, amount)
+    self
+    | Struct.put(:balance, self.balance + amount)
+
+  fn withdraw(self, amount)
+    cond
+      amount <= 0 ->
+        (:error, WithdrawalError{code: 400, message: "amount must be positive"})
+      amount > self.balance ->
+        (:error, WithdrawalError{code: 402, message: "insufficient funds"})
+      true ->
+        updated =
+          self
+          | Struct.put(:balance, self.balance - amount)
+        (:ok, updated)

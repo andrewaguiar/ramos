@@ -5,24 +5,35 @@
 <h1 align="center">Ramos</h1>
 
 Ramos (plant branches) is a small, **indentation-driven**, **immutable**, and **strict** 
-programming language. It borrows its feel from Elixir and Ruby: everything is an expression,
-values are persistent and immutable.
+functional programming language. It borrows its feel from Elixir and Ruby: everything is an 
+expression, values are persistent and immutable.
+
+  - Immutable (like Elixir)
+  - Indentation driven (like Python)
+  - Strict
+  - Uses actor model (like Elixir)
+  - Allows kind of oo style `person.hello()` (like Ruby)
+  - Backed on rust
 
 ## Philosophy
 
-Ramos is intentionally **limited** and **opinionated**. Its design philosophy is
-to offer fewer ways to do things and to enforce a consistent code style strictly.
-Rather than providing multiple syntaxes or constructs for the same operation,
-Ramos gives you one clear, idiomatic way. This reduces decision fatigue, makes code
-more predictable, and helps teams maintain a uniform style across codebases.
+Ramos (plant branches) is a small, indentation-driven language built around
+four ideas: values are **immutable**, the interpreter enforces a **strict**
+set of rules rather than leaving them to style guides, the language is
+deliberately **limited** in how many ways it lets you do the same thing, and
+where a choice remains, it is an **opinionated** one.
 
-You won't find ternary operators or symbolic logical operators (`&&`, `||`,
-`!`), and `if` stops at two branches — `else if` is a `cond`. Ramos provides
-`if`, `cond`, and `case` for branching, and `and`, `or`, and `not` for logical
-operations. There are exactly two spaces for indentation — no tabs, no
-configurable spacing. This strictness is by design.
+### Immutable
 
-## Strict rules (fails interpreter)
+Every value in Ramos is persistent and immutable: a list, tuple, map, or
+struct instance handed to a function is exactly the value the caller has,
+unaffected by anything the function does with it. "Changing" something
+really means building a new value and rebinding a name to it —
+`Map.put`, `List.insert`, `Struct.update` all return a new value rather
+than mutating their argument. There is no in-place update anywhere in the
+language, and no `RefCell`-style escape hatch back into one.
+
+### Strict
 
 These are not style suggestions: violating any of them is a hard error that
 stops the interpreter before your program runs. They exist so that all Ramos code
@@ -74,6 +85,14 @@ looks the same, everywhere.
 
 - **One `:` on a map key** — a symbol key is `{name: 1}`; the leading colon of
   `{:name: 1}` writes the symbol twice over and is an error
+- **`end` is alone on its line, or not at all** — it is an optional, purely
+  decorative block-closing marker (see [Indentation](#indentation)), never
+  required and never a value, so `x = end` or `foo() end` is an error
+- **`|` starts its own line** — never `x | f()`; write `x` then `| f()` on the
+  next line, at the same indentation (see [Pipes](#pipes)). Since newlines
+  inside `(` `[` `{` are just whitespace, this also means a pipe can never sit
+  inside a call's arguments, a list, or a tuple — only as a complete
+  statement or the value of an assignment
 
 **Naming**
 
@@ -84,11 +103,28 @@ looks the same, everywhere.
 
 **Files**
 
-- **`.ramos` extension** — no other extension is loaded
+- **`.rmo` extension** — no other extension is loaded
 - **One definition per file** — a file holds exactly one module, trait or struct
-- **File name matches the definition** — `SystemUser` lives in `system_user.ramos`
+- **File name matches the definition** — `SystemUser` lives in `system_user.rmo`
 - **Path follows the namespace** — `MyApp.Business.SystemUser` lives at
-  `src/my_app/business/system_user.ramos`
+  `src/my_app/business/system_user.rmo`
+
+### Limited
+
+Ramos is intentionally **limited**. Its design philosophy is to offer fewer
+ways to do things and to enforce a consistent code style strictly. Rather
+than providing multiple syntaxes or constructs for the same operation, Ramos
+gives you one clear, idiomatic way. This reduces decision fatigue, makes code
+more predictable, and helps teams maintain a uniform style across codebases.
+
+### Opinionated
+
+Ramos is also deliberately **opinionated**. You won't find ternary operators
+or symbolic logical operators (`&&`, `||`, `!`), and `if` stops at two
+branches — `else if` is a `cond`. Ramos provides `if`, `cond`, and `case` for
+branching, and `and`, `or`, and `not` for logical operations. There are
+exactly two spaces for indentation — no tabs, no configurable spacing. This
+strictness is by design.
 
 This README is a tour of the language. For the full standard library, see the
 module sources under [`stdlib/`](stdlib/).
@@ -109,21 +145,21 @@ and you never write the `Kernel.` prefix (or `alias` it). See the
 [Standard library](#standard-library) section for the rest of what `Kernel`
 provides.
 
-## Entrypoints
+### Entrypoints
 
-A runnable Ramos program starts from an **entrypoint**: a `.ramos` file whose
+A runnable Ramos program starts from an **entrypoint**: a `.rmo` file whose
 module exposes a public `fn main()`. `ramos run` loads the file and calls that
 module's `main()` with no arguments:
 
 ```
-# app.ramos
+# app.rmo
 module App
   fn main()
     print("Ola world")
 ```
 
 ```
-ramos run app.ramos        # calls App.main()
+ramos run app.rmo        # calls App.main()
 ```
 
 `main()` is only the way in, not the whole module: an entrypoint may define
@@ -132,7 +168,7 @@ the habit worth having — `fnp` helpers break `main()` up without widening what
 the module exposes:
 
 ```
-# app.ramos
+# app.rmo
 module App
   fn main()
     ["Andrew", "Ana"]
@@ -148,7 +184,7 @@ through `alias`, which drops a namespaced module's prefix so you can call it by
 its short name:
 
 ```
-# cli.ramos
+# cli.rmo
 module Cli
   alias MyApp.Business.Greeter
 
@@ -172,12 +208,336 @@ module Cli
 
 A codebase can have **as many entrypoints as it needs** — one per runnable
 program — each in its own file, following the same naming rules as any other
-module (`App` → `app.ramos`, `MyApp.Cli` → `src/my_app/cli.ramos`).
+module (`App` → `app.rmo`, `MyApp.Cli` → `src/my_app/cli.rmo`).
 
 Bare top-level code, like the [Hello, world](#hello-world) snippet above, still
 runs for quick experiments — `ramos run` executes a file's top-level statements
 when it has no entrypoint module. But a real program you ship is structured as
 an entrypoint.
+
+## Keywords
+
+Ramos has a small set of reserved keywords. Each serves a specific purpose; there
+are no redundant constructs.
+
+| Keyword      | Purpose |
+| ------------ | ------- |
+| `module`     | Define a namespace of functions |
+| `struct`     | Define a typed record with fields |
+| `trait`      | Define a contract of functions for structs to implement |
+| `implements` | Declare that a struct implements a trait |
+| `attributes` | Declare struct fields with default values |
+| `fn`         | Define a public function |
+| `fnp`        | Define a private function (module-scoped) |
+| `case`       | Pattern match a value against patterns |
+| `if`         | Branch two ways on a condition (no `else if` — use `cond`) |
+| `else`       | The other branch of an `if` |
+| `cond`       | Branch on a sequence of boolean conditions |
+| `run`        | Run a block of matches, halting on the first that fails |
+| `do`         | Create an anonymous function (a lambda) |
+| `alias`      | Create a shorter name for a module |
+| `as`         | Rename a module in an `alias` statement (defaults to the last segment) |
+| `self`       | Reference the current struct instance or module |
+| `true`       | Boolean true value |
+| `false`      | Boolean false value |
+| `nil`        | Represents absence of value |
+| `when`       | Guard clause in a `case` pattern, or on a single trailing statement |
+| `and`        | Logical AND (short-circuits) |
+| `or`         | Logical OR (short-circuits) |
+| `not`        | Logical NOT |
+| `_`          | Wildcard pattern (matches anything) |
+
+## Types
+
+Practically every value is tied to a module — `42` to `Integer`, `"hi"` to
+`String`, `[1,2,3]` to `List`, and so on. See the
+[Standard library](#standard-library) section for what each module provides.
+
+| Value                | Module    |
+| -------------------- | --------- |
+| `42`                 | `Integer` |
+| `3.14`               | `Float`   |
+| `"andrew"`           | `String`  |
+| `:symbol`            | `Symbol`  |
+| `true` / `false`     | `Bool`    |
+| `[1, 2, 3]`          | `List`    |
+| `(1, 2, 3)`          | `Tuple`   |
+| `{name: "andrew"}`   | `Map`     |
+| module               | `Module`  |
+| struct instance      | `Struct`  |
+
+```
+x = 100
+y = 100.5
+s = "andrew"
+sym = :symbol
+b = true or false
+n = nil
+list = [1, 2, 3]
+tuple = (1, 2, 3)
+map = {name: "andrew"}
+```
+
+### Pure modules
+
+A **pure module** is a namespace of functions with no per-instance state. It is
+itself a value, so it can be passed around and inspected.
+
+```
+module PersonUtils
+  fn hello(person)
+    print("Ola #{person.name}, eu tenho #{person.age}")
+
+  fnp secret()          # fnp = private, only callable from inside the module
+    42
+
+PersonUtils.hello(andrew)
+andrew
+| PersonUtils.hello()
+```
+
+A name resolves to exactly one function: Ramos does not overload on arity, and
+`fn` and `fnp` share the one namespace. Defining a name twice in the same body
+is an error rather than a second definition that could never be reached:
+
+```
+module Dup
+  fn twice(x)
+    x * 2
+
+  fn twice(x, y)     # error: `Dup` defines `twice` more than once
+    x + y
+```
+
+There is no `const`: a constant is a function that takes no arguments, so it is
+defined and called like everything else. One construct covers both, and the
+call parentheses say plainly that a name is being resolved in a module.
+
+```
+module SystemUser
+  fn default_email()
+    "system@ramos.com.br"
+
+  fn max_retries()
+    3
+
+print(SystemUser.default_email())
+print(SystemUser.max_retries())
+```
+
+```
+module Greet
+  fn hi_all(people)
+    people
+    | List.map(do p -> "hi #{p.name}")
+    | List.join(", ")
+```
+
+### Alias
+
+`alias` drops a module's namespace prefix so you can call it by its **last
+segment** alone, cutting the verbosity of long names:
+
+```
+alias Geometry.Shapes.Circle       # now referred to as `Circle`
+
+Circle.area(5)  # == 78.5
+```
+
+The local name defaults to that last segment, so most aliases need no extra
+syntax. `as` **renames** the module — pick a different short name, chiefly to
+avoid a collision when two aliased modules would otherwise claim the same one:
+
+```
+alias Geometry as Geo              # rename to a shorter name
+
+Geo.circle_area(5)  # == 78.5
+```
+
+```
+alias Geometry.Circle              # -> Circle
+alias Drawing.Circle as Ellipse    # would clash with Circle, so rename it
+
+Circle.area(5)
+Ellipse.area(10, 20)
+```
+
+Aliases work the same for pure modules and struct modules.
+
+### Struct modules
+
+A **struct module** is a module that also produces typed record instances.
+`attributes` declares a field with its default. Instances are created with the
+map-literal syntax prefixed by the struct name — any field you don't supply
+takes its declared default. Instances are immutable maps under the hood,
+tagged with the struct name.
+
+```
+struct Person
+  attributes
+    name: nil
+    age: 0
+
+  fn hello(self)
+    print("Ola #{self.name}, eu tenho #{self.age}")
+
+andrew = Person{name: "Andrew", age: 40}
+andrew.hello()
+
+with_defaults = Person{}      # == Person{name: nil, age: 0}
+```
+
+Construction mirrors pattern matching: the same `Person{name: n}` shape that
+builds an instance also destructures one in `case` patterns.
+
+Field access is dot syntax, and updates return a new instance:
+
+```
+andrew.name                       # == "Andrew"
+older =
+  andrew
+  | Struct.put(:age, 41)
+```
+
+Setting a field has its own form, which is sugar for exactly that call:
+
+```
+andrew.age = 41                   # andrew = Struct.put(andrew, :age, 41)
+```
+
+It **rebinds** rather than mutates: the instance `andrew` pointed at is
+untouched, and the name is bound to a new one. That is why the left side has to
+be a plain variable — there has to be a name to rebind, so `f().age = 41` is an
+error rather than a value quietly thrown away.
+
+### Traits
+
+Traits declare a contract of functions. A function **with a body** is a default
+implementation; a function **without a body** is required and every implementer
+must define it. A struct declares its traits with the `implements` keyword.
+
+```
+trait Helloable
+  fn hello(self)
+    print("Ola #{self.name}, eu tenho #{self.age}")
+
+  fn is_over_eighteen(self)         # required, no body
+
+struct Person
+  implements Helloable
+
+  attributes
+    name: nil
+    age: 0
+
+  fn is_over_eighteen(self)
+    self.age > 18
+
+andrew = Person{name: "Andrew", age: 40}
+
+case andrew.is_over_eighteen()
+  true  -> andrew.hello()         # uses the trait's default hello
+  _     -> :none
+```
+
+There is no built-in `Error` trait, because an error is not a special kind of
+value. When a symbol and a message are not enough detail, return a struct in the
+error slot — it destructures in `case` like any other pattern:
+
+```
+struct DeclineReason
+  attributes
+    code: 0
+    message: nil
+
+fn charge(amount)
+  cond
+    amount <= 0 -> (:error, DeclineReason{code: 555, message: "must be positive"})
+    amount > 10000 -> (:error, DeclineReason{code: 556, message: "too large"})
+    true -> (:ok, amount)
+
+case charge(50000)
+  (:ok, charged) -> print("charged #{charged}")
+  (:error, DeclineReason{code: 556, message: message}) -> print("too large: #{message}")
+  (:error, DeclineReason{message: message}) -> print("declined: #{message}")
+```
+
+### Pattern matching
+
+`case` matches a value against patterns left-to-right and runs the body of the
+first match. `_` is the wildcard. Patterns can bind variables and match tuples,
+structs, and lists:
+
+```
+case result
+  (:ok, value)    -> value
+  (:error, reason) -> print("failed: #{reason}")
+  _                -> :unknown
+```
+
+Lists can be pattern matched with the cons operator `|`:
+
+```
+case numbers
+  []          -> "empty"
+  [x]         -> "single: #{x}"
+  [head | _]  -> "head is #{head}"
+
+# Direct destructuring assignment
+[head | tail] = [1, 2, 3]           # head == 1, tail == [2, 3]
+[first, second | rest] = [1, 2, 3, 4]  # first == 1, second == 2, rest == [3, 4]
+```
+
+Tuples destructure in plain assignments too, which is the idiomatic way to
+unpack small fixed records:
+
+```
+person = ("Andrew", 40)
+(name, age) = person          # name == "Andrew", age == 40
+```
+
+Nested pattern matching works for any combination:
+
+```
+case user
+  ({name: n, age: a}, :admin) when a > 18 -> "Admin #{n}"
+  ({name: n}, :guest) -> "Guest #{n}"
+  _ -> "Unknown"
+
+# Destructuring nested structures
+((first, _), [head | _]) = ((1, 2), [3, 4, 5])
+# first == 1, head == 3
+```
+
+Tagged tuples like `(:ok, value)` / `(:error, reason)` are the standard result
+type for fallible operations.
+
+Each name in a pattern binds **once**. `(p, p)` looks like it asks for the two
+positions to be equal, but there is no pin operator to ask that with, so the
+second `p` would just rebind and the pattern could never fail — it is rejected
+instead:
+
+```
+(p, p) = (1, 1)     # error: a pattern cannot bind `p` twice
+(a, b) = (1, 1)     # correct — compare them afterwards if that is the intent
+(_, _) = (1, 2)     # fine: `_` binds nothing, so it may repeat
+```
+
+A struct pattern is held to the struct's declared attributes, exactly as
+construction is. Naming one that does not exist can never match, so it is an
+error rather than a silently skipped branch:
+
+```
+case andrew
+  Person{nickname: n} -> n     # error: `Person` has no attribute `nickname`
+  _ -> :none
+```
+
+A **map** pattern is different: a map has no fixed shape, so a key that is not
+there is an ordinary non-match, not an error.
+
+`cond` is just `case` over a sequence of guard expressions, useful when no
+single value is being matched.
 
 ## Syntax
 
@@ -283,6 +643,23 @@ nil           # nil
 Only `false` and `nil` are falsy; everything else (including `0`, `""` and `[]`)
 is truthy.
 
+#### Sigils
+
+A letter hugging a string — no space — is a **sigil**: shorthand for parsing
+that string into one of the date/time types. It desugars before the parser
+ever sees a call, so `D"..."` and `Date.parse("...")` produce the same AST:
+
+```
+D"2024-02-29"                 # == Date.parse("2024-02-29")
+T"13:45:30"                   # == Time.parse("13:45:30")
+N"2024-02-09T13:45:30.500"    # == NaiveDateTime.parse("2024-02-09T13:45:30.500")
+U"2024-02-09T13:45:30.500Z"   # == DateTime.parse("2024-02-09T13:45:30.500Z")
+```
+
+The four letters are fixed — `D` (`Date`), `T` (`Time`), `N` (`NaiveDateTime`),
+`U` (`DateTime`) — any other letter hugging a `"` is a lex error. A sigil is
+always a single literal: no `#{...}` interpolation and no multi-line form.
+
 #### Map keys
 
 A map key is a **symbol**, a **string** or an **integer** — nothing else, at any
@@ -318,14 +695,14 @@ parity = do x -> cond
   Integer.is_even(x) -> :even
   true -> :odd
 
-List.group_by([1, 2, 3, 4], parity)   # == {even: [2, 4], odd: [1, 3]}
+List.group_by([1, 2, 3, 4], parity)   # == {odd: [1, 3], even: [2, 4]}
 ```
 
 ### Indentation
 
-Ramos is **indentation driven**, like Python. There is no `do`/`end` and no
-`begin`/`end`. A keyword or clause followed by an indented line opens a block;
-the block ends as soon as indentation returns to a lower level. Two rules:
+Ramos is **indentation driven**, like Python. A keyword or clause followed by
+an indented line opens a block; the block ends as soon as indentation returns
+to a lower level. Two rules:
 
 - use **exactly 2 spaces** per indentation level
 - **never tabs**
@@ -338,6 +715,27 @@ module Geometry
 
 Blocks are introduced by `module`, `struct`, `trait`, `fn`, `if`, `case`,
 `cond` and `do`.
+
+Indentation is what actually closes a block — `end` is never required. It
+exists only as an optional visual marker for readers who like seeing where a
+block ends, and carries no meaning: the parser drops it before it ever
+matters, so a program reads identically with or without one. Put it, if you
+use it at all, on its own line, dedented back to the level of whatever it is
+marking the end of:
+
+```
+module Geometry
+  fn area(r)
+    r * r * 3.14
+  end
+end
+```
+
+Nothing checks that an `end` lines up with the "right" block, or that there is
+one at all — this is decoration, not a rule, so unlike everything in the
+**Strict rules** section it is never wrong to leave it out. It only fails
+(`E0016`) when it isn't alone on its line — `x = end` or `foo() end` — since
+`end` was never meant to be a value.
 
 ### Operators
 
@@ -399,18 +797,17 @@ Map:
 {a: 1} ++ {a: 2}   # right side wins on duplicate keys  # == {a: 2}
 ```
 
-Range. `a..b` is an **inclusive** range of integers, and evaluates to an ordinary
-`List` — so every `List` function works on it. Like `.` field access, `..` needs
-no surrounding whitespace. It binds looser than arithmetic but tighter than
-comparison, so `1..n + 1` is `1..(n + 1)`. A range whose start is past its end is
-empty (`5..1 == []`); counting down is `Integer.downto`'s job.
+A range of integers is `List.range(from, to)` — an ordinary `List`, so every
+`List` function works on it. It goes up when `from <= to`, down when `from >
+to`, and is never empty for integer arguments (a single-element list when
+`from == to`).
 
 ```
-1..5                          # == [1, 2, 3, 4, 5]
-1..1                          # == [1]
-5..1                          # == []
-List.sum(1..100)              # == 5050
-List.map(1..3, do n -> n * n) # == [1, 4, 9]
+List.range(1, 5)                          # == [1, 2, 3, 4, 5]
+List.range(5, 1)                          # == [5, 4, 3, 2, 1]
+List.range(1, 1)                          # == [1]
+List.sum(List.range(1, 100))              # == 5050
+List.map(List.range(1, 3), do n -> n * n) # == [1, 4, 9]
 ```
 
 See also the **Pipes** section below for `|`.
@@ -438,7 +835,7 @@ is strict:
 - the closing `"""` stands alone on its line, at the same indentation as the
   opening line
 - when it is being assigned, it opens on the line *after* the `=` — the same
-  [strict rule](#strict-rules-fails-interpreter) `case` and `run` follow
+  [strict rule](#strict) `case` and `run` follow
 
 Every content line keeps its trailing newline, so the value always ends with
 `\n`. Interpolation and escapes work exactly as in single-line strings.
@@ -680,327 +1077,177 @@ If `withdraw(1000, 400)` returns an `(:error, _)` tuple, it does not match
 `(:ok, after_rent)`; the block stops there and `total` is that error tuple. The
 happy path reads top to bottom, and the failure path needs no branch of its own.
 
-## Keywords
+### Pipes
 
-Ramos has a small set of reserved keywords. Each serves a specific purpose; there
-are no redundant constructs.
-
-| Keyword      | Purpose |
-| ------------ | ------- |
-| `module`     | Define a namespace of functions |
-| `struct`     | Define a typed record with fields |
-| `trait`      | Define a contract of functions for structs to implement |
-| `implements` | Declare that a struct implements a trait |
-| `attributes` | Declare struct fields with default values |
-| `fn`         | Define a public function |
-| `fnp`        | Define a private function (module-scoped) |
-| `case`       | Pattern match a value against patterns |
-| `if`         | Branch two ways on a condition (no `else if` — use `cond`) |
-| `else`       | The other branch of an `if` |
-| `cond`       | Branch on a sequence of boolean conditions |
-| `run`        | Run a block of matches, halting on the first that fails |
-| `do`         | Create an anonymous function (a lambda) |
-| `alias`      | Create a shorter name for a module |
-| `as`         | Rename a module in an `alias` statement (defaults to the last segment) |
-| `self`       | Reference the current struct instance or module |
-| `true`       | Boolean true value |
-| `false`      | Boolean false value |
-| `nil`        | Represents absence of value |
-| `when`       | Guard clause in a `case` pattern, or on a single trailing statement |
-| `and`        | Logical AND (short-circuits) |
-| `or`         | Logical OR (short-circuits) |
-| `not`        | Logical NOT |
-| `_`          | Wildcard pattern (matches anything) |
-
-## Pattern matching
-
-`case` matches a value against patterns left-to-right and runs the body of the
-first match. `_` is the wildcard. Patterns can bind variables and match tuples,
-structs, and lists:
+`|` is the pipe, and the only one: it passes the value on its left as the
+**first argument** to the module function on its right, so data flows
+top-to-bottom. It always starts its own line, at the same indentation as
+whatever comes before it — `x | f()` on one line is an error; write `x` and
+`| f()` on the next.
 
 ```
-case result
-  (:ok, value)    -> value
-  (:error, reason) -> print("failed: #{reason}")
-  _                -> :unknown
+{}
+| Map.put(:new_value_a, 100)
+| Map.put(:new_value_b, 50)
+| Map.put(:new_value_c, 1)
+# == {new_value_a: 100, new_value_b: 50, new_value_c: 1}
 ```
 
-Lists can be pattern matched with the cons operator `|`:
+`a | M.f(b)` means exactly `M.f(a, b)`, so a pipeline is a chain of ordinary
+calls read in the order they happen. Naming the module at each step is the
+point: the value's type is on the page rather than inferred from the call.
 
 ```
-case numbers
-  []          -> "empty"
-  [x]         -> "single: #{x}"
-  [head | _]  -> "head is #{head}"
-
-# Direct destructuring assignment
-[head | tail] = [1, 2, 3]           # head == 1, tail == [2, 3]
-[first, second | rest] = [1, 2, 3, 4]  # first == 1, second == 2, rest == [3, 4]
+["ana", "bob"]
+| List.map(do n -> String.upcase(n))
+| List.join(", ")
+# == "ANA, BOB"
 ```
 
-Tuples destructure in plain assignments too, which is the idiomatic way to
-unpack small fixed records:
+### Lambdas
+
+`do` opens an anonymous function — a **lambda**. Single-expression lambdas
+use `->` and fit on one line:
 
 ```
-person = ("Andrew", 40)
-(name, age) = person          # name == "Andrew", age == 40
+add = do x, y -> x + y
+add(1, 2)          # == 3
 ```
 
-Nested pattern matching works for any combination:
+Multi-statement lambdas drop the `->` and indent the body; the last expression
+is the return value:
 
 ```
-case user
-  ({name: n, age: a}, :admin) when a > 18 -> "Admin #{n}"
-  ({name: n}, :guest) -> "Guest #{n}"
-  _ -> "Unknown"
+double_then_add =
+  do x, y
+    z = x + y
+    z * 2
 
-# Destructuring nested structures
-((first, _), [head | _]) = ((1, 2), [3, 4, 5])
-# first == 1, head == 3
+double_then_add(2, 3)   # == 10
 ```
 
-Tagged tuples like `(:ok, value)` / `(:error, reason)` are the standard result
-type for fallible operations.
-
-Each name in a pattern binds **once**. `(p, p)` looks like it asks for the two
-positions to be equal, but there is no pin operator to ask that with, so the
-second `p` would just rebind and the pattern could never fail — it is rejected
-instead:
+Lambdas are values, so they pipe naturally:
 
 ```
-(p, p) = (1, 1)     # error: a pattern cannot bind `p` twice
-(a, b) = (1, 1)     # correct — compare them afterwards if that is the intent
-(_, _) = (1, 2)     # fine: `_` binds nothing, so it may repeat
+[1, 2, 3, 4]
+| List.filter(do x -> Integer.is_even(x))    # == [2, 4]
+| List.map(do x -> x * 10)                 # == [20, 40]
 ```
 
-A struct pattern is held to the struct's declared attributes, exactly as
-construction is. Naming one that does not exist can never match, so it is an
-error rather than a silently skipped branch:
+#### Closures
+
+A lambda closes over the scope it was written in, so its body can read the
+names that surrounded it:
 
 ```
-case andrew
-  Person{nickname: n} -> n     # error: `Person` has no attribute `nickname`
-  _ -> :none
+v = 1
+lb = do x -> x + v
+
+lb(2)   # == 3
 ```
 
-A **map** pattern is different: a map has no fixed shape, so a key that is not
-there is an ordinary non-match, not an error.
+A lambda may not refer to the name it is being bound to
+(`f = do x -> f(x)`): lambdas are anonymous and non-recursive, and a named
+`fn` is how you recurse.
 
-`cond` is just `case` over a sequence of guard expressions, useful when no
-single value is being matched.
+## Standard library
 
-## Types
+Each type ships with a rich, pipe-friendly module. A few highlights (`Kernel`,
+`String`, `List`, and `Tuple` have inline-documented sources under
+[`stdlib/`](stdlib/); the remaining modules are not in this repo yet):
 
-Practically every value is tied to a module — `42` to `Integer`, `"hi"` to
-`String`, `[1,2,3]` to `List`, and so on. See the
-[Standard library](#standard-library) section for what each module provides.
+- **`Kernel`** — the only module whose functions you call *bare*: `Kernel` is
+  implicitly in scope everywhere, so `print(x)` is sugar for `Kernel.print(x)`
+  and no `alias` is ever needed for it. It hosts:
+  - **console I/O** — `print`, `println`, `new_line`, `read`, `read_all`,
+    `read_password`, and `eprint`/`eprintln` for diagnostics on standard error
+  - **process / CLI** — `get_args`, `get_arg`, `get_env`, `sleep`, `exit`
+  - **time** — `now` (wall clock) and `monotonic` (only moves forward, so it is
+    the one to measure elapsed time with)
+  - **randomness** — `random`, `random_int` (not cryptographic)
+  - **collections** — `size`, `at`, `to_list`, each working on a list, tuple or
+    map, which is why the type modules do not repeat them; plus `is_empty`,
+    which also spans strings
+  - **conversions** — `to_string` (display form) and `inspect` (debug form: the
+    rendering the REPL prints), `to_integer`, `to_float`, and `type_of`
+  - **predicates** — the `is_*` family (`is_integer`, `is_string`, …) and
+    `is_truthy`, the falsy rule written down
+  - **calling** — `apply(f, args)`, to call a lambda whose arity the call site
+    does not know
+  - **actors** — `start_actor` / `call_actor` (see [Actors](#actors))
+  - **seams** — `native(str, args)`, plus `current_stacktrace`
 
-| Value                | Module    |
-| -------------------- | --------- |
-| `42`                 | `Integer` |
-| `3.14`               | `Float`   |
-| `"andrew"`           | `String`  |
-| `:symbol`            | `Symbol`  |
-| `true` / `false`     | `Bool`    |
-| `nil`                | `Nil`     |
-| `[1, 2, 3]`          | `List`    |
-| `(1, 2, 3)`          | `Tuple`   |
-| `{name: "andrew"}`   | `Map`     |
-| module               | `Module`  |
-| struct instance      | `Struct`  |
-
-```
-x = 100
-y = 100.5
-s = "andrew"
-sym = :symbol
-b = true or false
-n = nil
-list = [1, 2, 3]
-tuple = (1, 2, 3)
-map = {name: "andrew"}
-```
-
-### Pure modules
-
-A **pure module** is a namespace of functions with no per-instance state. It is
-itself a value, so it can be passed around and inspected.
-
-```
-module PersonUtils
-  fn hello(person)
-    print("Ola #{person.name}, eu tenho #{person.age}")
-
-  fnp secret()          # fnp = private, only callable from inside the module
-    42
-
-PersonUtils.hello(andrew)
-andrew | PersonUtils.hello()
-```
-
-A name resolves to exactly one function: Ramos does not overload on arity, and
-`fn` and `fnp` share the one namespace. Defining a name twice in the same body
-is an error rather than a second definition that could never be reached:
-
-```
-module Dup
-  fn twice(x)
-    x * 2
-
-  fn twice(x, y)     # error: `Dup` defines `twice` more than once
-    x + y
-```
-
-There is no `const`: a constant is a function that takes no arguments, so it is
-defined and called like everything else. One construct covers both, and the
-call parentheses say plainly that a name is being resolved in a module.
-
-```
-module SystemUser
-  fn default_email()
-    "system@ramos.com.br"
-
-  fn max_retries()
-    3
-
-print(SystemUser.default_email())
-print(SystemUser.max_retries())
-```
-
-```
-module Greet
-  fn hi_all(people)
-    people
-    | List.map(do p -> "hi #{p.name}")
-    | List.join(", ")
-```
-
-### Alias
-
-`alias` drops a module's namespace prefix so you can call it by its **last
-segment** alone, cutting the verbosity of long names:
-
-```
-alias Geometry.Shapes.Circle       # now referred to as `Circle`
-
-Circle.area(5)  # == 78.5
-```
-
-The local name defaults to that last segment, so most aliases need no extra
-syntax. `as` **renames** the module — pick a different short name, chiefly to
-avoid a collision when two aliased modules would otherwise claim the same one:
-
-```
-alias Geometry as Geo              # rename to a shorter name
-
-Geo.circle_area(5)  # == 78.5
-```
-
-```
-alias Geometry.Circle              # -> Circle
-alias Drawing.Circle as Ellipse    # would clash with Circle, so rename it
-
-Circle.area(5)
-Ellipse.area(10, 20)
-```
-
-Aliases work the same for pure modules and struct modules.
-
-### Struct modules
-
-A **struct module** is a module that also produces typed record instances.
-`attributes` declares a field with its default. Instances are created with the
-map-literal syntax prefixed by the struct name — any field you don't supply
-takes its declared default. Instances are immutable maps under the hood,
-tagged with the struct name.
-
-```
-struct Person
-  attributes
-    name: nil
-    age: 0
-
-  fn hello(self)
-    print("Ola #{self.name}, eu tenho #{self.age}")
-
-andrew = Person{name: "Andrew", age: 40}
-andrew.hello()
-
-with_defaults = Person{}      # == Person{name: nil, age: 0}
-```
-
-Construction mirrors pattern matching: the same `Person{name: n}` shape that
-builds an instance also destructures one in `case` patterns.
-
-Field access is dot syntax, and updates return a new instance:
-
-```
-andrew.name                       # == "Andrew"
-older = andrew | Struct.put(:age, 41)
-```
-
-Setting a field has its own form, which is sugar for exactly that call:
-
-```
-andrew.age = 41                   # andrew = Struct.put(andrew, :age, 41)
-```
-
-It **rebinds** rather than mutates: the instance `andrew` pointed at is
-untouched, and the name is bound to a new one. That is why the left side has to
-be a plain variable — there has to be a name to rebind, so `f().age = 41` is an
-error rather than a value quietly thrown away.
-
-### Traits
-
-Traits declare a contract of functions. A function **with a body** is a default
-implementation; a function **without a body** is required and every implementer
-must define it. A struct declares its traits with the `implements` keyword.
-
-```
-trait Helloable
-  fn hello(self)
-    print("Ola #{self.name}, eu tenho #{self.age}")
-
-  fn is_over_eighteen(self)         # required, no body
-
-struct Person
-  implements Helloable
-
-  attributes
-    name: nil
-    age: 0
-
-  fn is_over_eighteen(self)
-    self.age > 18
-
-andrew = Person{name: "Andrew", age: 40}
-
-case andrew.is_over_eighteen()
-  true  -> andrew.hello()         # uses the trait's default hello
-  _     -> :none
-```
-
-There is no built-in `Error` trait, because an error is not a special kind of
-value. When a symbol and a message are not enough detail, return a struct in the
-error slot — it destructures in `case` like any other pattern:
-
-```
-struct DeclineReason
-  attributes
-    code: 0
-    message: nil
-
-fn charge(amount)
-  cond
-    amount <= 0 -> (:error, DeclineReason{code: 555, message: "must be positive"})
-    amount > 10000 -> (:error, DeclineReason{code: 556, message: "too large"})
-    true -> (:ok, amount)
-
-case charge(50000)
-  (:ok, charged) -> print("charged #{charged}")
-  (:error, DeclineReason{code: 556, message: message}) -> print("too large: #{message}")
-  (:error, DeclineReason{message: message}) -> print("declined: #{message}")
-```
+  Every other module must be referenced by name (or `alias`ed).
+- **`Integer`** — `compare`/`clamp`/`min`/`max`, `times`, `gcd`/`lcm`,
+  `abs`/`sign`, `digits`, predicates (`is_even`, `is_odd`, `is_zero`,
+  `is_positive`, `is_negative`). Counting up or down a range of integers is
+  `List.range` — not repeated here.
+- **`Float`** — `round`/`floor`/`ceil` (all returning an `Integer`),
+  `abs`/`sign`/`sqrt`/`min`/`max`/`clamp`/`compare`, transcendentals
+  (`exp`/`log`/`log_two`/`log_ten`/`sin`/`cos`/`tan` — the only natives
+  behind this module), constants (`pi()`, `e()`, `infinity`, `nan`),
+  predicates (`is_nan`, `is_infinite`, `is_finite`, `is_positive`,
+  `is_negative`).
+- **`String`** — `<>` / `at` / `repeat`, casing (including `capitalize`),
+  trimming, `split`/`replace` (joining a list of strings is `List.join`),
+  `pad_left`/`pad_right`, `slice`, `find`/`contains`, conversions.
+- **`List`** — `range` (either direction, ascending or descending), `map`/
+  `filter`/`reject`/`reduce`/`flat_map`, `sort`/`sort_by`/
+  `uniq`/`dedup`/`dedup_by`, `chunk_every`/`group_by`/`partition`,
+  `insert`/`delete`/`delete_at`/`update_at`, `take_while`/
+  `drop_while`, `zip`/`zip_with`/`unzip`, `with_index`/`map_with_index`/
+  `each_with_index`, `flatten`, `intersperse`, `sample`/`shuffle`, slicing,
+  search (`index_of` alongside `find`/`find_index`), aggregates
+  (`max_by`/`min_by` alongside `max`/`min`), `all` (true when `f` holds for
+  every element), and `any` (true when `f` holds for at least one).
+- **`Map`** — `get`/`put`/`put_new`/`delete`/`update`/`merge` (`++` is sugar
+  for `merge`, `merge_with` resolves a clash instead of the right side
+  winning), `filter`/`reject` to screen pairs with a `(key, value)`
+  predicate, `keys`/`values`/`entries`/`from_list`,
+  `map_keys`/`map_values`/`map_entries`, `has_key`. Keys are integers,
+  strings and symbols only.
+- **`Tuple`** — `set`, `last`, `from_list`/`to_map`. Read by position with
+  `at(t, 0)`, or destructure: `(a, b) = pair`.
+- **`Struct`** — `get`/`put`/`update`, `to_map`, `is_a`, `keys`/`values`.
+  Instances are built with the literal `Name{...}` syntax.
+- **`Date`** — a calendar date (`year`/`month`/`day`, no time-of-day or time
+  zone): `new`/`today`/`from_epoch_day`/`parse`, `to_epoch_day`/`to_iso`,
+  `add_days`/`add_weeks`/`add_months`/`add_years`,
+  `compare`/`diff_days`/`day_of_week`, `is_leap_year`/`days_in_month`. An
+  out-of-range `day` normalizes rather than raising.
+- **`NaiveDateTime`** — a `Date` plus `hour`/`minute`/`second`/`millisecond`,
+  with no time zone: `new`/`now`/`from_epoch_millis`/`parse`,
+  `to_epoch_millis`/`to_iso`, `add_days`/`add_weeks`/`add_months`/
+  `add_hours`/`add_minutes`/`add_seconds`, `compare`/`diff_millis`/
+  `day_of_week`, `date` (drops the time of day).
+- **`TimeZone`** — a name paired with a fixed offset from UTC (no IANA
+  database — no daylight saving, no historical rules, just `-720`..`840`
+  minutes checked against the real-world range): `utc`/`fixed`/
+  `from_offset_minutes`/`parse`, `offset_text`/`parse_offset_text` (the
+  shared `"Z"`/`±HH:MM` text form `DateTime.to_iso`/`parse` also use),
+  `compare`.
+- **`DateTime`** — a `NaiveDateTime` plus a fixed `offset_minutes` from UTC
+  (no time zone database — a plain numeric offset, not a zone name):
+  `new`/`now`/`now_at`/`now_in`/`from_epoch_millis`/`from_naive`/`parse`,
+  `to_utc_epoch_millis`/`to_iso`/`to_naive`/`to_utc`/`with_offset`/
+  `in_time_zone`/`time_zone`, `add_days`/`add_weeks`/`add_months`/
+  `add_hours`/`add_minutes`/`add_seconds`, `compare`/`diff_millis`/
+  `day_of_week`. `compare`/`diff_millis` order by the instant, not the
+  printed local fields; `now_in`/`in_time_zone` take a `TimeZone`, the rest a
+  bare `offset_minutes`.
+- **`Actor`** — the trait a module implements to hold state and answer
+  messages; driven by `Kernel`'s `start_actor` / `call_actor`.
+- **`Global`** — one process-wide map held by an actor: `start`, `get`, `put`,
+  `clear`.
+- **`Config`** — the environment's `.env` file, read once at `start` and
+  answered from memory: `get(section, key)`, `path`. Read-only. Shared mutable state; see [Global](#global) before reaching for it.
+- **`Thread`** — one-shot parallel work: `start`, `await`, `await_all`, and a
+  parallel `map`/`each`; see [Threads](#threads).
+- **`Test`** — the marker trait a test module implements; see [Tests](#tests).
+- **`Module`** — `functions` (a module's public function names) and `apply`
+  (call one by name, given as a `String`, with its arguments as a list) —
+  both only ever reach a module's public functions, the same as a written
+  call from outside it would.
 
 ### Actors
 
@@ -1227,24 +1474,24 @@ case Config.start()
 
 Where an actor holds **state** and answers messages over its lifetime, a
 **thread** is a one-shot piece of parallel work that produces a **value**.
-`Thread.spawn` starts a zero-argument lambda on its own thread and hands back a
+`Thread.start` starts a zero-argument lambda on its own thread and hands back a
 handle at once; `Thread.await` waits on the handle and returns what the lambda
 produced.
 
 ```
-t = Thread.spawn(do -> slow_sum())
+t = Thread.start(do -> slow_sum())
 other_work()                  # runs while the thread does
 total = Thread.await(t)       # now wait for it
 ```
 
 The parallelism is real: two threads each sleeping 300ms finish in ~300ms, not
-600. To fan a batch out and gather it, spawn them all and `Thread.await_all` the
+600. To fan a batch out and gather it, start them all and `Thread.await_all` the
 handles — every thread is already running, so the wait is for the slowest, not
 the sum:
 
 ```
 [do -> a(), do -> b(), do -> c()]
-| List.map(do f -> Thread.spawn(f))
+| List.map(do f -> Thread.start(f))
 | Thread.await_all()
 ```
 
@@ -1255,27 +1502,19 @@ gathers the results in order.
 Thread.map([1, 2, 3], do n -> n * n)   # == [1, 4, 9]
 ```
 
-A spawned lambda carries its own captured scope, but — exactly like an actor's
+A started lambda carries its own captured scope, but — exactly like an actor's
 handler — it gets a fresh root and **cannot see the caller's running actors**. A
 failure inside the lambda is not lost; it surfaces as an error at the `await`
 that collects it. Its output is **live** — it prints to the same place as you,
-as it happens, so a spawned `println` may land in either order relative to
+as it happens, so a started `println` may land in either order relative to
 yours, though never split mid-line. (An actor is the opposite: it buffers and
 delivers its output at the reply, so actor lines never interleave.)
 
-> **Await what you spawn.** A handle is a value you can hold, pass, and await
+> **Await what you start.** A handle is a value you can hold, pass, and await
 > from anywhere, but a thread nobody awaits is detached: its result is never
 > collected, and it may be cut off when the program ends. There is no registry of
 > threads and no automatic wait at the end — the handle is the only way back to
 > the work.
-
-Two `Kernel` functions drive them, and `Thread.spawn` / `Thread.await` (and
-`Thread.await_all` for a list of handles) are the client-side names to prefer:
-
-| Call | Purpose |
-| ---- | ------- |
-| `spawn_thread(f)` | Run the no-argument lambda `f` on its own thread; return a handle at once. |
-| `await_thread(t)` | Wait for thread `t` and return what its lambda produced. |
 
 ### Tests
 
@@ -1284,7 +1523,7 @@ module implements `Test`, and every public function whose name begins with
 `test_` is run by `ramos test`.
 
 ```
-# src/test/my_app/user_test.ramos
+# src/test/my_app/user_test.rmo
 module MyApp.UserTest
   # @module_doc
   # The behaviour a User promises its callers.
@@ -1306,7 +1545,7 @@ module MyApp.UserTest
 
 ```
 ramos test                              # everything under src/test/
-ramos test src/test/my_app/user_test.ramos   # one file
+ramos test src/test/my_app/user_test.rmo   # one file
 ramos test --quietly                    # results only, no doc lines
 ```
 
@@ -1333,7 +1572,7 @@ build script.
 
 Tests live under **`src/test/`** and follow the same file rules as everything
 else — the namespace is the path, so `MyApp.UserTest` is
-`src/test/my_app/user_test.ramos`. A test module's name must **end in `Test`**,
+`src/test/my_app/user_test.rmo`. A test module's name must **end in `Test`**,
 and it must `implements Test`: the name makes it read as a test in a failure
 report, and the trait makes being run something a module opts into rather than
 something its name causes. A test reaches the code it exercises through the
@@ -1368,162 +1607,6 @@ point:
 assert(is_valid(user), "a user with no email should be invalid")
 ```
 
-## Pipes
-
-`|` is the pipe, and the only one: it passes the value on its left as the
-**first argument** to the module function on its right, so data flows
-top-to-bottom.
-
-```
-{}
-| Map.put(:new_value_a, 100)
-| Map.put(:new_value_b, 50)
-| Map.put(:new_value_c, 1)
-# == {new_value_a: 100, new_value_b: 50, new_value_c: 1}
-```
-
-`a | M.f(b)` means exactly `M.f(a, b)`, so a pipeline is a chain of ordinary
-calls read in the order they happen. Naming the module at each step is the
-point: the value's type is on the page rather than inferred from the call.
-
-```
-["ana", "bob"]
-| List.map(do n -> String.upcase(n))
-| List.join(", ")
-# == "ANA, BOB"
-```
-
-## Lambdas
-
-`do` opens an anonymous function — a **lambda**. Single-expression lambdas
-use `->` and fit on one line:
-
-```
-add = do x, y -> x + y
-add(1, 2)          # == 3
-```
-
-Multi-statement lambdas drop the `->` and indent the body; the last expression
-is the return value:
-
-```
-double_then_add =
-  do x, y
-    z = x + y
-    z * 2
-
-double_then_add(2, 3)   # == 10
-```
-
-Lambdas are values, so they pipe naturally:
-
-```
-[1, 2, 3, 4]
-| List.filter(do x -> Integer.is_even(x))    # == [2, 4]
-| List.map(do x -> x * 10)                 # == [20, 40]
-```
-
-### Closures
-
-A lambda closes over the scope it was written in, so its body can read the
-names that surrounded it:
-
-```
-v = 1
-lb = do x -> x + v
-
-lb(2)   # == 3
-```
-
-A lambda may not refer to the name it is being bound to
-(`f = do x -> f(x)`): lambdas are anonymous and non-recursive, and a named
-`fn` is how you recurse.
-
-## Standard library
-
-Each type ships with a rich, pipe-friendly module. A few highlights (`Kernel`,
-`String`, `List`, and `Tuple` have inline-documented sources under
-[`stdlib/`](stdlib/); the remaining modules are not in this repo yet):
-
-- **`Kernel`** — the only module whose functions you call *bare*: `Kernel` is
-  implicitly in scope everywhere, so `print(x)` is sugar for `Kernel.print(x)`
-  and no `alias` is ever needed for it. It hosts:
-  - **console I/O** — `print`, `println`, `new_line`, `read`, `read_all`,
-    `read_password`, and `eprint`/`eprintln` for diagnostics on standard error
-  - **process / CLI** — `get_args`, `get_arg`, `get_env`, `sleep`, `exit`
-  - **time** — `now` (wall clock) and `monotonic` (only moves forward, so it is
-    the one to measure elapsed time with)
-  - **randomness** — `random`, `random_int` (not cryptographic)
-  - **collections** — `size`, `at`, `to_list`, each working on a list, tuple or
-    map, which is why the type modules do not repeat them; plus `is_empty`,
-    which also spans strings
-  - **conversions** — `to_string` (display form) and `inspect` (debug form: the
-    rendering the REPL prints), `to_integer`, `to_float`, and `type_of`
-  - **predicates** — the `is_*` family (`is_integer`, `is_string`, …) and
-    `is_truthy`, the falsy rule written down
-  - **calling** — `apply(f, args)`, to call a lambda whose arity the call site
-    does not know
-  - **actors** — `start_actor` / `call_actor` (see [Actors](#actors))
-  - **threads** — `spawn_thread` / `await_thread` (see [Threads](#threads))
-  - **seams** — `native(str, args)`, plus `current_stacktrace`
-
-  Every other module must be referenced by name (or `alias`ed).
-- **`Integer`** — `compare`/`clamp`/`min`/`max`, `times`/`upto`/`downto`,
-  `gcd`/`lcm`, `abs`, `digits`, predicates (`is_even`, `is_odd`, `is_zero`,
-  `is_positive`, `is_negative`).
-- **`Float`** — `round`/`floor`/`ceil` (all returning an `Integer`),
-  `abs`/`sqrt`/`min`/`max`/`clamp`/`compare`, constants (`pi()`, `e()`,
-  `infinity`, `nan`), predicates (`is_nan`, `is_infinite`, `is_finite`).
-- **`String`** — `<>` / `at` / `repeat`, casing, trimming, `split`/`replace`
-  (joining a list of strings is `List.join`), `slice`, `find`/`contains`,
-  conversions.
-- **`List`** — `map`/`filter`/`reject`/`reduce`/`flat_map`, `sort`/`uniq`,
-  `chunk_every`/`group_by`/`partition`, `append`/`insert`, slicing, search,
-  aggregates.
-- **`Map`** — `get`/`put`/`delete`/`update`/`merge` (`++` is sugar for `merge`),
-  `filter`/`reject` to screen pairs with a `(key, value)` predicate,
-  `keys`/`entries`/`from_list`, `map_keys`/`map_values`/`map_entries`,
-  `has_key`. Keys are integers, strings and symbols only.
-- **`Tuple`** — `set`, `last`, `from_list`/`to_map`. Read by position with
-  `at(t, 0)`, or destructure: `(a, b) = pair`.
-- **`Struct`** — `get`/`put`/`update`, `to_map`, `is_a`, `keys`/`values`.
-  Instances are built with the literal `Name{...}` syntax.
-- **`Date`** — a calendar date (`year`/`month`/`day`, no time-of-day or time
-  zone): `new`/`today`/`from_epoch_day`/`parse`, `to_epoch_day`/`to_iso`,
-  `add_days`/`add_years`, `compare`/`diff_days`/`day_of_week`,
-  `is_leap_year`/`days_in_month`. An out-of-range `day` normalizes rather than
-  raising.
-- **`NaiveDateTime`** — a `Date` plus `hour`/`minute`/`second`/`millisecond`,
-  with no time zone: `new`/`now`/`from_epoch_millis`/`parse`,
-  `to_epoch_millis`/`to_iso`, `add_days`/`add_hours`/`add_minutes`/
-  `add_seconds`, `compare`/`diff_millis`/`day_of_week`, `date` (drops the time
-  of day).
-- **`TimeZone`** — a name paired with a fixed offset from UTC (no IANA
-  database — no daylight saving, no historical rules, just `-720`..`840`
-  minutes checked against the real-world range): `utc`/`fixed`/
-  `from_offset_minutes`/`parse`, `offset_text`/`parse_offset_text` (the
-  shared `"Z"`/`±HH:MM` text form `DateTime.to_iso`/`parse` also use),
-  `compare`.
-- **`DateTime`** — a `NaiveDateTime` plus a fixed `offset_minutes` from UTC
-  (no time zone database — a plain numeric offset, not a zone name):
-  `new`/`now`/`now_at`/`now_in`/`from_epoch_millis`/`from_naive`/`parse`,
-  `to_utc_epoch_millis`/`to_iso`/`to_naive`/`to_utc`/`with_offset`/
-  `in_time_zone`/`time_zone`, `add_days`/`add_hours`/`add_minutes`/
-  `add_seconds`, `compare`/`diff_millis`/`day_of_week`. `compare`/
-  `diff_millis` order by the instant, not the printed local fields; `now_in`/
-  `in_time_zone` take a `TimeZone`, the rest a bare `offset_minutes`.
-- **`Actor`** — the trait a module implements to hold state and answer
-  messages; driven by `Kernel`'s `start_actor` / `call_actor`.
-- **`Global`** — one process-wide map held by an actor: `start`, `get`, `put`,
-  `clear`.
-- **`Config`** — the environment's `.env` file, read once at `start` and
-  answered from memory: `get(section, key)`, `path`. Read-only. Shared mutable state; see [Global](#global) before reaching for it.
-- **`Thread`** — one-shot parallel work: `spawn`, `await`, `await_all`, and a
-  parallel `map`/`each`; see [Threads](#threads).
-- **`Test`** — the marker trait a test module implements; see [Tests](#tests).
-- **`Module`** — `functions`, `apply`, `is_open`/`define`.
-- **`Nil`** — `or`/`or_else` nil-coalescing, `unwrap`/`expect`, predicates.
-
 ## Command line
 
 This repository *is* the interpreter — a Rust crate whose `src/` holds the
@@ -1534,17 +1617,17 @@ Build it once and the `ramos` binary drives everything:
 cargo build --release        # binary at target/release/ramos
 ```
 
-The binary takes a subcommand and (except for the REPL) a single `.ramos` file:
+The binary takes a subcommand and (except for the REPL) a single `.rmo` file:
 
 | Command                | What it does |
 | ---------------------- | ------------ |
-| `ramos run <file.ramos>`   | Execute a program — calls the file's [entrypoint](#entrypoints) `main()` |
+| `ramos run <file.rmo>`   | Execute a program — calls the file's [entrypoint](#entrypoints) `main()` |
 | `ramos repl`             | Start an interactive read-eval-print loop |
-| `ramos check <file.ramos>` | Enforce the strict rules and parse the file **without running it** |
-| `ramos ast <file.ramos>`   | Print the parsed abstract syntax tree |
-| `ramos lexer <file.ramos>` | Print the raw token stream |
+| `ramos check <file.rmo>` | Enforce the strict rules and parse the file **without running it** |
+| `ramos ast <file.rmo>`   | Print the parsed abstract syntax tree |
+| `ramos lexer <file.rmo>` | Print the raw token stream |
 | `ramos test [--quietly] [file]` | Run the tests under `src/test/`, or one file's — `--quietly` leaves the `@doc` lines out |
-| `ramos doctest [--stdlib DIR] [DIR]` | Run the `# ==` examples in `DIR/src/*.ramos`'s doc comments |
+| `ramos doctest [--stdlib DIR] [DIR]` | Run the `# ==` examples in `DIR/src/*.rmo`'s doc comments |
 | `ramos doc`              | Generate Hexdocs-style HTML for [`stdlib/`](stdlib/) into `docs/` |
 
 > `run` loads the standard library (embedded in the binary), then the entry
@@ -1553,7 +1636,7 @@ The binary takes a subcommand and (except for the REPL) a single `.ramos` file:
 > stdlib from disk instead, which is how the stdlib itself is developed.
 >
 > `ramos doc` reads the inline [`@module_doc`](#documentation-comments) / `@doc`
-> comments out of every `.ramos` file under [`stdlib/`](stdlib/) and writes a
+> comments out of every `.rmo` file under [`stdlib/`](stdlib/) and writes a
 > static site — one HTML page per module plus an `index.html` overview — into
 > `docs/`, alongside an `examples.html` guide built from the feature fixtures in
 > [`tests/fixtures/features/`](tests/fixtures/features/) — each fixture's header
@@ -1566,7 +1649,7 @@ The binary takes a subcommand and (except for the REPL) a single `.ramos` file:
 ### Running a program
 
 ```
-ramos run app.ramos        # loads the stdlib, then app.ramos, then calls App.main()
+ramos run app.rmo        # loads the stdlib, then app.rmo, then calls App.main()
 ```
 
 `run` calls the entrypoint's `main()` (see [Entrypoints](#entrypoints)); a file
@@ -1575,16 +1658,44 @@ of bare top-level statements runs top-to-bottom instead.
 ### Checking without running
 
 `check` is `run` up to but not including execution — it loads the entry file and
-everything it reaches, enforcing every [strict rule](#strict-rules-fails-interpreter)
+everything it reaches, enforcing every [strict rule](#strict)
 along the way and reporting the first violation with file, line, column and a
 source excerpt. Because it loads the whole program, it also catches a module
 that no file defines. Ideal for editors and CI:
 
 ```
-ramos check src/my_app/business/system_user.ramos
+ramos check src/my_app/business/system_user.rmo
 ```
 
-### The REPL
+### Inspecting the lexer and AST
+
+Two debug commands expose the interpreter's internals — useful when working on
+the language itself rather than a program:
+
+```
+ramos lexer app.rmo      # the INDENT / DEDENT / NEWLINE token stream
+ramos ast   app.rmo      # the parsed tree
+```
+
+Add `--dump` to either to print the source alongside the output. Both views are
+**syntax coloured** from the lexer's own token spans when stdout is a terminal;
+colour honours `NO_COLOR` and can be forced with `--color` / `--no-color`:
+
+```
+ramos ast --dump app.rmo --color | less -R   # keep colour through a pager
+ramos lexer app.rmo --no-color               # force plain output
+```
+
+The interpreter runs on a large stack (256 MB, a virtual reservation that costs
+only the pages it touches), because the standard library recurses once per list
+element. `RAMA_STACK_SIZE` resizes it when a program recurses deeper still — or
+to prove the point with less:
+
+```
+RAMA_STACK_SIZE=1G ramos run deep.rmo    # 1 gibibyte; also accepts 512M, 64K, a byte count
+```
+
+## The REPL
 
 ```
 ramos repl
@@ -1594,34 +1705,6 @@ An interactive session: type an expression, see its value. The prompt is
 indentation-aware, so multi-line `case`, `cond`, `fn` and `do` blocks carry
 across lines.
 
-### Inspecting the lexer and AST
-
-Two debug commands expose the interpreter's internals — useful when working on
-the language itself rather than a program:
-
-```
-ramos lexer app.ramos      # the INDENT / DEDENT / NEWLINE token stream
-ramos ast   app.ramos      # the parsed tree
-```
-
-Add `--dump` to either to print the source alongside the output. Both views are
-**syntax coloured** from the lexer's own token spans when stdout is a terminal;
-colour honours `NO_COLOR` and can be forced with `--color` / `--no-color`:
-
-```
-ramos ast --dump app.ramos --color | less -R   # keep colour through a pager
-ramos lexer app.ramos --no-color               # force plain output
-```
-
-The interpreter runs on a large stack (256 MB, a virtual reservation that costs
-only the pages it touches), because the standard library recurses once per list
-element. `RAMA_STACK_SIZE` resizes it when a program recurses deeper still — or
-to prove the point with less:
-
-```
-RAMA_STACK_SIZE=1G ramos run deep.ramos    # 1 gibibyte; also accepts 512M, 64K, a byte count
-```
-
 ## Project layout
 
 ```
@@ -1630,17 +1713,18 @@ RAMA_STACK_SIZE=1G ramos run deep.ramos    # 1 gibibyte; also accepts 512M, 64K,
 ├── Cargo.toml               # the `ramos` Rust crate (lib + binary)
 ├── src/                     # the interpreter (Rust): lexer, parser, interp/…
 ├── stdlib/                  # standard-library modules in Ramos (documented inline)
-│   ├── kernel.ramos  integer.ramos  float.ramos  list.ramos
-│   ├── map.ramos     string.ramos   tuple.ramos
-│   └── file.ramos    dir.ramos
-├── tests/                   # Rust integration tests + .ramos fixtures
+│   ├── kernel.rmo  integer.rmo  float.rmo  list.rmo
+│   ├── map.rmo     string.rmo   tuple.rmo
+│   └── file.rmo    dir.rmo
+├── tests/                   # Rust integration tests + .rmo fixtures
 └── editors/
     └── neovim/              # syntax / indent / filetype support
 ```
 
 ## Editor support
 
-Syntax highlighting, indentation and filetype detection for `*.ramos` are
+Syntax highlighting, indentation and filetype detection for `*.rmo` are
 available for **Neovim**. See [`editors/neovim/README.md`](editors/neovim/README.md)
 for install options (symlink, `:packadd`, or `runtimepath`).
 # ramos
+

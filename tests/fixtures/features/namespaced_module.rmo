@@ -1,0 +1,10 @@
+# namespaced_module.rmo — module names are CamelCase and may be namespaced with
+# `.`. The namespace maps to the file path: `MyApp.Business.SystemUser` lives at
+# `src/my_app/business/system_user.rmo`.
+
+module MyApp.Business.SystemUser
+  fn create(name)
+    (:ok, name)
+
+  fn describe()
+    "a namespaced module"

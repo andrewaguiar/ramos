@@ -1,0 +1,199 @@
+module Config
+  # @module_doc
+  #
+  # Config — the environment's `.env` file, read once and answered from memory.
+  #
+  # One actor named `:config` holds the settings for this run. `start` picks the
+  # file from the `APP_ENV` environment variable, reads it, parses it, and hands
+  # the result to the actor; from then on `get` is the only operation. Nothing
+  # writes — the actor is **read-only**, so what a program sees at the end of a
+  # run is what it saw at the start.
+  #
+  # The examples here and below are written against this `.env`:
+  #
+  #   # ramos doctest setup
+  #   settings =
+  #     """
+  #       [database]
+  #       host = "db.internal"
+  #       port = 5432
+  #     """
+  #   File.write(".env", settings)
+  #
+  # Read back, that is:
+  #
+  #   Config.start()                   # == :ok
+  #   Config.get("database", "host")   # == "db.internal"
+  #   Config.get("database", "port")   # == "5432"
+  #   Config.get("database", "user")   # == nil
+  #
+  # **Which file.** `APP_ENV` names the environment and the file is `.env`
+  # followed by its downcased name — `APP_ENV=PROD` reads `.env.prod`,
+  # `APP_ENV=staging` reads `.env.staging`. With `APP_ENV` unset or empty the
+  # plain `.env` is read. `path()` reports the choice without starting anything.
+  # The path is relative, so it resolves against the working directory the
+  # program was run from.
+  #
+  # **The format** is TOML, of the subset a settings file actually uses:
+  # `[section]` headers, `key = value` pairs, `#` comments, blank lines. Every
+  # value comes back as a `String` — `port = 5432` reads as `"5432"` — because
+  # the file cannot say what a value was meant to be and guessing would make
+  # `get` return a different type for the same key on a different deploy. Use
+  # `to_integer` on the way out when you need a number.
+  #
+  # Quotes around a value are stripped, single or double. An unquoted value ends
+  # at a trailing ` #` comment; a quoted one does not, so a `#` inside quotes is
+  # part of the value. A key that appears twice takes its last value, and a key
+  # written before the first `[section]` has no section to be asked for, so it
+  # is skipped.
+  #
+  # **Missing files are not an error to `get`.** `start` reports an unreadable
+  # file as `(:error, reason)` in `File`'s vocabulary, so the caller decides
+  # whether a run without config is fatal:
+  #
+  #   case Config.start()
+  #     :ok -> run()
+  #     (:error, :enoent) -> run_with_defaults()
+  #
+  # `Config` is an ordinary `Actor` implementation, so `list_actors`,
+  # `actor_stats(:config)` and `stop_actor(:config)` all work on it. For state
+  # that changes as a program runs, see `Global`.
+
+  implements Actor
+
+  fn call(f, args, state, config)
+    # @doc
+    #
+    # The server half. `:get` is the only operation — the settings are fixed
+    # for the run, so there is nothing else to ask for.
+    #
+    # @param f: the operation — `:get`
+    # @param args: `[section, key]`, the pair to look up
+    # @param state: the parsed settings, section by section
+    # @param config: unused — the file is read before the actor starts
+    # @return a `(value, state)` tuple; a read leaves the settings alone
+    case f
+      :get -> get_impl(args, state)
+
+  # client half — callers never write `call_actor` / `cast_actor`
+
+  fn start()
+    # @doc
+    #
+    # Read the environment's file and start the `:config` actor on it. Call it
+    # once, before anything reads; starting it twice is an error.
+    #
+    # Reading happens here rather than inside the actor, so a missing or
+    # unreadable file surfaces at the call that started it.
+    #
+    # @return `:ok`, or `(:error, reason)` when the file cannot be read —
+    #   `File`'s reasons, so `:enoent` is "no such file"
+    #
+    #   Config.start()   # == :ok
+    #   Config.get("database", "host")   # == "db.internal"
+    case File.read(path())
+      (:ok, text) -> start_actor(:config, Config, parse(text), {})
+      (:error, reason) -> (:error, reason)
+
+  fn get(section, key)
+    # @doc
+    #
+    # The value of `key` under `[section]`, as a `String`.
+    #
+    # @param section: the section name, without its brackets
+    # @param key: the key to look up within that section
+    # @return the value as a `String`, or `nil` when the section or the key is
+    #   not in the file
+    #
+    #   Config.start()
+    #   Config.get("database", "host")   # == "db.internal"
+    #   Config.get("database", "nope")   # == nil
+    #   Config.get("nope", "host")       # == nil
+    call_actor(:config, Config, :get, [section, key])
+
+  fn path()
+    # @doc
+    #
+    # The file `start` will read, chosen from `APP_ENV`: `.env.<downcased>`
+    # when it is set, and `.env` when it is not. Reads nothing itself.
+    #
+    # @return the path as a `String`
+    #
+    # With `APP_ENV=PROD` this reads `.env.prod`; unset, as here, it is `.env`:
+    #
+    #   Config.path()   # == ".env"
+    app_env = get_env("APP_ENV")
+    cond
+      app_env == nil -> ".env"
+      is_empty(String.trim(app_env)) -> ".env"
+      true -> ".env.#{String.downcase(String.trim(app_env))}"
+
+  # private functions — the TOML subset a settings file uses
+
+  fnp get_impl(args, state)
+    [section, key] = args
+    (Map.get(Map.get(state, section, {}), key, nil), state)
+
+  # Fold the lines into `(sections, current_section)`, carrying the section a
+  # `key = value` line belongs to until the next header replaces it.
+  fnp parse(text)
+    lines = String.split(text, "\n")
+    parsed = List.reduce(lines, ({}, nil), do acc, line -> parse_line(acc, line))
+    at(parsed, 0)
+
+  fnp parse_line(acc, raw)
+    (sections, current) = acc
+    line = String.trim(raw)
+    cond
+      is_skippable(line) -> acc
+      is_header(line) -> (sections, header_name(line))
+      current == nil -> acc
+      true -> (put_pair(sections, current, line), current)
+
+  fnp is_skippable(line)
+    is_empty(line) or String.starts_with(line, "#")
+
+  fnp is_header(line)
+    String.starts_with(line, "[") and String.ends_with(line, "]")
+
+  fnp header_name(line)
+    String.trim(String.slice(line, 1, String.length(line) - 2))
+
+  # A pair line without an `=` says nothing, so it is dropped rather than
+  # stored under an empty key.
+  fnp put_pair(sections, section, line)
+    split = String.find(line, "=")
+    cond
+      split == nil -> sections
+      true -> put_entry(sections, section, key_of(line, split), value_of(line, split))
+
+  fnp put_entry(sections, section, key, value)
+    Map.put(sections, section, Map.put(Map.get(sections, section, {}), key, value))
+
+  fnp key_of(line, split)
+    String.trim(String.slice(line, 0, split))
+
+  fnp value_of(line, split)
+    unquote(String.trim(String.slice(line, split + 1, String.length(line))))
+
+  # Quotes win over comments: a value that opens with one ends at its closing
+  # quote, so a `#` inside is part of the value and a comment after it is not.
+  fnp unquote(value)
+    cond
+      String.starts_with(value, "\"") -> take_quoted(value, "\"")
+      String.starts_with(value, "'") -> take_quoted(value, "'")
+      true -> drop_comment(value)
+
+  # An unterminated quote is taken as written rather than swallowing the line.
+  fnp take_quoted(value, quote)
+    rest = String.slice(value, 1, String.length(value) - 1)
+    close = String.find(rest, quote)
+    cond
+      close == nil -> value
+      true -> String.slice(rest, 0, close)
+
+  fnp drop_comment(value)
+    mark = String.find(value, " #")
+    cond
+      mark == nil -> value
+      true -> String.trim(String.slice(value, 0, mark))

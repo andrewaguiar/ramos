@@ -1,0 +1,107 @@
+module Dir
+  # @module_doc
+  #
+  # Dir — inspecting and manipulating directories on the host filesystem.
+  #
+  # Like `File`, every function here is *effectful* and reports outcome as a
+  # value you pattern match rather than by raising:
+  #
+  #   - fallible operations return `(:ok, value)` or `(:error, reason)`
+  #   - operations with nothing to hand back return the bare `:ok`
+  #   - `exists` and `is_dir` return a plain `true`/`false`
+  #
+  # `reason` is a lowercase symbol — `:enoent` (no such directory), `:eacces`
+  # (permission denied), `:eexist`, or `:io_error`:
+  #
+  #   case Dir.ls("src")
+  #     (:ok, entries) -> List.each(entries, do e -> print(e))
+  #     (:error, :enoent) -> print("no such directory")
+  #     (:error, reason) -> (:error, (:dir_failed, reason))
+  #
+  # The current working directory is process-wide state: `cd` changes it for
+  # every later relative path (in `Dir` and `File` alike), and `cwd` reads it.
+  #
+  # Conventions:
+  #   - paths are host-native strings; relative paths resolve against the cwd.
+  #   - `ls` returns bare entry names (not full paths), sorted.
+  #   - `mkdir` creates parent directories as needed and is happy if the
+  #     directory already exists.
+
+  fn cwd()
+    # @doc
+    #
+    # Returns the process's current working directory.
+    #
+    # @return `(:ok, path)`, or `(:error, reason)` if it cannot be determined
+    #
+    #   Dir.cwd()   # (:ok, "/home/andrew/dev/ramos") — whatever it happens to be
+    native("dir_current", [])
+
+  fn cd(path)
+    # @doc
+    #
+    # Changes the process's current working directory to `path`. Affects every
+    # relative path used afterwards, in both `Dir` and `File`.
+    #
+    # @param path: the directory to change into
+    # @return `:ok`, or `(:error, reason)` (e.g. `:enoent`) on failure
+    #
+    #   Dir.mkdir("src")
+    #   Dir.cd("src")   # == :ok
+    native("dir_change", [path])
+
+  fn mkdir(path)
+    # @doc
+    #
+    # Creates the directory at `path`, including any missing parent directories
+    # (like `mkdir -p`). Succeeds if the directory already exists.
+    #
+    # @param path: the directory to create
+    # @return `:ok`, or `(:error, reason)` on failure
+    #
+    #   Dir.mkdir("build/cache")   # == :ok
+    native("dir_make", [path])
+
+  fn ls(path)
+    # @doc
+    #
+    # Lists the entries of the directory at `path` — the bare names of the files
+    # and subdirectories it contains (not full paths), sorted.
+    #
+    # @param path: the directory to list
+    # @return `(:ok, names)` (a sorted list of strings), or `(:error, reason)`
+    #
+    #   Dir.mkdir("stdlib")
+    #   File.write("stdlib/dir.rmo", "")
+    #   File.write("stdlib/file.rmo", "")
+    #   Dir.ls("stdlib")   # == (:ok, ["dir.rmo", "file.rmo"])
+    native("dir_list", [path])
+
+  fn exists(path)
+    # @doc
+    #
+    # Returns `true` if something exists at `path` (a file or a directory), else
+    # `false`. Use `is_dir` to require that it is a directory.
+    #
+    # @param path: the path to test
+    # @return `true` if `path` exists, else `false`
+    #
+    #   Dir.mkdir("stdlib")
+    #   Dir.exists("stdlib")   # == true
+    #   Dir.exists("missing")  # == false
+    native("path_exists", [path])
+
+  fn is_dir(path)
+    # @doc
+    #
+    # Returns `true` if `path` exists and is a directory, else `false` (including
+    # when `path` is a regular file or does not exist).
+    #
+    # @param path: the path to test
+    # @return `true` if `path` is a directory, else `false`
+    #
+    #   Dir.mkdir("stdlib")
+    #   File.write("stdlib/dir.rmo", "")
+    #   Dir.is_dir("stdlib")           # == true
+    #   Dir.is_dir("stdlib/dir.rmo")  # == false
+    native("path_is_dir", [path])

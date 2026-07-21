@@ -1,0 +1,14 @@
+# implements.rmo — a struct declares the traits it implements with
+# `implements`, at the top of the struct body. It must define every function
+# the trait requires; the trait's defaults come for free.
+
+struct Person
+  implements Helloable
+  implements Describable
+
+  attributes
+    name: nil
+    age: 0
+
+  fn is_over_eighteen(self)   # required by Helloable
+    self.age > 18

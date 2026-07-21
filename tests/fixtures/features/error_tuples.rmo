@@ -1,0 +1,30 @@
+# error_tuples.rmo — Ramos has no exceptions. A function that can fail returns
+# a tagged tuple instead: `(:ok, value)` on success, `(:error, (:type, msg))`
+# on failure. The error is an ordinary value, so it is matched like any other.
+
+fn withdraw(balance, amount)
+  cond
+    amount <= 0 -> (:error, (:invalid_amount, "amount must be positive"))
+    amount > balance -> (:error, (:insufficient_funds, "balance is too low"))
+    true -> (:ok, balance - amount)
+
+# `case` reads the tag, and the error's own shape destructures in the pattern,
+# so each failure is handled where it is named.
+result =
+  case withdraw(100, 250)
+    (:ok, remaining) -> "left: #{remaining}"
+    (:error, (:invalid_amount, message)) -> "bad request: #{message}"
+    (:error, (:insufficient_funds, message)) -> "declined: #{message}"
+    (:error, (_, message)) -> "failed: #{message}"
+
+print(result)
+
+# `run` chains steps that each return `(:ok, _)`, stopping at the first one that
+# does not match — the flat alternative to nesting a `case` per step.
+total =
+  run
+    (:ok, after_rent) = withdraw(1000, 400)
+    (:ok, after_food) = withdraw(after_rent, 200)
+    after_food
+
+print(total)

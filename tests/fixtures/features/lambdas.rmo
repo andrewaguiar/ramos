@@ -1,0 +1,19 @@
+# lambdas.rmo — anonymous functions. Lambdas are values, so they can be bound,
+# passed and piped.
+
+# Single-expression: use `->` and stay on one line.
+add = do x, y -> x + y
+three = add(1, 2)
+
+# Multi-statement: drop the `->`, indent the body, last expression returns.
+# The body is a block, so — like a `case` — it starts on the line after the `=`.
+double_then_add =
+  do x, y
+    z = x + y
+    z * 2
+
+ten = double_then_add(2, 3)
+
+# No parameters, and passed straight into a function call.
+answer = do -> 42
+doubled = List.map([1, 2, 3], do x -> x * 2)

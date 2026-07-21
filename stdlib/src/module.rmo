@@ -1,0 +1,61 @@
+module Module
+  # @module_doc
+  #
+  # Module — introspecting and calling into modules by value.
+  #
+  # A module is itself a value in Ramos: `Kernel` (or `Integer`, or any module
+  # written) can be bound, passed around, and stored — `is_module` tests for
+  # one and `type_of` names it. This module is what you do with one once you
+  # have it, when the function to call is not known at the call site.
+  #
+  #   # ramos doctest setup
+  #   module Greeter
+  #     fn hello(name)
+  #       "hi #{name}"
+  #
+  #     fnp secret()
+  #       42
+  #
+  #   Module.functions(Greeter)                    # == ["hello"]
+  #   Module.apply(Greeter, "hello", ["Andrew"])    # == "hi Andrew"
+  #
+  # Conventions:
+  #   - both functions only ever see a module's *public* functions — `fnp`
+  #     stays exactly as unreachable from here as it is from a written
+  #     `Greeter.secret()` call outside the module.
+  #   - a function is named with a `String` (`"hello"`), not a `Symbol` —
+  #     matching `type_of`, since a module's own name is a `String` too.
+
+  fn functions(m)
+    # @doc
+    #
+    # The names of the public functions `m` defines, in declaration order.
+    # `fnp` functions are never included — they are not callable from outside
+    # `m` either.
+    #
+    # @param m: the module to inspect
+    # @return a `List` of `String` function names, in declaration order
+    #
+    #   Module.functions(Greeter)   # == ["hello"]
+    native("module_functions", [m])
+
+  fn apply(m, fn_name, args)
+    # @doc
+    #
+    # Resolves `fn_name` on module `m` and calls it with `args`, a list of its
+    # arguments — like `Kernel.apply`, but the function is looked up by name on
+    # a module rather than held as a lambda. Use it when *which* function to
+    # call is only known at runtime (a dispatch table, a plugin name read from
+    # config); otherwise call the function directly.
+    #
+    # Has no Ramos body: the interpreter intercepts the call, because
+    # resolving `fn_name` and running it needs the evaluator, which a native
+    # cannot reach. Raises if `m` has no public function named `fn_name`.
+    #
+    # @param m: the module to call a function on
+    # @param fn_name: the function's name, as a `String`
+    # @param args: a `List` of the arguments to pass
+    # @return whatever the resolved function returns
+    #
+    #   Module.apply(Integer, "abs", [-7])   # == 7
+    module_apply(m, fn_name, args)

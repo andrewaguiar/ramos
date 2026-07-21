@@ -1,0 +1,12 @@
+# trait.rmo — a trait declares a contract of functions. A function *with* a
+# body is a default implementation; a function *without* one is required, and
+# every implementer must define it.
+
+trait Helloable
+  fn hello(self)
+    print("Ola #{self.name}, eu tenho #{self.age}")
+
+  fn describe(self)
+    "#{self.name} (#{self.age})"
+
+  fn is_over_eighteen(self)   # required, no body

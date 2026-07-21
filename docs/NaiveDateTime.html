@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NaiveDateTime — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html" class="current">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">NaiveDateTime</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>NaiveDateTime — a calendar date and a time of day, with no time zone. <code><a href="Date.html">Date</a></code> plus <code>hour</code>/<code>minute</code>/<code>second</code>/<code>millisecond</code>.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>NaiveDateTime — a calendar date and a time of day, with no time zone. <code><a href="Date.html">Date</a></code> plus <code>hour</code>/<code>minute</code>/<code>second</code>/<code>millisecond</code>.</p>
+<p>&quot;Naive&quot; is the standard term for this shape: a wall-clock reading with no attached zone or offset, so it cannot be converted to a precise instant on its own. Reach for <code><a href="DateTime.html">DateTime</a></code> when the offset from UTC matters — logging a timestamp, scheduling something relative to now, comparing readings taken in different places.</p>
+<pre><code>dt = <span class="tok-type">NaiveDateTime</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">2</span>, <span class="tok-lit">9</span>, <span class="tok-lit">13</span>, <span class="tok-lit">45</span>, <span class="tok-lit">30</span>)
+dt.hour     <span class="tok-com"># == 13</span>
+dt.minute   <span class="tok-com"># == 45</span></code></pre>
+<p>As with <code><a href="Date.html">Date</a></code>, an out-of-range field normalizes rather than raising — <code>second: 60</code> rolls into the next minute, <code>hour: -1</code> into the previous day&#39;s last hour:</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">2</span>, <span class="tok-lit">9</span>, <span class="tok-lit">23</span>, <span class="tok-lit">59</span>, <span class="tok-lit">60</span>)   <span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 10, hour: 0, minute: 0, second: 0, millisecond: 0}</span></code></pre>
+<p>Conventions:</p>
+<ul><li><code>compare</code> follows <code><a href="Integer.html#compare">Integer.compare</a></code>: <code>-1</code>, <code>0</code>, <code>1</code>.</li><li><code>to_iso</code>/<code>parse</code> round-trip through <code>&quot;YYYY-MM-DDTHH:MM:SS.mmm&quot;</code>, always with milliseconds — the precision <code>now</code> reads the clock at.</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#new/6" class="fn-sig"><code>fn new(year, month, day, hour, minute, second)</code></a>
+    <span class="fn-summary">Builds a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> with <code>millisecond: 0</code>. Every field past <code>year</code> normalizes when it overflows or underflows its natural range, the same way <code><a href="Date.html#new">Date.new</a></code>&#39;s <code>day</code> does.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#now/0" class="fn-sig"><code>fn now()</code></a>
+    <span class="fn-summary">The current date and time, read from the wall clock as UTC.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#from_epoch_millis/1" class="fn-sig"><code>fn from_epoch_millis(ms)</code></a>
+    <span class="fn-summary">The <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> that is <code>ms</code> milliseconds after 1970-01-01T00:00:00.000 (millisecond <code>0</code>). Negative values reach before the epoch.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#parse/1" class="fn-sig"><code>fn parse(text)</code></a>
+    <span class="fn-summary">Parses <code>&quot;YYYY-MM-DDTHH:MM:SS&quot;</code> or <code>&quot;YYYY-MM-DD HH:MM:SS&quot;</code> — either a <code>T</code> or a plain space between the date and the time, as <code>to_iso</code> renders or as the <code>N&quot;...&quot;</code> sigil is written. The seconds&#39; fractional part is optional and any number of digits (padded or truncated to milliseconds): <code>&quot;...:30&quot;</code>, <code>&quot;...:30.5&quot;</code> and <code>&quot;...:30.123456&quot;</code> are all valid, meaning <code>0</code>, <code>500</code> and <code>123</code> milliseconds respectively.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#date/1" class="fn-sig"><code>fn date(self)</code></a>
+    <span class="fn-summary">The <code><a href="Date.html">Date</a></code> half of <code>self</code>, dropping the time of day.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_epoch_millis/1" class="fn-sig"><code>fn to_epoch_millis(self)</code></a>
+    <span class="fn-summary"><code>self</code> as milliseconds since 1970-01-01T00:00:00.000.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_iso/1" class="fn-sig"><code>fn to_iso(self)</code></a>
+    <span class="fn-summary"><code>self</code> rendered as <code>&quot;YYYY-MM-DDTHH:MM:SS.mmm&quot;</code>, zero-padded.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_days/2" class="fn-sig"><code>fn add_days(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> days, keeping the time of day.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_weeks/2" class="fn-sig"><code>fn add_weeks(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> weeks (<code>n * 7</code> days), keeping the time of day.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_months/2" class="fn-sig"><code>fn add_months(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> months, keeping the time of day — <code><a href="Date.html#add_months">Date.add_months</a></code> applied to the date half, with the day-overflow normalization that implies.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_hours/2" class="fn-sig"><code>fn add_hours(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> hours.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_minutes/2" class="fn-sig"><code>fn add_minutes(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> minutes.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_seconds/2" class="fn-sig"><code>fn add_seconds(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> seconds.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#compare/2" class="fn-sig"><code>fn compare(self, other)</code></a>
+    <span class="fn-summary">Orders two date-times as <code>-1</code>, <code>0</code> or <code>1</code> — the shape <code><a href="Integer.html#compare">Integer.compare</a></code> uses, since there is no built-in <code>&lt;</code>/<code>&gt;</code> for structs.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#diff_millis/2" class="fn-sig"><code>fn diff_millis(self, other)</code></a>
+    <span class="fn-summary">The number of milliseconds from <code>other</code> to <code>self</code> — positive when <code>self</code> is later, negative when earlier.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#day_of_week/1" class="fn-sig"><code>fn day_of_week(self)</code></a>
+    <span class="fn-summary">The day of the week <code>self</code> falls on. Delegates to <code><a href="Date.html#day_of_week">Date.day_of_week</a></code>.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#raw_millis/7" class="fn-sig"><code>fnp raw_millis(year, month, day, hour, minute, second, millisecond)</code></a>
+    <span class="fn-summary">(private) Milliseconds since the epoch for the given fields, computed straight from the unchecked <code>date_to_epoch_day</code> native — the shared arithmetic behind <code>new</code>, <code>parse</code> and <code>to_epoch_millis</code>.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#shift/2" class="fn-sig"><code>fnp shift(self, millis)</code></a>
+    <span class="fn-summary">(private) <code>self</code> moved by <code>millis</code> milliseconds. Backs the <code>add_*</code> family.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#floor_div/2" class="fn-sig"><code>fnp floor_div(a, b)</code></a>
+    <span class="fn-summary">(private) <code>a</code> divided by <code>b</code>, rounding toward negative infinity — unlike <code>/</code>, which truncates toward zero. <code>b</code> is assumed positive. Needed to turn a possibly-negative millisecond count into the right epoch day: <code>%</code> (floor modulo) already gives the right millisecond-of-day on its own, but <code>/</code> alone would round a negative count the wrong way.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#millis_from_fraction/1" class="fn-sig"><code>fnp millis_from_fraction(digits)</code></a>
+    <span class="fn-summary">(private) A fractional-second string of any length as milliseconds: <code>&quot;5&quot;</code> is <code>500</code>, <code>&quot;123456&quot;</code> truncates to <code>123</code>. Backs <code>parse</code>.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#pad/2" class="fn-sig"><code>fnp pad(n, width)</code></a>
+    <span class="fn-summary">(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>to_iso</code>.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="new/6">
+  <h3 class="fn-title"><code>fn new(year, month, day, hour, minute, second)</code> <a class="anchor" href="#new/6">¶</a></h3>
+<p>Builds a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> with <code>millisecond: 0</code>. Every field past <code>year</code> normalizes when it overflows or underflows its natural range, the same way <code><a href="Date.html#new">Date.new</a></code>&#39;s <code>day</code> does.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">2</span>, <span class="tok-lit">9</span>, <span class="tok-lit">13</span>, <span class="tok-lit">45</span>, <span class="tok-lit">30</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 0}</span>
+<span class="tok-type">NaiveDateTime</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">2</span>, <span class="tok-lit">9</span>, <span class="tok-lit">24</span>, <span class="tok-lit">0</span>, <span class="tok-lit">0</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 10, hour: 0, minute: 0, second: 0, millisecond: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>year</code></dt>
+  <dd>the calendar year, any integer</dd>
+  <dt><code>month</code></dt>
+  <dd>the month, <code>1</code>..<code>12</code></dd>
+  <dt><code>day</code></dt>
+  <dd>the day of month; out-of-range values roll over</dd>
+  <dt><code>hour</code></dt>
+  <dd>the hour, <code>0</code>..<code>23</code>; out-of-range values roll over</dd>
+  <dt><code>minute</code></dt>
+  <dd>the minute, <code>0</code>..<code>59</code>; out-of-range values roll over</dd>
+  <dt><code>second</code></dt>
+  <dd>the second, <code>0</code>..<code>59</code>; out-of-range values roll over</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="now/0">
+  <h3 class="fn-title"><code>fn now()</code> <a class="anchor" href="#now/0">¶</a></h3>
+<p>The current date and time, read from the wall clock as UTC.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.now().year &gt; <span class="tok-lit">2000</span>   <span class="tok-com"># == true</span></code></pre>
+<p class="returns"><strong>Returns:</strong> the current <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="from_epoch_millis/1">
+  <h3 class="fn-title"><code>fn from_epoch_millis(ms)</code> <a class="anchor" href="#from_epoch_millis/1">¶</a></h3>
+<p>The <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> that is <code>ms</code> milliseconds after 1970-01-01T00:00:00.000 (millisecond <code>0</code>). Negative values reach before the epoch.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.from_epoch_millis(<span class="tok-lit">0</span>)
+<span class="tok-com"># == NaiveDateTime{year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, millisecond: 0}</span>
+<span class="tok-type">NaiveDateTime</span>.from_epoch_millis(-<span class="tok-lit">1</span>)
+<span class="tok-com"># == NaiveDateTime{year: 1969, month: 12, day: 31, hour: 23, minute: 59, second: 59, millisecond: 999}</span></code></pre>
+<dl class="params">
+  <dt><code>ms</code></dt>
+  <dd>milliseconds since the epoch, as an <code><a href="Integer.html">Integer</a></code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the corresponding <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="parse/1">
+  <h3 class="fn-title"><code>fn parse(text)</code> <a class="anchor" href="#parse/1">¶</a></h3>
+<p>Parses <code>&quot;YYYY-MM-DDTHH:MM:SS&quot;</code> or <code>&quot;YYYY-MM-DD HH:MM:SS&quot;</code> — either a <code>T</code> or a plain space between the date and the time, as <code>to_iso</code> renders or as the <code>N&quot;...&quot;</code> sigil is written. The seconds&#39; fractional part is optional and any number of digits (padded or truncated to milliseconds): <code>&quot;...:30&quot;</code>, <code>&quot;...:30.5&quot;</code> and <code>&quot;...:30.123456&quot;</code> are all valid, meaning <code>0</code>, <code>500</code> and <code>123</code> milliseconds respectively.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.parse(<span class="tok-str">&quot;2024-02-09T13:45:30.500&quot;</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 500}</span>
+<span class="tok-type">NaiveDateTime</span>.parse(<span class="tok-str">&quot;2024-02-09 13:45:30.123456&quot;</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 123}</span></code></pre>
+<dl class="params">
+  <dt><code>text</code></dt>
+  <dd>a date-time in <code>&quot;YYYY-MM-DD[T ]HH:MM:SS[.fraction]&quot;</code> form</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the corresponding <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="date/1">
+  <h3 class="fn-title"><code>fn date(self)</code> <a class="anchor" href="#date/1">¶</a></h3>
+<p>The <code><a href="Date.html">Date</a></code> half of <code>self</code>, dropping the time of day.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.date(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">13</span>})
+<span class="tok-com"># == Date{year: 2024, month: 2, day: 9}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to read</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the <code><a href="Date.html">Date</a></code> self falls on</p>
+</div>
+<div class="fn-detail" id="to_epoch_millis/1">
+  <h3 class="fn-title"><code>fn to_epoch_millis(self)</code> <a class="anchor" href="#to_epoch_millis/1">¶</a></h3>
+<p><code>self</code> as milliseconds since 1970-01-01T00:00:00.000.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.to_epoch_millis(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">1970</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == 0</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to convert</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> millisecond count, negative before the epoch</p>
+</div>
+<div class="fn-detail" id="to_iso/1">
+  <h3 class="fn-title"><code>fn to_iso(self)</code> <a class="anchor" href="#to_iso/1">¶</a></h3>
+<p><code>self</code> rendered as <code>&quot;YYYY-MM-DDTHH:MM:SS.mmm&quot;</code>, zero-padded.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.to_iso(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">3</span>, minute: <span class="tok-lit">5</span>, second: <span class="tok-lit">9</span>, millisecond: <span class="tok-lit">7</span>})
+<span class="tok-com"># == &quot;2024-02-09T03:05:09.007&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to render</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the ISO-8601-shaped string</p>
+</div>
+<div class="fn-detail" id="add_days/2">
+  <h3 class="fn-title"><code>fn add_days(self, n)</code> <a class="anchor" href="#add_days/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> days, keeping the time of day.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.add_days(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">28</span>, hour: <span class="tok-lit">12</span>}, <span class="tok-lit">1</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 29, hour: 12}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many days to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_weeks/2">
+  <h3 class="fn-title"><code>fn add_weeks(self, n)</code> <a class="anchor" href="#add_weeks/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> weeks (<code>n * 7</code> days), keeping the time of day.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.add_weeks(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>, hour: <span class="tok-lit">12</span>}, <span class="tok-lit">1</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 1, day: 8, hour: 12}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many weeks to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_months/2">
+  <h3 class="fn-title"><code>fn add_months(self, n)</code> <a class="anchor" href="#add_months/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> months, keeping the time of day — <code><a href="Date.html#add_months">Date.add_months</a></code> applied to the date half, with the day-overflow normalization that implies.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.add_months(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">15</span>, hour: <span class="tok-lit">12</span>}, <span class="tok-lit">1</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 15, hour: 12}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many months to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_hours/2">
+  <h3 class="fn-title"><code>fn add_hours(self, n)</code> <a class="anchor" href="#add_hours/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> hours.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.add_hours(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">23</span>}, <span class="tok-lit">2</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 10, hour: 1}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many hours to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_minutes/2">
+  <h3 class="fn-title"><code>fn add_minutes(self, n)</code> <a class="anchor" href="#add_minutes/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> minutes.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.add_minutes(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">0</span>, minute: <span class="tok-lit">30</span>}, <span class="tok-lit">45</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 1, minute: 15}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many minutes to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_seconds/2">
+  <h3 class="fn-title"><code>fn add_seconds(self, n)</code> <a class="anchor" href="#add_seconds/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> seconds.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.add_seconds(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, second: <span class="tok-lit">45</span>}, <span class="tok-lit">30</span>)
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 9, minute: 1, second: 15}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many seconds to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="NaiveDateTime.html">NaiveDateTime</a></code></p>
+</div>
+<div class="fn-detail" id="compare/2">
+  <h3 class="fn-title"><code>fn compare(self, other)</code> <a class="anchor" href="#compare/2">¶</a></h3>
+<p>Orders two date-times as <code>-1</code>, <code>0</code> or <code>1</code> — the shape <code><a href="Integer.html#compare">Integer.compare</a></code> uses, since there is no built-in <code>&lt;</code>/<code>&gt;</code> for structs.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.compare(<span class="tok-type">NaiveDateTime</span>{hour: <span class="tok-lit">1</span>}, <span class="tok-type">NaiveDateTime</span>{hour: <span class="tok-lit">2</span>})   <span class="tok-com"># == -1</span>
+<span class="tok-type">NaiveDateTime</span>.compare(<span class="tok-type">NaiveDateTime</span>{hour: <span class="tok-lit">2</span>}, <span class="tok-type">NaiveDateTime</span>{hour: <span class="tok-lit">1</span>})   <span class="tok-com"># == 1</span>
+<span class="tok-type">NaiveDateTime</span>.compare(<span class="tok-type">NaiveDateTime</span>{hour: <span class="tok-lit">1</span>}, <span class="tok-type">NaiveDateTime</span>{hour: <span class="tok-lit">1</span>})   <span class="tok-com"># == 0</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the first date-time</dd>
+  <dt><code>other</code></dt>
+  <dd>the second date-time</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>-1</code> when <code>self</code> is earlier, <code>1</code> when later, <code>0</code> when equal</p>
+</div>
+<div class="fn-detail" id="diff_millis/2">
+  <h3 class="fn-title"><code>fn diff_millis(self, other)</code> <a class="anchor" href="#diff_millis/2">¶</a></h3>
+<p>The number of milliseconds from <code>other</code> to <code>self</code> — positive when <code>self</code> is later, negative when earlier.</p>
+<pre><code><span class="tok-type">NaiveDateTime</span>.diff_millis(<span class="tok-type">NaiveDateTime</span>{second: <span class="tok-lit">10</span>}, <span class="tok-type">NaiveDateTime</span>{second: <span class="tok-lit">1</span>})   <span class="tok-com"># == 9000</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the later (or earlier) date-time</dd>
+  <dt><code>other</code></dt>
+  <dd>the date-time to measure from</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> millisecond count</p>
+</div>
+<div class="fn-detail" id="day_of_week/1">
+  <h3 class="fn-title"><code>fn day_of_week(self)</code> <a class="anchor" href="#day_of_week/1">¶</a></h3>
+<p>The day of the week <code>self</code> falls on. Delegates to <code><a href="Date.html#day_of_week">Date.day_of_week</a></code>.</p>
+<pre><code>`:thursday`, `:friday`, `:saturday`</code></pre>
+<pre><code><span class="tok-type">NaiveDateTime</span>.day_of_week(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">1970</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == :thursday</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to inspect</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> one of <code>:sunday</code>, <code>:monday</code>, <code>:tuesday</code>, <code>:wednesday</code>,</p>
+</div>
+<div class="fn-detail" id="raw_millis/7">
+  <h3 class="fn-title"><code>fnp raw_millis(year, month, day, hour, minute, second, millisecond)</code> <span class="badge private">private</span> <a class="anchor" href="#raw_millis/7">¶</a></h3>
+<p>(private) Milliseconds since the epoch for the given fields, computed straight from the unchecked <code>date_to_epoch_day</code> native — the shared arithmetic behind <code>new</code>, <code>parse</code> and <code>to_epoch_millis</code>.</p>
+</div>
+<div class="fn-detail" id="shift/2">
+  <h3 class="fn-title"><code>fnp shift(self, millis)</code> <span class="badge private">private</span> <a class="anchor" href="#shift/2">¶</a></h3>
+<p>(private) <code>self</code> moved by <code>millis</code> milliseconds. Backs the <code>add_*</code> family.</p>
+</div>
+<div class="fn-detail" id="floor_div/2">
+  <h3 class="fn-title"><code>fnp floor_div(a, b)</code> <span class="badge private">private</span> <a class="anchor" href="#floor_div/2">¶</a></h3>
+<p>(private) <code>a</code> divided by <code>b</code>, rounding toward negative infinity — unlike <code>/</code>, which truncates toward zero. <code>b</code> is assumed positive. Needed to turn a possibly-negative millisecond count into the right epoch day: <code>%</code> (floor modulo) already gives the right millisecond-of-day on its own, but <code>/</code> alone would round a negative count the wrong way.</p>
+</div>
+<div class="fn-detail" id="millis_from_fraction/1">
+  <h3 class="fn-title"><code>fnp millis_from_fraction(digits)</code> <span class="badge private">private</span> <a class="anchor" href="#millis_from_fraction/1">¶</a></h3>
+<p>(private) A fractional-second string of any length as milliseconds: <code>&quot;5&quot;</code> is <code>500</code>, <code>&quot;123456&quot;</code> truncates to <code>123</code>. Backs <code>parse</code>.</p>
+</div>
+<div class="fn-detail" id="pad/2">
+  <h3 class="fn-title"><code>fnp pad(n, width)</code> <span class="badge private">private</span> <a class="anchor" href="#pad/2">¶</a></h3>
+<p>(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>to_iso</code>.</p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

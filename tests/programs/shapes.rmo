@@ -1,0 +1,14 @@
+# Structs, traits and trait defaults, across a small module tree.
+module Shapes
+  alias Geometry.Square
+  alias Geometry.Rect
+
+  fn main()
+    println(Square{side: 3}.describe())
+    println(Rect{width: 2, height: 5}.describe())
+
+    bigger =
+      Square{side: 3}
+      | Struct.put(:side, 4)
+    println(bigger.area())
+    println(Struct.is_a(bigger, Square))

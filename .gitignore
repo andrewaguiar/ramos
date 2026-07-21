@@ -1,0 +1,17 @@
+# Cargo build output
+/target
+
+# Release artifacts staged by release.sh
+/dist
+
+# rustfmt backups
+**/*.rs.bk
+
+# MSVC debug info
+*.pdb
+
+# macOS Finder metadata
+.DS_Store
+
+# Cargo.lock is committed: this crate ships a binary (`ramos`), so a locked,
+# reproducible dependency set is what we want. Do not ignore it.

@@ -1,0 +1,765 @@
+module Kernel
+  # @module_doc
+  #
+  # Kernel — the implicit, always-in-scope module of built-ins.
+  #
+  # `Kernel` is auto-imported into every scope, so its functions are the only
+  # ones you call *bare* — `print(x)` is sugar for `Kernel.print(x)`, and no
+  # `alias` is ever needed for it. Every other module must be named or
+  # `alias`ed.
+  #
+  # It is the seam between Ramos code and the host runtime. Its functions have no
+  # Ramos bodies: each delegates to a native handler via `native(str, args)`, which
+  # the interpreter intercepts and dispatches. As a result `Kernel` collects the
+  # primitives that can't reasonably be expressed in Ramos itself:
+  #
+  #   - console I/O      — `print`, `println`, `new_line`, `read`, `read_all`,
+  #                        `read_password`, `eprint`, `eprintln`
+  #   - process          — `get_args`, `get_arg`, `get_env`, `sleep`, `exit`
+  #   - time             — `now` (wall clock), `monotonic` (elapsed)
+  #   - randomness       — `random`, `random_int` (not cryptographic)
+  #   - collection ops   — `size` (List/Tuple/Map), `at` (List/Tuple),
+  #                        `to_list`, `is_empty` (also strings)
+  #   - conversions      — `to_string` (display), `inspect` (debug),
+  #                        `to_integer`, `to_float`, `type_of`
+  #                        (there is deliberately no `to_symbol` — see below)
+  #   - calling          — `apply(f, args)`, `module_apply(m, fn_name, args)`
+  #                        (see the `Module` module)
+  #   - actors           — `start_actor`, `call_actor`, `cast_actor`,
+  #                        `list_actors`, `actor_stats`, `is_actor_started`,
+  #                        `stop_actor`
+  #   - diagnostics      — `current_stacktrace`
+  #   - type predicates  — `is_integer`, `is_string`, `is_list`, …
+  #   - truthiness       — `is_truthy` (pure Ramos, no native; `not` inverts it)
+  #
+  # Because `Kernel` is always in scope, these read as language-level built-ins
+  # rather than library calls:
+  #
+  #   print("hi")
+  #   n = size([1, 2, 3])
+  #   cond
+  #     is_tuple(value) -> ...
+  #
+  # Conventions:
+  #   - out-of-range `at` returns `nil`.
+  #   - the `is_*` predicates mirror the built-in type modules listed in the
+  #     README's Types table (plus `is_lambda` for anonymous functions).
+  #   - there is no `to_symbol`, by design. A symbol lives for as long as the
+  #     program does, so building one from runtime data — a request field, a
+  #     line of input — is an unbounded leak. Symbols are written as literals
+  #     (`:ok`), which keeps the set of them finite and visible in the source.
+  #     To carry runtime text, use a `String`; to branch on it, match the
+  #     string and yield a literal symbol.
+
+  fn native(str, args)
+    # @doc
+    #
+    # Invokes a host-provided (native) function by name.
+    #
+    # `str` is the name of the native function to call, and `args` is a list of
+    # arguments to forward to it. This function has no Ramos body — the interpreter
+    # intercepts the call and dispatches it to the corresponding native handler
+    # in the host runtime.
+    #
+    # @param str: the name of the native handler to invoke
+    # @param args: a `List` of arguments forwarded to the handler
+    # @return whatever the native handler returns
+    #
+    #   native("print", ["hello"])   # handled by the interpreter
+
+  fn print(value)
+    # @doc
+    #
+    # Writes `value` to standard out *without* a trailing newline, then flushes.
+    # `value` is rendered with its `String` representation.
+    #
+    # @param value: the value to write (rendered as a `String`)
+    # @return `nil`
+    #
+    #   print("loading")        # -> loading
+    native("print", [value])
+
+  fn println(value)
+    # @doc
+    #
+    # Writes `value` to standard out *followed by a newline*. Like
+    # `print(value); new_line()`, but the text and its newline are written in a
+    # single call, so when threads print at once one line never lands inside
+    # another (see the `Thread` module).
+    #
+    # @param value: the value to write (rendered as a `String`)
+    # @return `nil`
+    #
+    #   println("done")         # -> done\n
+    native("println", [value])
+
+  fn new_line()
+    # @doc
+    #
+    # Writes a single newline (`\n`) to standard out and flushes. Useful for
+    # terminating a sequence of `print` calls.
+    #
+    # @return `nil`
+    #
+    #   print("a")
+    #   print("b")
+    #   new_line()             # -> ab\n
+    native("new_line", [])
+
+  fn read()
+    # @doc
+    #
+    # Reads a single line from standard in (up to and including the newline,
+    # which is stripped) and returns it as a `String`. Blocks until a line is
+    # available; returns `nil` at end-of-input.
+    #
+    # @return the line read as a `String`, or `nil` at end-of-input
+    #
+    #   name = read()
+    native("read", [])
+
+  fn read_password()
+    # @doc
+    #
+    # Reads a line from standard in *without echoing* it to the terminal, and
+    # returns it as a `String`. Intended for secrets like passwords. Returns
+    # `nil` at end-of-input. Behavior falls back to plain echoing `read` when the
+    # input stream is not a TTY.
+    #
+    # @return the line read as a `String`, or `nil` at end-of-input
+    #
+    #   pw = read_password()
+    native("read_password", [])
+
+  fn read_all()
+    # @doc
+    #
+    # Reads *all* of standard in, to end of input, as a single `String` — the
+    # whole-pipe counterpart to `read`, which takes one line. Returns `""` when
+    # the input is empty.
+    #
+    # @return everything on standard in as a `String`
+    #
+    #   text = read_all()      # `cat file | ramos run app.rmo`
+    native("read_all", [])
+
+  fn eprint(value)
+    # @doc
+    #
+    # Writes `value` to standard *error* without a trailing newline. Use it for
+    # diagnostics, so a program's real output on standard out stays clean enough
+    # to pipe.
+    #
+    # Unlike `print`, standard error is never buffered — a message is on screen
+    # as soon as it is written.
+    #
+    # @param value: the value to write
+    # @return `nil`
+    #
+    #   eprint("warning: ")
+    native("eprint", [value])
+
+  fn eprintln(value)
+    # @doc
+    #
+    # `eprint` with a trailing newline.
+    #
+    # @param value: the value to write
+    # @return `nil`
+    #
+    #   eprintln("could not read config, using defaults")
+    native("eprintln", [value])
+
+  fn get_env(name)
+    # @doc
+    #
+    # Looks up an environment variable by `name` and returns its `String` value,
+    # or `nil` if it is not set.
+    #
+    # @param name: the environment variable name to look up
+    # @return the variable's `String` value, or `nil` if unset
+    #
+    #   get_env("HOME")        # == "/home/andrew"
+    native("get_env", [name])
+
+  fn get_args()
+    # @doc
+    #
+    # Returns the program's command-line arguments — everything after the
+    # script path — as a `List` of `String`s. Empty when none were given.
+    #
+    # @return a `List` of the argument `String`s (empty when none were given)
+    #
+    #   # ramos run app.rmo alice 42
+    #   get_args()             # == ["alice", "42"]
+    native("get_args", [])
+
+  fn get_arg(index)
+    # @doc
+    #
+    # Returns the command-line argument at zero-based `index`, or `nil` if there
+    # is no argument at that position. Negative indexes are not supported.
+    #
+    # @param index: the zero-based position of the argument to read
+    # @return the argument `String` at `index`, or `nil` if there is none
+    #
+    #   # ramos run app.rmo alice 42
+    #   get_arg(0)             # == "alice"
+    #   get_arg(9)             # == nil
+    native("get_arg", [index])
+
+  fn sleep(ms)
+    # @doc
+    #
+    # Suspends the program for `ms` milliseconds, then returns `nil`. A value of
+    # `0` or less returns immediately.
+    #
+    # @param ms: how many milliseconds to sleep (`0` or less returns at once)
+    # @return `nil`
+    #
+    #   sleep(250)             # pause for a quarter second
+    native("sleep", [ms])
+
+  fn exit(code)
+    # @doc
+    #
+    # Ends the program with `code` as its exit status — `0` for success, any
+    # other value for failure. Nothing after the call runs.
+    #
+    # Output written with `print` is flushed on the way out, so a program can
+    # print its result and exit in the next breath without losing it.
+    #
+    # @param code: the process exit status
+    # @return never returns
+    #
+    #   exit(0)                # success
+    #   exit(1)                # failure
+    native("exit", [code])
+
+  fn now()
+    # @doc
+    #
+    # The wall-clock time as milliseconds since the Unix epoch.
+    #
+    # This is the clock to *timestamp* with. It can jump backwards when the
+    # system clock is adjusted, so measure elapsed time with `monotonic`.
+    #
+    # @return an `Integer` — milliseconds since 1970-01-01 UTC
+    #
+    #   started = now()
+    native("now", [])
+
+  fn monotonic()
+    # @doc
+    #
+    # Milliseconds from a fixed point in the program's life. The value only
+    # ever moves forward, which is what makes it the right clock for measuring
+    # how long something took.
+    #
+    # The origin is arbitrary, so a single reading means nothing on its own —
+    # only the difference between two does.
+    #
+    # @return an `Integer` — milliseconds since an arbitrary fixed point
+    #
+    #   started = monotonic()
+    #   # ... work ...
+    #   elapsed = monotonic() - started
+    native("monotonic", [])
+
+  fn random()
+    # @doc
+    #
+    # A random `Float` in `[0.0, 1.0)` — zero is possible, one is not.
+    #
+    # Not cryptographic: this is for sampling, shuffling and test data, never
+    # for secrets or tokens.
+    #
+    # @return a `Float` in `[0.0, 1.0)`
+    #
+    #   chance = random()
+    native("random", [])
+
+  fn random_int(low, high)
+    # @doc
+    #
+    # A random `Integer` in `low..high`, **inclusive at both ends**. The bounds
+    # may be given either way round.
+    #
+    # Not cryptographic — see `random`.
+    #
+    # @param low: one end of the range
+    # @param high: the other end of the range
+    # @return an `Integer` between the two, inclusive
+    #
+    #   roll = random_int(1, 6)
+    native("random_int", [low, high])
+
+  fn apply(f, args)
+    # @doc
+    #
+    # Calls the lambda `f` with `args`, a list of its arguments. Use it when the
+    # arity is not known where the call is written — otherwise call `f` directly.
+    #
+    # Like `native`, this function has no Ramos body: the interpreter intercepts
+    # the call, because running a lambda needs the evaluator and a native
+    # handler cannot reach back into it. Also like `native`, it is answered for
+    # the bare call `apply(...)`, not for `Kernel.apply(...)`.
+    #
+    # @param f: the lambda to call
+    # @param args: a `List` of the arguments to pass
+    # @return whatever `f` returns
+    #
+    #   apply(do x, y -> x + y, [1, 2])   # == 3
+    #   apply(do -> 42, [])               # == 42
+
+  fn module_apply(m, fn_name, args)
+    # @doc
+    #
+    # Resolves `fn_name` on module `m` and calls it with `args`, a list.
+    # `Module.apply` is the client-side name for this — prefer it.
+    #
+    # Enforces the same `fnp` visibility a written `m.fn_name(...)` call would:
+    # a private function is reachable only from inside its own module, so this
+    # cannot reach around that rule from the outside.
+    #
+    # Like `apply`, this function has no Ramos body: the interpreter
+    # intercepts the call, since resolving `fn_name` and running it needs the
+    # evaluator. Also like `apply`, it is answered for the bare call
+    # `module_apply(...)`, not for `Kernel.module_apply(...)`.
+    #
+    # @param m: the module to call a function on
+    # @param fn_name: the function's name, as a `String`
+    # @param args: a `List` of the arguments to pass
+    # @return whatever the resolved function returns
+    #
+    #   module_apply(Integer, "abs", [-7])   # == 7
+
+  fn start_actor(id, actor_module, initial_state, config)
+    # @doc
+    #
+    # Starts an actor under `id`, handled by `module` — which must implement the
+    # `Actor` trait — holding `initial_state`. `config` is fixed for the actor's
+    # lifetime and passed to every `call` and `cast`.
+    #
+    # The `id` is what identifies a running actor, so one module can back many
+    # of them, each with its own state. Starting the same `id` twice is an
+    # error.
+    #
+    # Like `apply`, this function has no Ramos body: the interpreter intercepts
+    # the call, because dispatching a message runs Ramos code and a native
+    # handler cannot reach back into the evaluator. Also like `apply`, it is
+    # answered for the bare call `start_actor(...)`, not `Kernel.start_actor(...)`.
+    #
+    # @param id: the name to register the actor under, conventionally a symbol
+    # @param actor_module: the module implementing `Actor`
+    # @param initial_state: the state the actor starts with
+    # @param config: fixed configuration handed to every callback
+    # @return `:ok`
+    #
+    #   start_actor(:global, Global, {}, {})
+
+  fn call_actor(id, actor_module, op, args)
+    # @doc
+    #
+    # Sends `op` to the actor registered under `id` and waits for the reply.
+    # The module's `call(f, args, state, config)` handles it and returns a
+    # `(reply, new_state)` tuple: the reply comes back here, and `new_state` is
+    # what the actor holds from then on.
+    #
+    # Any messages sent earlier with `cast_actor` are handled first, in the
+    # order they were sent, so a call always sees everything sent before it.
+    #
+    # Has no Ramos body, for the reason given on `start_actor`.
+    #
+    # @param id: the actor's id, as given to `start_actor`
+    # @param actor_module: the module handling that actor
+    # @param op: the operation, conventionally a symbol such as `:get`
+    # @param args: a `List` of arguments for the operation
+    # @return whatever the handler put in the reply position
+    #
+    #   call_actor(:global, Global, :get, ["key"])
+
+  fn cast_actor(id, actor_module, op, args)
+    # @doc
+    #
+    # Sends `op` to the actor registered under `id` **without** waiting for it
+    # to be handled, and returns `:ok` at once. The message goes on the actor's
+    # mailbox and runs later: before the next `call_actor` on that actor, or
+    # when the program ends, whichever comes first.
+    #
+    # The module's `cast(f, args, state, config)` handles it and returns only
+    # the new state — a cast has no reply to send anywhere. Unless the module
+    # defines its own, the `Actor` trait's default runs `call` and discards the
+    # reply.
+    #
+    # Because the handler runs later, a failure inside it surfaces later too:
+    # at the drain, after the statement that sent the message.
+    #
+    # Has no Ramos body, for the reason given on `start_actor`.
+    #
+    # @param id: the actor's id, as given to `start_actor`
+    # @param actor_module: the module handling that actor
+    # @param op: the operation, conventionally a symbol
+    # @param args: a `List` of arguments for the operation
+    # @return `:ok`, immediately
+    #
+    #   cast_actor(:global, Global, :clear, ["key"])
+
+  fn list_actors()
+    # @doc
+    #
+    # Every running actor as an `(id, module)` pair, sorted by id so the order
+    # is stable from one call to the next. The id is the value it was started
+    # with, and the module is the module itself — so a pair can be handed
+    # straight to `call_actor` or `cast_actor`.
+    #
+    # Has no Ramos body, for the reason given on `start_actor`.
+    #
+    # @return a `List` of `(id, module)` tuples
+    #
+    #   list_actors()   # == []
+    #
+    #   [(id, mod) | _] = list_actors()
+    #   call_actor(id, mod, :ping, [])
+
+  fn actor_stats(id)
+    # @doc
+    #
+    # What is known about one running actor, as a `Map`:
+    #
+    #   - `id`      — the id it was started with
+    #   - `module`  — the name of the module handling it, as a `String`
+    #   - `calls`   — how many `call_actor` messages have been sent to it
+    #   - `casts`   — how many `cast_actor` messages have been sent to it
+    #   - `pending` — casts sent whose outcome has not been collected yet
+    #   - `alive`   — whether its thread is still running
+    #
+    # `calls` and `casts` count messages *sent*. A cast is asynchronous, so it
+    # may still be running: `pending` is the part not accounted for yet, and
+    # drops to zero once the handler has finished and its result been collected.
+    #
+    # Has no Ramos body, for the reason given on `start_actor`.
+    #
+    # @param id: the actor's id, as given to `start_actor`
+    # @return a `Map` describing the actor
+    #
+    #   actor_stats(:global)
+
+  fn is_actor_started(id)
+    # @doc
+    #
+    # Whether `id` names a running actor. False for an id that was never
+    # started, and for one that has been stopped.
+    #
+    # Has no Ramos body, for the reason given on `start_actor`.
+    #
+    # @param id: the id to test
+    # @return `true` when an actor is running under `id`
+    #
+    #   is_actor_started(:nobody)   # == false
+
+  fn stop_actor(id)
+    # @doc
+    #
+    # Lets the actor finish everything already sent to it, then ends its thread
+    # and forgets the id. Nothing in flight is discarded: the stop is queued
+    # behind the messages already in the mailbox.
+    #
+    # Afterwards the id is free, so `start_actor` may reuse it. Sending to a
+    # stopped actor is an error, the same as sending to one never started.
+    #
+    # Has no Ramos body, for the reason given on `start_actor`.
+    #
+    # @param id: the actor's id, as given to `start_actor`
+    # @return `:ok`
+    #
+    #   stop_actor(:global)
+
+  fn size(collection)
+    # @doc
+    #
+    # Returns the number of elements in `collection` — the length of a `List`,
+    # the arity of a `Tuple`, or the number of key/value pairs in a `Map`.
+    # Strings are not collections: `size` on a `String` is an error — use
+    # `String.length` instead.
+    #
+    # @param collection: a `List`, `Tuple`, or `Map`
+    # @return the `Integer` element count
+    #
+    #   size([1, 2, 3])            # == 3
+    #   size((:ok, 42))            # == 2
+    #   size({a: 1, b: 2})         # == 2
+    native("size", [collection])
+
+  fn at(collection, index)
+    # @doc
+    #
+    # Returns the element of `collection` at zero-based `index` (`List` or
+    # `Tuple`), or `nil` if out of range. Negative indexes are not supported.
+    # Strings are not collections: `at` on a `String` is an error — use `String.at`
+    # instead.
+    #
+    # @param collection: a `List` or `Tuple`
+    # @param index: the zero-based position to read
+    # @return the element at `index`, or `nil` if out of range
+    #
+    #   at([1, 2, 3], 1)      # == 2
+    #   at((:ok, 42), 1)      # == 42
+    #   at([1, 2, 3], 9)      # == nil
+    native("at", [collection, index])
+
+  fn to_string(value)
+    # @doc
+    #
+    # Converts `value` to its `String` representation — the same rendering that
+    # `print` uses. Numbers, symbols, tuples, lists, and maps all stringify;
+    # `nil` becomes `"nil"`.
+    #
+    # @param value: the value to render
+    # @return the `String` representation of `value`
+    #
+    #   to_string(42)          # == "42"
+    #   to_string(:ok)         # == ":ok"
+    native("to_string", [value])
+
+  fn to_integer(value)
+    # @doc
+    #
+    # Converts `value` to an `Integer`. A `String` is parsed as a whole number;
+    # a `Float` is truncated toward zero. Returns `nil` if `value` can't be
+    # parsed.
+    #
+    # @param value: a `String`, `Float`, or `Integer` to convert
+    # @return the `Integer` value, or `nil` if it can't be parsed
+    #
+    #   to_integer("42")     # == 42
+    #   to_integer(3.9)      # == 3
+    native("to_integer", [value])
+
+  fn to_float(value)
+    # @doc
+    #
+    # Converts `value` to a `Float`. An `Integer` widens; a `String` is parsed
+    # as a decimal number. Returns `nil` if `value` can't be parsed.
+    #
+    # @param value: an `Integer`, `String`, or `Float` to convert
+    # @return the `Float` value, or `nil` if it can't be parsed
+    #
+    #   to_float(3)          # == 3.0
+    #   to_float("3.14")     # == 3.14
+    native("to_float", [value])
+
+  fn to_list(value)
+    # @doc
+    #
+    # Converts `value` to a `List`. A `Tuple` yields its elements in order;
+    # a `Map` yields its *values* (keys are dropped — reach for the `Map`
+    # module when you need them). Already-list values are returned unchanged.
+    #
+    # @param value: a `Tuple`, `Map`, or `List`
+    # @return a `List` — a tuple's elements, a map's values, or the list itself
+    #
+    #   to_list((1, 2, 3))         # == [1, 2, 3]
+    #   to_list({a: 1, b: 2})      # == [1, 2]
+    native("to_list", [value])
+
+  fn current_stacktrace()
+    # @doc
+    #
+    # Returns the current call stacktrace — the chain of Ramos calls leading to
+    # this point — as a list of frame strings, most recent first.
+    #
+    # @return a `List` of frame `String`s, most recent first
+    #
+    #   print(current_stacktrace())
+    native("current_stacktrace", [])
+
+  fn is_integer(value)
+    # @doc
+    #
+    # Returns `true` if `value` is an `Integer`.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is an `Integer`, else `false`
+    native("is_integer", [value])
+
+  fn is_float(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `Float`.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `Float`, else `false`
+    native("is_float", [value])
+
+  fn is_string(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `String`.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `String`, else `false`
+    native("is_string", [value])
+
+  fn is_symbol(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `Symbol` (e.g. `:ok`).
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `Symbol`, else `false`
+    native("is_symbol", [value])
+
+  fn is_bool(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `Bool` (`true` or `false`).
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `Bool`, else `false`
+    native("is_bool", [value])
+
+  fn is_nil(value)
+    # @doc
+    #
+    # Returns `true` if `value` is `nil`.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is `nil`, else `false`
+    native("is_nil", [value])
+
+  fn is_list(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `List`.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `List`, else `false`
+    native("is_list", [value])
+
+  fn is_tuple(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `Tuple`.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `Tuple`, else `false`
+    native("is_tuple", [value])
+
+  fn is_map(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `Map`.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `Map`, else `false`
+    native("is_map", [value])
+
+  fn is_module(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `Module`.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `Module`, else `false`
+    native("is_module", [value])
+
+  fn is_struct(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `Struct` instance.
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `Struct` instance, else `false`
+    native("is_struct", [value])
+
+  fn inspect(value)
+    # @doc
+    #
+    # The *debug* rendering of `value`: strings keep their quotes and symbols
+    # their colon, so a value reads back as the source that would build it.
+    # This is what the REPL prints and what error messages quote.
+    #
+    # `to_string` gives the *display* form instead, which renders a string bare.
+    # The two differ only at the top level — a string nested inside a list is
+    # quoted either way.
+    #
+    # @param value: the value to render
+    # @return a `String` — the debug rendering
+    #
+    #   inspect("hi")        # == "\"hi\""
+    #   to_string("hi")      # == "hi"
+    #   inspect([1, "two"])  # == "[1, \"two\"]"
+    #   inspect(:ok)         # == ":ok"
+    native("inspect", [value])
+
+  fn type_of(value)
+    # @doc
+    #
+    # The module `value` belongs to — the one the README's Types table lists.
+    #
+    # A `String` rather than a `Symbol`: module names are CamelCase and symbol
+    # names are snake_case, so `:Integer` is not a symbol you could write, and a
+    # value you cannot write is a poor thing to compare against.
+    #
+    # @param value: the value to inspect
+    # @return a `String` naming the value's module
+    #
+    #   type_of(42)        # == "Integer"
+    #   type_of(3.14)      # == "Float"
+    #   type_of("hi")      # == "String"
+    #   type_of([1, 2])    # == "List"
+    #   type_of(nil)       # == "Nil"
+    native("type_of", [value])
+
+  fn is_empty(value)
+    # @doc
+    #
+    # Whether `value` holds nothing — an empty list, map, tuple or string.
+    #
+    # `size` deliberately rejects strings (they count code points, not
+    # elements), so this is the one question that spans all four.
+    #
+    # @param value: a list, map, tuple or string
+    # @return `true` when it holds no elements or characters
+    #
+    #   is_empty([])       # == true
+    #   is_empty({})       # == true
+    #   is_empty("")       # == true
+    #   is_empty([1])      # == false
+    #   is_empty("hi")     # == false
+    if is_string(value)
+      native("string_length", [value]) == 0
+    else
+      size(value) == 0
+
+  fn is_truthy(value)
+    # @doc
+    #
+    # Whether `value` counts as true in a condition. Only `false` and `nil` are
+    # falsy — every other value, including `0`, `""` and `[]`, is truthy. This
+    # is the rule `if`, `cond`, `and`, `or` and `not` all use.
+    #
+    # There is no native behind this one: a `cond` arm already tests a value for
+    # truthiness, so the function is that rule written down.
+    #
+    # @param value: the value to test
+    # @return `true` when `value` is truthy, `false` when it is `false` or `nil`
+    #
+    #   is_truthy(0)       # == true
+    #   is_truthy("")      # == true
+    #   is_truthy([])      # == true
+    #   is_truthy(nil)     # == false
+    #   is_truthy(false)   # == false
+    cond
+      value -> true
+      true -> false
+
+  fn is_lambda(value)
+    # @doc
+    #
+    # Returns `true` if `value` is a `Lambda` (an anonymous function).
+    #
+    # @param value: the value to test
+    # @return `true` if `value` is a `Lambda`, else `false`
+    native("is_lambda", [value])

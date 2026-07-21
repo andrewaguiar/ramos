@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TimeZone — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html" class="current">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">TimeZone</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>TimeZone — a name paired with a fixed offset from UTC.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>TimeZone — a name paired with a fixed offset from UTC.</p>
+<p>There is no IANA time zone database here (no dependency ships one), so a <code><a href="TimeZone.html">TimeZone</a></code> cannot answer &quot;what was the offset in Berlin on this date&quot; — daylight saving and historical rule changes are out of scope. What it <em>does</em> give a raw <code>offset_minutes</code> integer (as <code><a href="DateTime.html">DateTime</a></code> takes) is a name to carry alongside it, and the shared <code>&quot;Z&quot;</code>/<code>±HH:MM</code> text form:</p>
+<pre><code>ist = <span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;IST&quot;</span>, <span class="tok-lit">330</span>)
+ist.name             <span class="tok-com"># == &quot;IST&quot;</span>
+ist.offset_minutes   <span class="tok-com"># == 330</span>
+<span class="tok-type">DateTime</span>.now_in(ist).offset_minutes   <span class="tok-com"># == 330</span></code></pre>
+<p><code>utc</code>, <code>fixed</code>, and <code>from_offset_minutes</code> build one; <code><a href="DateTime.html#now_in">DateTime.now_in</a></code> and <code><a href="DateTime.html#in_time_zone">DateTime.in_time_zone</a></code> are the bridge to <code><a href="DateTime.html">DateTime</a></code>. A <code><a href="DateTime.html">DateTime</a></code> only ever keeps the numeric <code>offset_minutes</code>, not the name it arrived with, so reading it back with <code><a href="DateTime.html#time_zone">DateTime.time_zone</a></code> gives a zone named after its offset (<code>&quot;+05:30&quot;</code>), not <code>&quot;IST&quot;</code> — a name is a label you attach going in, not one a <code><a href="DateTime.html">DateTime</a></code> remembers on its own.</p>
+<p>Conventions:</p>
+<ul><li><code>offset_minutes</code> is checked against the real range any UTC offset can fall in, <code>-12:00</code>..<code>+14:00</code> (<code>-720</code>..<code>840</code>), but the <em>name</em> is never checked — <code><a href="TimeZone.html#fixed">TimeZone.fixed(&quot;literally anything&quot;, 0)</a></code> is fine. A <code><a href="TimeZone.html">TimeZone</a></code> only ever carries what its caller gives it.</li><li><code>compare</code> orders by <code>offset_minutes</code>, west to east.</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#utc/0" class="fn-sig"><code>fn utc()</code></a>
+    <span class="fn-summary">The UTC zone: <code>offset_minutes: 0</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#fixed/2" class="fn-sig"><code>fn fixed(name, offset_minutes)</code></a>
+    <span class="fn-summary">A zone called <code>name</code>, at a fixed <code>offset_minutes</code> from UTC.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#from_offset_minutes/1" class="fn-sig"><code>fn from_offset_minutes(offset_minutes)</code></a>
+    <span class="fn-summary">A zone named after its own offset — <code>&quot;UTC&quot;</code> at <code>0</code>, otherwise the <code>±HH:MM</code> text <code>offset_text</code> renders. For when a zone has no friendlier name to give it.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#parse/1" class="fn-sig"><code>fn parse(text)</code></a>
+    <span class="fn-summary">A zone parsed from <code>offset_text</code>&#39;s shape: <code>&quot;Z&quot;</code> for UTC, or a signed <code>&quot;±HH:MM&quot;</code>. The zone is named after the offset — this is the inverse of <code>from_offset_minutes</code>, not of <code>fixed</code> (a parsed zone has no way to recover a friendlier name).</span>
+  </div>
+  <div class="fn-row">
+    <a href="#offset_text/1" class="fn-sig"><code>fn offset_text(offset_minutes)</code></a>
+    <span class="fn-summary"><code>offset_minutes</code> rendered as <code>&quot;Z&quot;</code> (when zero) or a signed <code>&quot;±HH:MM&quot;</code> — the suffix <code><a href="DateTime.html#to_iso">DateTime.to_iso</a></code> appends.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#parse_offset_text/1" class="fn-sig"><code>fn parse_offset_text(text)</code></a>
+    <span class="fn-summary">The inverse of <code>offset_text</code>: <code>&quot;Z&quot;</code> or a signed <code>&quot;±HH:MM&quot;</code> parsed back to a minute count.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#compare/2" class="fn-sig"><code>fn compare(self, other)</code></a>
+    <span class="fn-summary">Orders two zones by <code>offset_minutes</code>, west to east, as <code>-1</code>, <code>0</code> or <code>1</code> — the shape <code><a href="Integer.html#compare">Integer.compare</a></code> uses. Two zones at the same offset compare equal regardless of name.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#pad/2" class="fn-sig"><code>fnp pad(n, width)</code></a>
+    <span class="fn-summary">(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>offset_text</code>.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="utc/0">
+  <h3 class="fn-title"><code>fn utc()</code> <a class="anchor" href="#utc/0">¶</a></h3>
+<p>The UTC zone: <code>offset_minutes: 0</code>.</p>
+<pre><code><span class="tok-type">TimeZone</span>.utc()   <span class="tok-com"># == TimeZone{name: &quot;UTC&quot;, offset_minutes: 0}</span></code></pre>
+<p class="returns"><strong>Returns:</strong> <code>TimeZone{name: &quot;UTC&quot;, offset_minutes: 0}</code></p>
+</div>
+<div class="fn-detail" id="fixed/2">
+  <h3 class="fn-title"><code>fn fixed(name, offset_minutes)</code> <a class="anchor" href="#fixed/2">¶</a></h3>
+<p>A zone called <code>name</code>, at a fixed <code>offset_minutes</code> from UTC.</p>
+<pre><code><span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;IST&quot;</span>, <span class="tok-lit">330</span>)   <span class="tok-com"># == TimeZone{name: &quot;IST&quot;, offset_minutes: 330}</span></code></pre>
+<dl class="params">
+  <dt><code>name</code></dt>
+  <dd>the zone&#39;s label — anything, not checked against <code>offset_minutes</code></dd>
+  <dt><code>offset_minutes</code></dt>
+  <dd>the offset from UTC, in minutes; must be <code>-720</code>..<code>840</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="TimeZone.html">TimeZone</a></code></p>
+</div>
+<div class="fn-detail" id="from_offset_minutes/1">
+  <h3 class="fn-title"><code>fn from_offset_minutes(offset_minutes)</code> <a class="anchor" href="#from_offset_minutes/1">¶</a></h3>
+<p>A zone named after its own offset — <code>&quot;UTC&quot;</code> at <code>0</code>, otherwise the <code>±HH:MM</code> text <code>offset_text</code> renders. For when a zone has no friendlier name to give it.</p>
+<pre><code><span class="tok-type">TimeZone</span>.from_offset_minutes(<span class="tok-lit">0</span>)      <span class="tok-com"># == TimeZone{name: &quot;UTC&quot;, offset_minutes: 0}</span>
+<span class="tok-type">TimeZone</span>.from_offset_minutes(-<span class="tok-lit">300</span>)   <span class="tok-com"># == TimeZone{name: &quot;-05:00&quot;, offset_minutes: -300}</span></code></pre>
+<dl class="params">
+  <dt><code>offset_minutes</code></dt>
+  <dd>the offset from UTC, in minutes; must be <code>-720</code>..<code>840</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="TimeZone.html">TimeZone</a></code>, named by its offset</p>
+</div>
+<div class="fn-detail" id="parse/1">
+  <h3 class="fn-title"><code>fn parse(text)</code> <a class="anchor" href="#parse/1">¶</a></h3>
+<p>A zone parsed from <code>offset_text</code>&#39;s shape: <code>&quot;Z&quot;</code> for UTC, or a signed <code>&quot;±HH:MM&quot;</code>. The zone is named after the offset — this is the inverse of <code>from_offset_minutes</code>, not of <code>fixed</code> (a parsed zone has no way to recover a friendlier name).</p>
+<pre><code><span class="tok-type">TimeZone</span>.parse(<span class="tok-str">&quot;Z&quot;</span>)        <span class="tok-com"># == TimeZone{name: &quot;UTC&quot;, offset_minutes: 0}</span>
+<span class="tok-type">TimeZone</span>.parse(<span class="tok-str">&quot;-05:00&quot;</span>)   <span class="tok-com"># == TimeZone{name: &quot;-05:00&quot;, offset_minutes: -300}</span></code></pre>
+<dl class="params">
+  <dt><code>text</code></dt>
+  <dd><code>&quot;Z&quot;</code> or a signed <code>&quot;±HH:MM&quot;</code> offset</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the corresponding <code><a href="TimeZone.html">TimeZone</a></code></p>
+</div>
+<div class="fn-detail" id="offset_text/1">
+  <h3 class="fn-title"><code>fn offset_text(offset_minutes)</code> <a class="anchor" href="#offset_text/1">¶</a></h3>
+<p><code>offset_minutes</code> rendered as <code>&quot;Z&quot;</code> (when zero) or a signed <code>&quot;±HH:MM&quot;</code> — the suffix <code><a href="DateTime.html#to_iso">DateTime.to_iso</a></code> appends.</p>
+<pre><code><span class="tok-type">TimeZone</span>.offset_text(<span class="tok-lit">0</span>)      <span class="tok-com"># == &quot;Z&quot;</span>
+<span class="tok-type">TimeZone</span>.offset_text(<span class="tok-lit">330</span>)    <span class="tok-com"># == &quot;+05:30&quot;</span>
+<span class="tok-type">TimeZone</span>.offset_text(-<span class="tok-lit">300</span>)   <span class="tok-com"># == &quot;-05:00&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>offset_minutes</code></dt>
+  <dd>the offset from UTC, in minutes</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>&quot;Z&quot;</code> or a signed <code>&quot;±HH:MM&quot;</code> string</p>
+</div>
+<div class="fn-detail" id="parse_offset_text/1">
+  <h3 class="fn-title"><code>fn parse_offset_text(text)</code> <a class="anchor" href="#parse_offset_text/1">¶</a></h3>
+<p>The inverse of <code>offset_text</code>: <code>&quot;Z&quot;</code> or a signed <code>&quot;±HH:MM&quot;</code> parsed back to a minute count.</p>
+<pre><code><span class="tok-type">TimeZone</span>.parse_offset_text(<span class="tok-str">&quot;Z&quot;</span>)        <span class="tok-com"># == 0</span>
+<span class="tok-type">TimeZone</span>.parse_offset_text(<span class="tok-str">&quot;+05:30&quot;</span>)   <span class="tok-com"># == 330</span>
+<span class="tok-type">TimeZone</span>.parse_offset_text(<span class="tok-str">&quot;-05:00&quot;</span>)   <span class="tok-com"># == -300</span></code></pre>
+<dl class="params">
+  <dt><code>text</code></dt>
+  <dd><code>&quot;Z&quot;</code> or a signed <code>&quot;±HH:MM&quot;</code> offset</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the offset from UTC, in minutes</p>
+</div>
+<div class="fn-detail" id="compare/2">
+  <h3 class="fn-title"><code>fn compare(self, other)</code> <a class="anchor" href="#compare/2">¶</a></h3>
+<p>Orders two zones by <code>offset_minutes</code>, west to east, as <code>-1</code>, <code>0</code> or <code>1</code> — the shape <code><a href="Integer.html#compare">Integer.compare</a></code> uses. Two zones at the same offset compare equal regardless of name.</p>
+<pre><code><span class="tok-type">TimeZone</span>.compare(<span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;A&quot;</span>, -<span class="tok-lit">300</span>), <span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;B&quot;</span>, <span class="tok-lit">0</span>))   <span class="tok-com"># == -1</span>
+<span class="tok-type">TimeZone</span>.compare(<span class="tok-type">TimeZone</span>.utc(), <span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;Also UTC&quot;</span>, <span class="tok-lit">0</span>))       <span class="tok-com"># == 0</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the first zone</dd>
+  <dt><code>other</code></dt>
+  <dd>the second zone</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>-1</code> when <code>self</code> is west of <code>other</code>, <code>1</code> when east, <code>0</code> when level</p>
+</div>
+<div class="fn-detail" id="pad/2">
+  <h3 class="fn-title"><code>fnp pad(n, width)</code> <span class="badge private">private</span> <a class="anchor" href="#pad/2">¶</a></h3>
+<p>(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>offset_text</code>.</p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# actor.rmo — a module implements `Actor` by defining `call`, which returns
+# `(reply, new_state)`. `cast` has no reply: it returns only the new state, and
+# runs later — before the next call, or at program end.
+module Cache
+  implements Actor
+
+  fn call(f, args, state, config)
+    case f
+      :get ->
+        [key] = args
+        (Map.get(state, key, nil), state)
+      :set ->
+        [key, value] = args
+        (:ok, Map.put(state, key, value))
+
+  fn cast(f, args, state, config)
+    [key] = args
+    Map.delete(state, key)
+
+  # client half — callers never write `call_actor` / `cast_actor`
+  fn start()
+    start_actor(:cache, Cache, {}, {})
+
+  fn get(key)
+    call_actor(:cache, Cache, :get, [key])
+
+  fn set(key, value)
+    call_actor(:cache, Cache, :set, [key, value])
+  fn clear(key)
+    cast_actor(:cache, Cache, :clear, [key])

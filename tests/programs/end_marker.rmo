@@ -1,0 +1,40 @@
+# The optional `end` marker: purely decorative, so this reads identically
+# whether or not the `end` lines below are there at all. Exercises it after a
+# `fn` body, a `cond`, a `case`, an `if`/`else`, and a multiline `do` — plus
+# two in a row, closing a nested block and its enclosing one together.
+module Main
+  fn classify(n)
+    cond
+      n > 0 -> :positive
+      n < 0 -> :negative
+      true -> :zero
+    end
+
+  fn describe(n)
+    case classify(n)
+      :positive -> "#{n} is positive"
+      :negative -> "#{n} is negative"
+      :zero -> "#{n} is zero"
+    end
+
+  fn sign_word(n)
+    if n >= 0
+      "non-negative"
+    else
+      "negative"
+    end
+  end
+
+  fn main()
+    println(describe(5))
+    println(describe(-3))
+    println(describe(0))
+    println(sign_word(7))
+
+    double =
+      do x
+        y = x * 2
+        y
+      end
+    println(double(21))
+end

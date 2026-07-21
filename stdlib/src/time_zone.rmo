@@ -1,0 +1,162 @@
+struct TimeZone
+  # @module_doc
+  #
+  # TimeZone — a name paired with a fixed offset from UTC.
+  #
+  # There is no IANA time zone database here (no dependency ships one), so a
+  # `TimeZone` cannot answer "what was the offset in Berlin on this date" —
+  # daylight saving and historical rule changes are out of scope. What it
+  # *does* give a raw `offset_minutes` integer (as `DateTime` takes) is a
+  # name to carry alongside it, and the shared `"Z"`/`±HH:MM` text form:
+  #
+  #   ist = TimeZone.fixed("IST", 330)
+  #   ist.name             # == "IST"
+  #   ist.offset_minutes   # == 330
+  #   DateTime.now_in(ist).offset_minutes   # == 330
+  #
+  # `utc`, `fixed`, and `from_offset_minutes` build one; `DateTime.now_in` and
+  # `DateTime.in_time_zone` are the bridge to `DateTime`. A `DateTime` only
+  # ever keeps the numeric `offset_minutes`, not the name it arrived with, so
+  # reading it back with `DateTime.time_zone` gives a zone named after its
+  # offset (`"+05:30"`), not `"IST"` — a name is a label you attach going in,
+  # not one a `DateTime` remembers on its own.
+  #
+  # Conventions:
+  #   - `offset_minutes` is checked against the real range any UTC offset can
+  #     fall in, `-12:00`..`+14:00` (`-720`..`840`), but the *name* is never
+  #     checked — `TimeZone.fixed("literally anything", 0)` is fine. A
+  #     `TimeZone` only ever carries what its caller gives it.
+  #   - `compare` orders by `offset_minutes`, west to east.
+
+  attributes
+    name: "UTC"
+    offset_minutes: 0
+
+  fn utc()
+    # @doc
+    #
+    # The UTC zone: `offset_minutes: 0`.
+    #
+    # @return `TimeZone{name: "UTC", offset_minutes: 0}`
+    #
+    #   TimeZone.utc()   # == TimeZone{name: "UTC", offset_minutes: 0}
+    TimeZone{name: "UTC", offset_minutes: 0}
+
+  fn fixed(name, offset_minutes)
+    # @doc
+    #
+    # A zone called `name`, at a fixed `offset_minutes` from UTC.
+    #
+    # @param name: the zone's label — anything, not checked against `offset_minutes`
+    # @param offset_minutes: the offset from UTC, in minutes; must be `-720`..`840`
+    # @return a new `TimeZone`
+    #
+    #   TimeZone.fixed("IST", 330)   # == TimeZone{name: "IST", offset_minutes: 330}
+    assert(
+      offset_minutes >= -720 and offset_minutes <= 840,
+      "TimeZone.fixed: offset_minutes must be -720..840 (-12:00..+14:00), got #{offset_minutes}"
+    )
+    TimeZone{name: name, offset_minutes: offset_minutes}
+
+  fn from_offset_minutes(offset_minutes)
+    # @doc
+    #
+    # A zone named after its own offset — `"UTC"` at `0`, otherwise the
+    # `±HH:MM` text `offset_text` renders. For when a zone has no friendlier
+    # name to give it.
+    #
+    # @param offset_minutes: the offset from UTC, in minutes; must be `-720`..`840`
+    # @return a new `TimeZone`, named by its offset
+    #
+    #   TimeZone.from_offset_minutes(0)      # == TimeZone{name: "UTC", offset_minutes: 0}
+    #   TimeZone.from_offset_minutes(-300)   # == TimeZone{name: "-05:00", offset_minutes: -300}
+    name =
+      if offset_minutes == 0
+        "UTC"
+      else
+        offset_text(offset_minutes)
+    fixed(name, offset_minutes)
+
+  fn parse(text)
+    # @doc
+    #
+    # A zone parsed from `offset_text`'s shape: `"Z"` for UTC, or a signed
+    # `"±HH:MM"`. The zone is named after the offset — this is the inverse of
+    # `from_offset_minutes`, not of `fixed` (a parsed zone has no way to
+    # recover a friendlier name).
+    #
+    # @param text: `"Z"` or a signed `"±HH:MM"` offset
+    # @return the corresponding `TimeZone`
+    #
+    #   TimeZone.parse("Z")        # == TimeZone{name: "UTC", offset_minutes: 0}
+    #   TimeZone.parse("-05:00")   # == TimeZone{name: "-05:00", offset_minutes: -300}
+    from_offset_minutes(parse_offset_text(text))
+
+  fn offset_text(offset_minutes)
+    # @doc
+    #
+    # `offset_minutes` rendered as `"Z"` (when zero) or a signed `"±HH:MM"` —
+    # the suffix `DateTime.to_iso` appends.
+    #
+    # @param offset_minutes: the offset from UTC, in minutes
+    # @return `"Z"` or a signed `"±HH:MM"` string
+    #
+    #   TimeZone.offset_text(0)      # == "Z"
+    #   TimeZone.offset_text(330)    # == "+05:30"
+    #   TimeZone.offset_text(-300)   # == "-05:00"
+    if offset_minutes == 0
+      "Z"
+    else
+      sign =
+        if offset_minutes < 0
+          "-"
+        else
+          "+"
+      magnitude = Integer.abs(offset_minutes)
+      "#{sign}#{pad(magnitude / 60, 2)}:#{pad(magnitude % 60, 2)}"
+
+  fn parse_offset_text(text)
+    # @doc
+    #
+    # The inverse of `offset_text`: `"Z"` or a signed `"±HH:MM"` parsed back
+    # to a minute count.
+    #
+    # @param text: `"Z"` or a signed `"±HH:MM"` offset
+    # @return the offset from UTC, in minutes
+    #
+    #   TimeZone.parse_offset_text("Z")        # == 0
+    #   TimeZone.parse_offset_text("+05:30")   # == 330
+    #   TimeZone.parse_offset_text("-05:00")   # == -300
+    if text == "Z"
+      0
+    else
+      sign =
+        if String.at(text, 0) == "-"
+          -1
+        else
+          1
+      hh = to_integer(String.slice(text, 1, 2))
+      mm = to_integer(String.slice(text, 4, 2))
+      sign * (hh * 60 + mm)
+
+  fn compare(self, other)
+    # @doc
+    #
+    # Orders two zones by `offset_minutes`, west to east, as `-1`, `0` or
+    # `1` — the shape `Integer.compare` uses. Two zones at the same offset
+    # compare equal regardless of name.
+    #
+    # @param self: the first zone
+    # @param other: the second zone
+    # @return `-1` when `self` is west of `other`, `1` when east, `0` when level
+    #
+    #   TimeZone.compare(TimeZone.fixed("A", -300), TimeZone.fixed("B", 0))   # == -1
+    #   TimeZone.compare(TimeZone.utc(), TimeZone.fixed("Also UTC", 0))       # == 0
+    Integer.compare(self.offset_minutes, other.offset_minutes)
+
+  fnp pad(n, width)
+    # @doc
+    #
+    # (private) `n` rendered as decimal digits, left-padded with zeros to at
+    # least `width` characters. Backs `offset_text`.
+    String.pad_left(to_string(n), width, "0")

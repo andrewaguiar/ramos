@@ -1,0 +1,11 @@
+# module.rmo — a pure module is a namespace of functions with no per-instance
+# state. It is itself a value, so it can be passed around and inspected.
+
+module PersonUtils
+  fn hello(person)
+    print("Ola #{person.name}, eu tenho #{person.age}")
+
+  fn hi_all(people)
+    people
+    | List.map(do p -> "hi #{p.name}")
+    | List.join(", ")

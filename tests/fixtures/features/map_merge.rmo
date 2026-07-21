@@ -1,0 +1,8 @@
+# map_merge.rmo — `++` merges two maps, returning a new one.
+
+merged = {a: 1} ++ {b: 2}      # == {a: 1, b: 2}
+overridden = {a: 1} ++ {a: 2}  # right side wins on duplicate keys  # == {a: 2}
+defaults = {} ++ merged
+
+# Maps are insertion-ordered and immutable — `++` returns a new map.
+nested = {user: {name: "andrew", age: 40}, active: true}

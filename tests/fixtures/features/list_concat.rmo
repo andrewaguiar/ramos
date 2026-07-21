@@ -1,0 +1,8 @@
+# list_concat.rmo — `++` concatenates two lists, returning a new one.
+
+joined = [1, 2] ++ [3, 4]   # == [1, 2, 3, 4]
+prepended = [0] ++ joined   # == [0, 1, 2, 3, 4]
+with_empty = [] ++ [1]      # == [1]
+
+# `[head | tail]` is the cons form — a literal/pattern shape, not an operator.
+[head | tail] = joined

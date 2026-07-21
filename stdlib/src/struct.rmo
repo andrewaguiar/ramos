@@ -1,0 +1,133 @@
+module Struct
+  # @module_doc
+  #
+  # Struct — reading and replacing the attributes of a struct instance.
+  #
+  # A `struct` declares its attributes once, with defaults, and an instance is
+  # built with the literal form: `Person{name: "Andrew", age: 40}`. The shape is
+  # fixed at definition time, so these functions never add or drop an
+  # attribute — naming one the struct does not declare is an error rather than a
+  # silent extra.
+  #
+  # Instances are immutable like every other value: `put` returns a *new*
+  # instance and leaves the original alone.
+  #
+  #   andrew = Person{name: "Andrew", age: 40}
+  #   older =
+  #     andrew
+  #     | Struct.put(:age, 41)
+  #
+  # `Person` is the struct the examples below are written against:
+  #
+  #   # ramos doctest setup
+  #   struct Person
+  #     attributes
+  #       name: nil
+  #       age: 0
+  #
+  # The field-assignment form is sugar for exactly that call, rebinding the name
+  # it reads from:
+  #
+  #   andrew.age = 41     # andrew = Struct.put(andrew, :age, 41)
+  #
+  # Reading a field needs no function at all — `andrew.name` is the dot form,
+  # and `get` exists for the piped and defaulted cases.
+  #
+  # Conventions:
+  #   - attributes are named with symbols: `:age`, matching `Map` keys.
+  #   - a struct's own functions are called on the instance (`andrew.hello()`),
+  #     which passes it as `self`.
+
+  fn get(instance, attribute, default)
+    # @doc
+    #
+    # The value of `attribute`, or `default` when the struct has no such
+    # attribute. `instance.attribute` is the direct form; this one pipes and
+    # takes a fallback.
+    #
+    # @param instance: the struct instance to read
+    # @param attribute: the attribute name, as a symbol
+    # @param default: the value to return when the attribute is not declared
+    # @return the attribute's value, or `default`
+    #
+    #   Struct.get(Person{name: "Andrew"}, :name, "anonymous")   # == "Andrew"
+    #   Struct.get(Person{name: "Andrew"}, :nickname, nil)       # == nil
+    native("struct_get", [instance, attribute, default])
+
+  fn put(instance, attribute, value)
+    # @doc
+    #
+    # A new instance with `attribute` set to `value`. Raises when the struct
+    # does not declare `attribute`, since an instance's shape is its struct's.
+    #
+    # @param instance: the struct instance to build on
+    # @param attribute: the attribute to set, as a symbol
+    # @param value: the value to store
+    # @return a new instance of the same struct
+    #
+    #   Struct.put(Person{age: 40}, :age, 41)   # == Person{name: nil, age: 41}
+    native("struct_put", [instance, attribute, value])
+
+  fn update(instance, attribute, f)
+    # @doc
+    #
+    # A new instance with `attribute` replaced by `f` applied to its current
+    # value — `put` when the new value depends on the old one.
+    #
+    # @param instance: the struct instance to build on
+    # @param attribute: the attribute to update, as a symbol
+    # @param f: a lambda from the old value to the new one
+    # @return a new instance of the same struct
+    #
+    #   Struct.update(Person{age: 40}, :age, do n -> n + 1)
+    #   # == Person{name: nil, age: 41}
+    put(instance, attribute, f(get(instance, attribute, nil)))
+
+  fn keys(instance)
+    # @doc
+    #
+    # The struct's attribute names, in declaration order.
+    #
+    # @param instance: the struct instance to inspect
+    # @return a `List` of symbols
+    #
+    #   Struct.keys(Person{name: "Andrew", age: 40})   # == [:name, :age]
+    native("struct_keys", [instance])
+
+  fn values(instance)
+    # @doc
+    #
+    # The struct's attribute values, in declaration order.
+    #
+    # @param instance: the struct instance to inspect
+    # @return a `List` of values
+    #
+    #   Struct.values(Person{name: "Andrew", age: 40})   # == ["Andrew", 40]
+    native("struct_values", [instance])
+
+  fn to_map(instance)
+    # @doc
+    #
+    # The instance as a `Map` keyed by attribute name — the bridge to every
+    # `Map` function, since a struct has a fixed shape and a map does not.
+    #
+    # @param instance: the struct instance to convert
+    # @return a `Map` from attribute symbol to value
+    #
+    #   Struct.to_map(Person{name: "Andrew", age: 40})
+    #   # == {name: "Andrew", age: 40}
+    native("struct_to_map", [instance])
+
+  fn is_a(instance, struct_module)
+    # @doc
+    #
+    # Whether `instance` is an instance of `struct_module`. False for every
+    # non-struct value, so it is safe to ask of anything.
+    #
+    # @param instance: the value to test
+    # @param struct_module: the struct to test against, as a module
+    # @return `true` when `instance` was built from `struct_module`
+    #
+    #   Struct.is_a(Person{name: "Andrew"}, Person)   # == true
+    #   Struct.is_a(42, Person)                       # == false
+    native("struct_is_a", [instance, struct_module])

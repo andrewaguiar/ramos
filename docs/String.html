@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>String — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html" class="current">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">String</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>String — operations on immutable, UTF-8 text.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>String — operations on immutable, UTF-8 text.</p>
+<p>Strings in Ramos are double-quoted (<code>&quot;hi&quot;</code>), interpolated with <code>#{name}</code>, and concatenated with <code>&lt;&gt;</code>. Like every value in Ramos they are immutable: every function here returns a new string rather than mutating its input.</p>
+<p>Unlike lists, strings have no <code>head | tail</code> destructuring in the language, so the character-level primitives (indexing, slicing, casing, splitting, reversing) delegate to the host via <code>native</code>. Concatenation is the <code>&lt;&gt;</code> operator rather than a function here, and the rest compose through pipes just like the <code><a href="List.html">List</a></code> module:</p>
+<pre><code><span class="tok-str">&quot;  Hello World  &quot;</span>
+| <span class="tok-type">String</span>.trim()
+| <span class="tok-type">String</span>.downcase()
+| <span class="tok-type">String</span>.replace(<span class="tok-str">&quot; &quot;</span>, <span class="tok-str">&quot;_&quot;</span>)     <span class="tok-com"># == &quot;hello_world&quot;</span></code></pre>
+<p>Joining a list of strings back into one is <code><a href="List.html#join">List.join</a></code> (not here), the natural inverse of <code>split</code>. Numeric parsing lives on <code><a href="Kernel.html">Kernel</a></code> (<code>to_integer</code> / <code>to_float</code>), and so does emptiness: <code>is_empty(s)</code> already covers strings, so this module does not repeat it.</p>
+<p>Conventions:</p>
+<ul><li>indexes are zero-based and count Unicode code points.</li><li><code>at</code> returns a single-character string; Ramos has no separate char type.</li><li>search functions that may miss return <code>nil</code>.</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#length/1" class="fn-sig"><code>fn length(s)</code></a>
+    <span class="fn-summary">Returns the number of Unicode code points in <code>s</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#at/2" class="fn-sig"><code>fn at(s, index)</code></a>
+    <span class="fn-summary">Returns the single-character string at zero-based <code>index</code>, or <code>nil</code> if out of range. Ramos has no separate char type, so the result is a <code><a href="String.html">String</a></code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#slice/3" class="fn-sig"><code>fn slice(s, start, count)</code></a>
+    <span class="fn-summary">Returns <code>count</code> characters of <code>s</code> starting at zero-based <code>start</code>. <code>start</code> beyond the end yields <code>&quot;&quot;</code>; <code>count</code> is clipped to the available tail.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#contains/2" class="fn-sig"><code>fn contains(s, sub)</code></a>
+    <span class="fn-summary">Returns <code>true</code> if <code>sub</code> occurs anywhere within <code>s</code>, else <code>false</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#starts_with/2" class="fn-sig"><code>fn starts_with(s, prefix)</code></a>
+    <span class="fn-summary">Returns <code>true</code> if <code>s</code> begins with <code>prefix</code>, else <code>false</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#ends_with/2" class="fn-sig"><code>fn ends_with(s, suffix)</code></a>
+    <span class="fn-summary">Returns <code>true</code> if <code>s</code> ends with <code>suffix</code>, else <code>false</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#find/2" class="fn-sig"><code>fn find(s, sub)</code></a>
+    <span class="fn-summary">Returns the zero-based index of the first occurrence of <code>sub</code> in <code>s</code>, or <code>nil</code> if it is not present.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#replace/3" class="fn-sig"><code>fn replace(s, pattern, replacement)</code></a>
+    <span class="fn-summary">Returns a copy of <code>s</code> with every (non-overlapping) occurrence of <code>pattern</code> replaced by <code>replacement</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#split/2" class="fn-sig"><code>fn split(s, sep)</code></a>
+    <span class="fn-summary">Splits <code>s</code> at each occurrence of <code>sep</code>, returning a list of parts. Empty <code>sep</code> splits into one-character strings. To rejoin, use <code><a href="List.html#join">List.join</a></code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#upcase/1" class="fn-sig"><code>fn upcase(s)</code></a>
+    <span class="fn-summary">Returns <code>s</code> with each ASCII letter uppercased.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#downcase/1" class="fn-sig"><code>fn downcase(s)</code></a>
+    <span class="fn-summary">Returns <code>s</code> with each ASCII letter lowercased.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#trim/1" class="fn-sig"><code>fn trim(s)</code></a>
+    <span class="fn-summary">Returns <code>s</code> with leading and trailing whitespace removed.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#trim_left/1" class="fn-sig"><code>fn trim_left(s)</code></a>
+    <span class="fn-summary">Returns <code>s</code> with leading whitespace removed.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#trim_right/1" class="fn-sig"><code>fn trim_right(s)</code></a>
+    <span class="fn-summary">Returns <code>s</code> with trailing whitespace removed.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#reverse/1" class="fn-sig"><code>fn reverse(s)</code></a>
+    <span class="fn-summary">Returns <code>s</code> with its characters in reverse order.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#repeat/2" class="fn-sig"><code>fn repeat(s, n)</code></a>
+    <span class="fn-summary">Returns <code>s</code> concatenated with itself <code>n</code> times. <code>n &lt;= 0</code> yields <code>&quot;&quot;</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_list/1" class="fn-sig"><code>fn to_list(s)</code></a>
+    <span class="fn-summary">Splits <code>s</code> into a list of single-character strings, one per Unicode code point. The inverse of <code>from_list</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#pad_left/3" class="fn-sig"><code>fn pad_left(s, width, pad_char)</code></a>
+    <span class="fn-summary">Returns <code>s</code> left-padded with <code>pad_char</code> until it reaches at least <code>width</code> characters. Already-long-enough <code>s</code> comes back unchanged. <code>pad_char</code> is a single character; a longer one may overshoot <code>width</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#pad_right/3" class="fn-sig"><code>fn pad_right(s, width, pad_char)</code></a>
+    <span class="fn-summary">Returns <code>s</code> right-padded with <code>pad_char</code> until it reaches at least <code>width</code> characters. Already-long-enough <code>s</code> comes back unchanged. <code>pad_char</code> is a single character; a longer one may overshoot <code>width</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#capitalize/1" class="fn-sig"><code>fn capitalize(s)</code></a>
+    <span class="fn-summary">Returns <code>s</code> with its first character uppercased and the rest lowercased. <code>&quot;&quot;</code> comes back unchanged.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#from_list/1" class="fn-sig"><code>fn from_list(chars)</code></a>
+    <span class="fn-summary">Concatenates a list of single-character strings into one string. The inverse of <code>to_list</code>.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="length/1">
+  <h3 class="fn-title"><code>fn length(s)</code> <a class="anchor" href="#length/1">¶</a></h3>
+<p>Returns the number of Unicode code points in <code>s</code>.</p>
+<pre><code><span class="tok-type">String</span>.length(<span class="tok-str">&quot;hello&quot;</span>)   <span class="tok-com"># == 5</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to measure</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the <code><a href="Integer.html">Integer</a></code> count of code points in <code>s</code></p>
+</div>
+<div class="fn-detail" id="at/2">
+  <h3 class="fn-title"><code>fn at(s, index)</code> <a class="anchor" href="#at/2">¶</a></h3>
+<p>Returns the single-character string at zero-based <code>index</code>, or <code>nil</code> if out of range. Ramos has no separate char type, so the result is a <code><a href="String.html">String</a></code>.</p>
+<pre><code><span class="tok-type">String</span>.at(<span class="tok-str">&quot;hello&quot;</span>, <span class="tok-lit">1</span>)   <span class="tok-com"># == &quot;e&quot;</span>
+<span class="tok-type">String</span>.at(<span class="tok-str">&quot;hello&quot;</span>, <span class="tok-lit">9</span>)   <span class="tok-com"># == nil</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to read from</dd>
+  <dt><code>index</code></dt>
+  <dd>the zero-based code-point position to read</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the single-character <code><a href="String.html">String</a></code> at <code>index</code>, or <code>nil</code> if out of range</p>
+</div>
+<div class="fn-detail" id="slice/3">
+  <h3 class="fn-title"><code>fn slice(s, start, count)</code> <a class="anchor" href="#slice/3">¶</a></h3>
+<p>Returns <code>count</code> characters of <code>s</code> starting at zero-based <code>start</code>. <code>start</code> beyond the end yields <code>&quot;&quot;</code>; <code>count</code> is clipped to the available tail.</p>
+<pre><code><span class="tok-type">String</span>.slice(<span class="tok-str">&quot;hello world&quot;</span>, <span class="tok-lit">0</span>, <span class="tok-lit">5</span>)   <span class="tok-com"># == &quot;hello&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to slice</dd>
+  <dt><code>start</code></dt>
+  <dd>the zero-based code-point position to start at</dd>
+  <dt><code>count</code></dt>
+  <dd>how many characters to take</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> of up to <code>count</code> characters from <code>start</code></p>
+</div>
+<div class="fn-detail" id="contains/2">
+  <h3 class="fn-title"><code>fn contains(s, sub)</code> <a class="anchor" href="#contains/2">¶</a></h3>
+<p>Returns <code>true</code> if <code>sub</code> occurs anywhere within <code>s</code>, else <code>false</code>.</p>
+<pre><code><span class="tok-type">String</span>.contains(<span class="tok-str">&quot;hello world&quot;</span>, <span class="tok-str">&quot;world&quot;</span>)   <span class="tok-com"># == true</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to search within</dd>
+  <dt><code>sub</code></dt>
+  <dd>the substring to look for</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>true</code> if <code>sub</code> occurs in <code>s</code>, else <code>false</code></p>
+</div>
+<div class="fn-detail" id="starts_with/2">
+  <h3 class="fn-title"><code>fn starts_with(s, prefix)</code> <a class="anchor" href="#starts_with/2">¶</a></h3>
+<p>Returns <code>true</code> if <code>s</code> begins with <code>prefix</code>, else <code>false</code>.</p>
+<pre><code><span class="tok-type">String</span>.starts_with(<span class="tok-str">&quot;hello&quot;</span>, <span class="tok-str">&quot;he&quot;</span>)   <span class="tok-com"># == true</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to test</dd>
+  <dt><code>prefix</code></dt>
+  <dd>the prefix to look for</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>true</code> if <code>s</code> begins with <code>prefix</code>, else <code>false</code></p>
+</div>
+<div class="fn-detail" id="ends_with/2">
+  <h3 class="fn-title"><code>fn ends_with(s, suffix)</code> <a class="anchor" href="#ends_with/2">¶</a></h3>
+<p>Returns <code>true</code> if <code>s</code> ends with <code>suffix</code>, else <code>false</code>.</p>
+<pre><code><span class="tok-type">String</span>.ends_with(<span class="tok-str">&quot;hello&quot;</span>, <span class="tok-str">&quot;lo&quot;</span>)   <span class="tok-com"># == true</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to test</dd>
+  <dt><code>suffix</code></dt>
+  <dd>the suffix to look for</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>true</code> if <code>s</code> ends with <code>suffix</code>, else <code>false</code></p>
+</div>
+<div class="fn-detail" id="find/2">
+  <h3 class="fn-title"><code>fn find(s, sub)</code> <a class="anchor" href="#find/2">¶</a></h3>
+<p>Returns the zero-based index of the first occurrence of <code>sub</code> in <code>s</code>, or <code>nil</code> if it is not present.</p>
+<pre><code><span class="tok-type">String</span>.find(<span class="tok-str">&quot;hello world&quot;</span>, <span class="tok-str">&quot;world&quot;</span>)   <span class="tok-com"># == 6</span>
+<span class="tok-type">String</span>.find(<span class="tok-str">&quot;hello&quot;</span>, <span class="tok-str">&quot;z&quot;</span>)             <span class="tok-com"># == nil</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to search within</dd>
+  <dt><code>sub</code></dt>
+  <dd>the substring to look for</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the zero-based <code><a href="Integer.html">Integer</a></code> index of the first match, or <code>nil</code> if none</p>
+</div>
+<div class="fn-detail" id="replace/3">
+  <h3 class="fn-title"><code>fn replace(s, pattern, replacement)</code> <a class="anchor" href="#replace/3">¶</a></h3>
+<p>Returns a copy of <code>s</code> with every (non-overlapping) occurrence of <code>pattern</code> replaced by <code>replacement</code>.</p>
+<pre><code><span class="tok-type">String</span>.replace(<span class="tok-str">&quot;a-b-c&quot;</span>, <span class="tok-str">&quot;-&quot;</span>, <span class="tok-str">&quot;_&quot;</span>)   <span class="tok-com"># == &quot;a_b_c&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to rewrite</dd>
+  <dt><code>pattern</code></dt>
+  <dd>the substring to replace</dd>
+  <dt><code>replacement</code></dt>
+  <dd>the string to substitute for each <code>pattern</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> with every <code>pattern</code> replaced by <code>replacement</code></p>
+</div>
+<div class="fn-detail" id="split/2">
+  <h3 class="fn-title"><code>fn split(s, sep)</code> <a class="anchor" href="#split/2">¶</a></h3>
+<p>Splits <code>s</code> at each occurrence of <code>sep</code>, returning a list of parts. Empty <code>sep</code> splits into one-character strings. To rejoin, use <code><a href="List.html#join">List.join</a></code>.</p>
+<pre><code><span class="tok-type">String</span>.split(<span class="tok-str">&quot;a,b,c&quot;</span>, <span class="tok-str">&quot;,&quot;</span>)   <span class="tok-com"># == [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to split</dd>
+  <dt><code>sep</code></dt>
+  <dd>the separator to split on (<code>&quot;&quot;</code> splits into characters)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of the <code><a href="String.html">String</a></code> parts</p>
+</div>
+<div class="fn-detail" id="upcase/1">
+  <h3 class="fn-title"><code>fn upcase(s)</code> <a class="anchor" href="#upcase/1">¶</a></h3>
+<p>Returns <code>s</code> with each ASCII letter uppercased.</p>
+<pre><code><span class="tok-type">String</span>.upcase(<span class="tok-str">&quot;hello&quot;</span>)   <span class="tok-com"># == &quot;HELLO&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to uppercase</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> with each ASCII letter uppercased</p>
+</div>
+<div class="fn-detail" id="downcase/1">
+  <h3 class="fn-title"><code>fn downcase(s)</code> <a class="anchor" href="#downcase/1">¶</a></h3>
+<p>Returns <code>s</code> with each ASCII letter lowercased.</p>
+<pre><code><span class="tok-type">String</span>.downcase(<span class="tok-str">&quot;HELLO&quot;</span>)   <span class="tok-com"># == &quot;hello&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to lowercase</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> with each ASCII letter lowercased</p>
+</div>
+<div class="fn-detail" id="trim/1">
+  <h3 class="fn-title"><code>fn trim(s)</code> <a class="anchor" href="#trim/1">¶</a></h3>
+<p>Returns <code>s</code> with leading and trailing whitespace removed.</p>
+<pre><code><span class="tok-type">String</span>.trim(<span class="tok-str">&quot;  hi  &quot;</span>)   <span class="tok-com"># == &quot;hi&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to trim</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> without leading or trailing whitespace</p>
+</div>
+<div class="fn-detail" id="trim_left/1">
+  <h3 class="fn-title"><code>fn trim_left(s)</code> <a class="anchor" href="#trim_left/1">¶</a></h3>
+<p>Returns <code>s</code> with leading whitespace removed.</p>
+<pre><code><span class="tok-type">String</span>.trim_left(<span class="tok-str">&quot;  hi  &quot;</span>)   <span class="tok-com"># == &quot;hi  &quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to trim</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> without leading whitespace</p>
+</div>
+<div class="fn-detail" id="trim_right/1">
+  <h3 class="fn-title"><code>fn trim_right(s)</code> <a class="anchor" href="#trim_right/1">¶</a></h3>
+<p>Returns <code>s</code> with trailing whitespace removed.</p>
+<pre><code><span class="tok-type">String</span>.trim_right(<span class="tok-str">&quot;  hi  &quot;</span>)   <span class="tok-com"># == &quot;  hi&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to trim</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> without trailing whitespace</p>
+</div>
+<div class="fn-detail" id="reverse/1">
+  <h3 class="fn-title"><code>fn reverse(s)</code> <a class="anchor" href="#reverse/1">¶</a></h3>
+<p>Returns <code>s</code> with its characters in reverse order.</p>
+<pre><code><span class="tok-type">String</span>.reverse(<span class="tok-str">&quot;hello&quot;</span>)   <span class="tok-com"># == &quot;olleh&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to reverse</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> with the code points of <code>s</code> in reverse order</p>
+</div>
+<div class="fn-detail" id="repeat/2">
+  <h3 class="fn-title"><code>fn repeat(s, n)</code> <a class="anchor" href="#repeat/2">¶</a></h3>
+<p>Returns <code>s</code> concatenated with itself <code>n</code> times. <code>n &lt;= 0</code> yields <code>&quot;&quot;</code>.</p>
+<pre><code><span class="tok-type">String</span>.repeat(<span class="tok-str">&quot;ab&quot;</span>, <span class="tok-lit">3</span>)   <span class="tok-com"># == &quot;ababab&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to repeat</dd>
+  <dt><code>n</code></dt>
+  <dd>how many times to repeat <code>s</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code> of <code>s</code> repeated <code>n</code> times (<code>&quot;&quot;</code> when <code>n &lt;= 0</code>)</p>
+</div>
+<div class="fn-detail" id="to_list/1">
+  <h3 class="fn-title"><code>fn to_list(s)</code> <a class="anchor" href="#to_list/1">¶</a></h3>
+<p>Splits <code>s</code> into a list of single-character strings, one per Unicode code point. The inverse of <code>from_list</code>.</p>
+<pre><code><span class="tok-type">String</span>.to_list(<span class="tok-str">&quot;abc&quot;</span>)   <span class="tok-com"># == [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to explode</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of single-character <code><a href="String.html">String</a></code>s, one per code point</p>
+</div>
+<div class="fn-detail" id="pad_left/3">
+  <h3 class="fn-title"><code>fn pad_left(s, width, pad_char)</code> <a class="anchor" href="#pad_left/3">¶</a></h3>
+<p>Returns <code>s</code> left-padded with <code>pad_char</code> until it reaches at least <code>width</code> characters. Already-long-enough <code>s</code> comes back unchanged. <code>pad_char</code> is a single character; a longer one may overshoot <code>width</code>.</p>
+<pre><code><span class="tok-type">String</span>.pad_left(<span class="tok-str">&quot;7&quot;</span>, <span class="tok-lit">3</span>, <span class="tok-str">&quot;0&quot;</span>)     <span class="tok-com"># == &quot;007&quot;</span>
+<span class="tok-type">String</span>.pad_left(<span class="tok-str">&quot;hello&quot;</span>, <span class="tok-lit">3</span>, <span class="tok-str">&quot;0&quot;</span>) <span class="tok-com"># == &quot;hello&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to pad</dd>
+  <dt><code>width</code></dt>
+  <dd>the minimum length of the result</dd>
+  <dt><code>pad_char</code></dt>
+  <dd>the single-character string to pad with</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>s</code>, left-padded to at least <code>width</code> characters</p>
+</div>
+<div class="fn-detail" id="pad_right/3">
+  <h3 class="fn-title"><code>fn pad_right(s, width, pad_char)</code> <a class="anchor" href="#pad_right/3">¶</a></h3>
+<p>Returns <code>s</code> right-padded with <code>pad_char</code> until it reaches at least <code>width</code> characters. Already-long-enough <code>s</code> comes back unchanged. <code>pad_char</code> is a single character; a longer one may overshoot <code>width</code>.</p>
+<pre><code><span class="tok-type">String</span>.pad_right(<span class="tok-str">&quot;7&quot;</span>, <span class="tok-lit">3</span>, <span class="tok-str">&quot;0&quot;</span>)     <span class="tok-com"># == &quot;700&quot;</span>
+<span class="tok-type">String</span>.pad_right(<span class="tok-str">&quot;hello&quot;</span>, <span class="tok-lit">3</span>, <span class="tok-str">&quot;0&quot;</span>) <span class="tok-com"># == &quot;hello&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to pad</dd>
+  <dt><code>width</code></dt>
+  <dd>the minimum length of the result</dd>
+  <dt><code>pad_char</code></dt>
+  <dd>the single-character string to pad with</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>s</code>, right-padded to at least <code>width</code> characters</p>
+</div>
+<div class="fn-detail" id="capitalize/1">
+  <h3 class="fn-title"><code>fn capitalize(s)</code> <a class="anchor" href="#capitalize/1">¶</a></h3>
+<p>Returns <code>s</code> with its first character uppercased and the rest lowercased. <code>&quot;&quot;</code> comes back unchanged.</p>
+<pre><code><span class="tok-type">String</span>.capitalize(<span class="tok-str">&quot;hello WORLD&quot;</span>)   <span class="tok-com"># == &quot;Hello world&quot;</span>
+<span class="tok-type">String</span>.capitalize(<span class="tok-str">&quot;&quot;</span>)              <span class="tok-com"># == &quot;&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>s</code></dt>
+  <dd>the string to capitalize</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="String.html">String</a></code>, first character up, rest down</p>
+</div>
+<div class="fn-detail" id="from_list/1">
+  <h3 class="fn-title"><code>fn from_list(chars)</code> <a class="anchor" href="#from_list/1">¶</a></h3>
+<p>Concatenates a list of single-character strings into one string. The inverse of <code>to_list</code>.</p>
+<pre><code><span class="tok-type">String</span>.from_list([<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;b&quot;</span>, <span class="tok-str">&quot;c&quot;</span>])   <span class="tok-com"># == &quot;abc&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>chars</code></dt>
+  <dd>a list of strings to concatenate</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a single <code><a href="String.html">String</a></code>, the elements of <code>chars</code> joined in order</p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

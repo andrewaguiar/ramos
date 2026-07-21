@@ -1,0 +1,8 @@
+# logical.rmo — the word-form logical operators. Ramos has no `&&`, `||` or `!`.
+
+both = true and false   # `and` short-circuits: a false left side skips the right
+either = true or false  # `or` short-circuits too
+negated = not true
+
+# Precedence, loosest to tightest: `or` < `and` < `not` < comparison.
+mixed = 1 < 2 and not (3 > 4) or false

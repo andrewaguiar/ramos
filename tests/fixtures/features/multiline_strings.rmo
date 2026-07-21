@@ -1,0 +1,24 @@
+# multiline_strings.rmo — `"""` opens a multiline string. The opening quotes
+# are followed straight by a newline, content sits one level (2 spaces) past
+# the opening line, and the closing quotes stand alone at the opening line's
+# indentation. Every content line keeps its trailing newline.
+
+# Like `case` or `run`, a multiline string being assigned starts on the line
+# after the `=`, so the assignment does not hang open across the content.
+str =
+  """
+    Hi there
+
+    This is a multiline string
+  """
+
+print(str)
+
+# Here the string opens at the function-body level, so "Usage: ..." is flush
+# left in the value while "  -h ..." keeps its two extra spaces. Interpolation
+# works exactly as in single-line strings.
+fn usage(name)
+  """
+    Usage: #{name} <file>
+      -h  show this help
+  """

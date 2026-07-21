@@ -1,0 +1,9 @@
+struct Geometry.Rect
+  implements Geometry.Describable
+
+  attributes
+    width: 0
+    height: 0
+
+  fn area(self)
+    self.width * self.height

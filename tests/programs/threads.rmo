@@ -1,0 +1,24 @@
+# Threads: fan independent work out and gather it back in order.
+module Threads
+  fn main()
+    # start/await a single computation
+    t = Thread.start(do -> heavy(9))
+    println(Thread.await(t))
+
+    # start a batch by hand, then gather it with await_all — order preserved
+    handles = List.map([1, 2, 3], do n -> Thread.start(do -> heavy(n)))
+    println(Thread.await_all(handles))
+
+    # parallel map keeps order regardless of finish order
+    println(Thread.map([1, 2, 3, 4, 5], do n -> heavy(n)))
+
+    # errors travel as values through the lambda, not as failures
+    println(Thread.map([2, -3, 4], do n -> checked(n)))
+
+  fnp heavy(n)
+    n * n
+
+  fnp checked(n)
+    cond
+      n < 0 -> (:error, :negative)
+      true -> (:ok, n)

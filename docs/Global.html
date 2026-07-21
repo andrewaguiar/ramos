@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Global — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html" class="current">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">Global</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>Global — one process-wide map, held by an actor.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>Global — one process-wide map, held by an actor.</p>
+<p><code><a href="Global.html">Global</a></code> is a <code><a href="Map.html">Map</a></code> that every part of a program shares: one actor named <code>:global</code> holds it, and <code>get</code> / <code>put</code> / <code>clear</code> are messages to that actor. Nothing mutates — each <code>put</code> hands the actor a new map, and the actor keeps the newest one.</p>
+<pre><code><span class="tok-type">Global</span>.start()
+<span class="tok-type">Global</span>.put(<span class="tok-lit">:user</span>, <span class="tok-str">&quot;andrew&quot;</span>)
+<span class="tok-type">Global</span>.get(<span class="tok-lit">:user</span>)             <span class="tok-com"># == &quot;andrew&quot;</span></code></pre>
+<p>Only <code>get</code> waits. A write has no answer worth waiting for, so <code>put</code> and <code>clear</code> are casts: <code>:ok</code> comes back as soon as the message is sent. That costs nothing in correctness, because the actor takes its mailbox in order — a <code>get</code> sent after a <code>put</code> is handled after it, and sees the write.</p>
+<p><em></em>Use it with caution.<em></em> It is shared mutable state wearing an actor&#39;s clothes, and it carries every cost that implies:</p>
+<ul><li><em></em>It hides a dependency.<em></em> A function that reads <code><a href="Global.html">Global</a></code> says nothing about it in its signature, so callers cannot see what it needs or substitute anything for a test. A parameter is almost always better.</li><li><em></em>It is a bottleneck.<em></em> One actor handles one message at a time, so every reader and writer in the program queues behind the same thread.</li><li><em></em>It has no scoping.<em></em> One flat key space for the whole program, so two unrelated parts picking the same key silently overwrite each other.</li><li><em></em>A read is a guess.<em></em> Between a <code>get</code> and the <code>put</code> that acts on it, another caller may have written the key; only what happens inside one handler is atomic.</li><li><em></em>Actors cannot reach it.<em></em> An actor&#39;s thread cannot see the actor registry, so a handler cannot call <code><a href="Global.html#get">Global.get</a></code> — a message is the only way state gets into an actor.</li></ul>
+<p>Reach for it for what is genuinely process-wide and written once: config read at startup, a feature flag, a run id. For anything else, pass the value or give it its own actor with a name that says what it holds.</p>
+<p><code><a href="Global.html">Global</a></code> is an ordinary <code><a href="Actor.html">Actor</a></code> implementation, so <code>list_actors</code>, <code>actor_stats(:global)</code> and <code>stop_actor(:global)</code> all work on it.</p>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#call/4" class="fn-sig"><code>fn call(f, args, state, config)</code></a>
+    <span class="fn-summary">The server half of the one operation with something to say back: <code>:get</code>. Sent by <code>get</code>, never called directly.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#cast/4" class="fn-sig"><code>fn cast(f, args, state, config)</code></a>
+    <span class="fn-summary">The server half of the two writes, <code>:put</code> and <code>:clear</code>. Neither replies, so the new map is the whole result.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#start/0" class="fn-sig"><code>fn start()</code></a>
+    <span class="fn-summary">Start the <code>:global</code> actor with an empty map. Call it once, before anything reads or writes; starting it twice is an error.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#get/1" class="fn-sig"><code>fn get(key)</code></a>
+    <span class="fn-summary">The value stored under <code>key</code>, waiting for the actor to answer. Every write sent before it has been handled by the time it reads.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#put/2" class="fn-sig"><code>fn put(key, value)</code></a>
+    <span class="fn-summary">Store <code>value</code> under <code>key</code>, replacing whatever was there, without waiting for the actor. <code>:ok</code> comes back at once and the next <code>get</code> still sees the write, because the actor handles its messages in order.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#clear/1" class="fn-sig"><code>fn clear(key)</code></a>
+    <span class="fn-summary">Drop <code>key</code> without waiting for the actor, on the same terms as <code>put</code>. Clearing a key that is not there is fine.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#get_impl/2" class="fn-sig"><code>fnp get_impl(args, state)</code></a>
+    <span class="fn-summary"></span>
+  </div>
+  <div class="fn-row private">
+    <a href="#put_impl/2" class="fn-sig"><code>fnp put_impl(args, state)</code></a>
+    <span class="fn-summary"></span>
+  </div>
+  <div class="fn-row private">
+    <a href="#clear_impl/2" class="fn-sig"><code>fnp clear_impl(args, state)</code></a>
+    <span class="fn-summary"></span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="call/4">
+  <h3 class="fn-title"><code>fn call(f, args, state, config)</code> <a class="anchor" href="#call/4">¶</a></h3>
+<p>The server half of the one operation with something to say back: <code>:get</code>. Sent by <code>get</code>, never called directly.</p>
+<dl class="params">
+  <dt><code>f</code></dt>
+  <dd>the operation — <code>:get</code></dd>
+  <dt><code>args</code></dt>
+  <dd><code>[key]</code>, the key to look up</dd>
+  <dt><code>state</code></dt>
+  <dd>the map as it stands</dd>
+  <dt><code>config</code></dt>
+  <dd>unused — <code><a href="Global.html">Global</a></code> has nothing to configure</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code>(value, state)</code> tuple; a read leaves the map alone</p>
+</div>
+<div class="fn-detail" id="cast/4">
+  <h3 class="fn-title"><code>fn cast(f, args, state, config)</code> <a class="anchor" href="#cast/4">¶</a></h3>
+<p>The server half of the two writes, <code>:put</code> and <code>:clear</code>. Neither replies, so the new map is the whole result.</p>
+<dl class="params">
+  <dt><code>f</code></dt>
+  <dd>the operation — <code>:put</code> or <code>:clear</code></dd>
+  <dt><code>args</code></dt>
+  <dd><code>[key, value]</code> for <code>:put</code>, <code>[key]</code> for <code>:clear</code></dd>
+  <dt><code>state</code></dt>
+  <dd>the map as it stands</dd>
+  <dt><code>config</code></dt>
+  <dd>unused</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the map the write produced</p>
+</div>
+<div class="fn-detail" id="start/0">
+  <h3 class="fn-title"><code>fn start()</code> <a class="anchor" href="#start/0">¶</a></h3>
+<p>Start the <code>:global</code> actor with an empty map. Call it once, before anything reads or writes; starting it twice is an error.</p>
+<pre><code><span class="tok-type">Global</span>.start()   <span class="tok-com"># == :ok</span></code></pre>
+<p class="returns"><strong>Returns:</strong> <code>:ok</code></p>
+</div>
+<div class="fn-detail" id="get/1">
+  <h3 class="fn-title"><code>fn get(key)</code> <a class="anchor" href="#get/1">¶</a></h3>
+<p>The value stored under <code>key</code>, waiting for the actor to answer. Every write sent before it has been handled by the time it reads.</p>
+<pre><code><span class="tok-type">Global</span>.start()
+<span class="tok-type">Global</span>.put(<span class="tok-lit">:port</span>, <span class="tok-lit">8080</span>)
+<span class="tok-type">Global</span>.get(<span class="tok-lit">:port</span>)     <span class="tok-com"># == 8080</span>
+<span class="tok-type">Global</span>.get(<span class="tok-lit">:host</span>)     <span class="tok-com"># == nil</span></code></pre>
+<dl class="params">
+  <dt><code>key</code></dt>
+  <dd>the key to look up — an <code><a href="Integer.html">Integer</a></code>, <code><a href="String.html">String</a></code> or <code>Symbol</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the value under <code>key</code>, or <code>nil</code> when there is none</p>
+</div>
+<div class="fn-detail" id="put/2">
+  <h3 class="fn-title"><code>fn put(key, value)</code> <a class="anchor" href="#put/2">¶</a></h3>
+<p>Store <code>value</code> under <code>key</code>, replacing whatever was there, without waiting for the actor. <code>:ok</code> comes back at once and the next <code>get</code> still sees the write, because the actor handles its messages in order.</p>
+<pre><code><span class="tok-type">Global</span>.start()
+<span class="tok-type">Global</span>.put(<span class="tok-lit">:user</span>, <span class="tok-str">&quot;andrew&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
+<dl class="params">
+  <dt><code>key</code></dt>
+  <dd>the key to set — an <code><a href="Integer.html">Integer</a></code>, <code><a href="String.html">String</a></code> or <code>Symbol</code></dd>
+  <dt><code>value</code></dt>
+  <dd>the value to store</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>:ok</code>, as soon as the message is sent</p>
+</div>
+<div class="fn-detail" id="clear/1">
+  <h3 class="fn-title"><code>fn clear(key)</code> <a class="anchor" href="#clear/1">¶</a></h3>
+<p>Drop <code>key</code> without waiting for the actor, on the same terms as <code>put</code>. Clearing a key that is not there is fine.</p>
+<pre><code><span class="tok-type">Global</span>.start()
+<span class="tok-type">Global</span>.put(<span class="tok-lit">:tmp</span>, <span class="tok-lit">1</span>)
+<span class="tok-type">Global</span>.clear(<span class="tok-lit">:tmp</span>)   <span class="tok-com"># == :ok</span>
+<span class="tok-type">Global</span>.get(<span class="tok-lit">:tmp</span>)     <span class="tok-com"># == nil</span></code></pre>
+<dl class="params">
+  <dt><code>key</code></dt>
+  <dd>the key to drop</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>:ok</code>, as soon as the message is sent</p>
+</div>
+<div class="fn-detail" id="get_impl/2">
+  <h3 class="fn-title"><code>fnp get_impl(args, state)</code> <span class="badge private">private</span> <a class="anchor" href="#get_impl/2">¶</a></h3>
+</div>
+<div class="fn-detail" id="put_impl/2">
+  <h3 class="fn-title"><code>fnp put_impl(args, state)</code> <span class="badge private">private</span> <a class="anchor" href="#put_impl/2">¶</a></h3>
+</div>
+<div class="fn-detail" id="clear_impl/2">
+  <h3 class="fn-title"><code>fnp clear_impl(args, state)</code> <span class="badge private">private</span> <a class="anchor" href="#clear_impl/2">¶</a></h3>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

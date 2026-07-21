@@ -1,0 +1,30 @@
+# if.rmo — `if` is the two-branch conditional: a condition, an indented body,
+# and an optional `else`. Any value works as the condition, since only `false`
+# and `nil` are falsy. There is no `else if` — a chain of conditions is `cond`.
+
+x = 5
+
+if x > 3
+  print("big")
+else
+  print("small")
+
+# `else` is optional; without one, the branch not taken yields `nil`.
+if x > 100
+  print("never")
+
+# `if` is an expression, so it can be assigned — the block starts on its own
+# line, like any other block on the right of `=`.
+grade =
+  if x > 3
+    :high
+  else
+    :low
+
+# Any truthy value: `is_truthy` is the same rule written down.
+if "text"
+  print(is_truthy(x))
+
+# One guarded statement fits on one line: `<statement> when <condition>` — the
+# same conditional, so no `else` half and no assignment on the left.
+print("big") when x > 3

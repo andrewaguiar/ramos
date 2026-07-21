@@ -1,0 +1,14 @@
+# hello_world.rmo — a tiny Ramos program: a Main entrypoint that does some
+# arithmetic, maps a list through a private helper, and prints the results.
+
+module Main
+  fn main()
+    total = (2 + 3) * 4 - 6 / 2
+    doubled = double_all([1, 2, 3, 4])
+    println("total is #{total}")
+    println("doubled is #{doubled}")
+
+  fnp double_all(list)
+    case list
+      [] -> []
+      [head | tail] -> [head * 2] ++ double_all(tail)

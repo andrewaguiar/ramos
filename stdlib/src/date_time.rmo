@@ -1,0 +1,493 @@
+struct DateTime
+  # @module_doc
+  #
+  # DateTime — a `NaiveDateTime` plus a fixed offset from UTC, so it names a
+  # precise instant rather than just a wall-clock reading.
+  #
+  # There is no time zone database here (no dependency ships one) — an
+  # `offset_minutes` is a plain number, like `-300` for UTC-5 or `330` for
+  # UTC+5:30, not a zone name that shifts with daylight saving. The fields
+  # (`year`..`millisecond`) are the *local* reading at that offset:
+  #
+  #   utc = DateTime.now()
+  #   ny = DateTime.now_at(-300)
+  #   utc.offset_minutes   # == 0
+  #   ny.offset_minutes    # == -300
+  #
+  # Two `DateTime`s at different offsets can still name the same instant —
+  # `compare` and `diff_millis` account for the offset, so they agree with
+  # what a clock actually measures, not just the printed fields:
+  #
+  #   a = DateTime.new(2024, 1, 1, 12, 0, 0, 0)     # noon UTC
+  #   b = DateTime.new(2024, 1, 1, 7, 0, 0, -300)   # 07:00 at UTC-5 — the same instant
+  #   DateTime.compare(a, b)   # == 0
+  #
+  # `==` does not know this — it compares fields structurally like any other
+  # struct, so `a == b` above is `false` even though they name one instant.
+  # Convert with `with_offset` (or `to_utc`) before comparing fields directly.
+  #
+  # `now_in` and `in_time_zone` take a `TimeZone` (a name plus a fixed
+  # offset) rather than a bare number, when a name is worth carrying:
+  #
+  #   ist = TimeZone.fixed("IST", 330)
+  #   DateTime.now_in(ist).offset_minutes   # == 330
+  #
+  # Conventions:
+  #   - `compare` orders by instant (the UTC equivalent), not by the printed
+  #     local fields.
+  #   - `to_iso` renders the offset as `Z` for UTC or `±HH:MM` otherwise (via
+  #     `TimeZone.offset_text`), and `parse` reads the same shape back.
+  #   - see `NaiveDateTime` for the zone-free version of this shape, `Date`
+  #     for the calendar day alone, and `TimeZone` for the named-offset type.
+
+  attributes
+    year: 1970
+    month: 1
+    day: 1
+    hour: 0
+    minute: 0
+    second: 0
+    millisecond: 0
+    offset_minutes: 0
+
+  fn new(year, month, day, hour, minute, second, offset_minutes)
+    # @doc
+    #
+    # Builds a `DateTime` from local fields at `offset_minutes` from UTC, with
+    # `millisecond: 0`. Every field past `year` normalizes when it overflows
+    # or underflows its natural range, the same way `Date.new`'s `day` does.
+    #
+    # @param year: the calendar year, any integer
+    # @param month: the month, `1`..`12`
+    # @param day: the day of month; out-of-range values roll over
+    # @param hour: the hour, `0`..`23`; out-of-range values roll over
+    # @param minute: the minute, `0`..`59`; out-of-range values roll over
+    # @param second: the second, `0`..`59`; out-of-range values roll over
+    # @param offset_minutes: the offset from UTC, in minutes (e.g. `-300` for UTC-5)
+    # @return a new `DateTime`
+    #
+    #   DateTime.new(2024, 2, 9, 13, 45, 30, 0)
+    #   # == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 0, offset_minutes: 0}
+    assert(month >= 1 and month <= 12, "DateTime.new: month must be 1..12, got #{month}")
+    utc_ms = raw_millis(year, month, day, hour, minute, second, 0) - offset_minutes * 60000
+    from_epoch_millis(utc_ms, offset_minutes)
+
+  fn now()
+    # @doc
+    #
+    # The current instant, as UTC (`offset_minutes: 0`).
+    #
+    # @return the current `DateTime`
+    #
+    #   DateTime.now().offset_minutes   # == 0
+    from_epoch_millis(Kernel.now(), 0)
+
+  fn now_at(offset_minutes)
+    # @doc
+    #
+    # The current instant, as local fields at `offset_minutes` from UTC.
+    #
+    # @param offset_minutes: the offset from UTC, in minutes
+    # @return the current `DateTime`, expressed at that offset
+    #
+    #   DateTime.now_at(-300).offset_minutes   # == -300
+    from_epoch_millis(Kernel.now(), offset_minutes)
+
+  fn now_in(time_zone)
+    # @doc
+    #
+    # The current instant, as local fields in `time_zone`.
+    #
+    # @param time_zone: the `TimeZone` to express the current instant in
+    # @return the current `DateTime`, at `time_zone`'s offset
+    #
+    #   DateTime.now_in(TimeZone.fixed("IST", 330)).offset_minutes   # == 330
+    now_at(time_zone.offset_minutes)
+
+  fn from_epoch_millis(utc_ms, offset_minutes)
+    # @doc
+    #
+    # The `DateTime` for the instant `utc_ms` milliseconds after the epoch,
+    # with its fields expressed at `offset_minutes` from UTC.
+    #
+    # @param utc_ms: the instant, as milliseconds since the epoch (UTC)
+    # @param offset_minutes: the offset from UTC to render the fields at
+    # @return the corresponding `DateTime`
+    #
+    #   DateTime.from_epoch_millis(0, 0)
+    #   # == DateTime{year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
+    #   DateTime.from_epoch_millis(0, 60)
+    #   # == DateTime{year: 1970, month: 1, day: 1, hour: 1, minute: 0, second: 0, millisecond: 0, offset_minutes: 60}
+    local_ms = utc_ms + offset_minutes * 60000
+    epoch_day = floor_div(local_ms, 86400000)
+    millis_of_day = local_ms % 86400000
+    (year, month, day) = native("date_from_epoch_day", [epoch_day])
+    DateTime{
+      year: year,
+      month: month,
+      day: day,
+      hour: millis_of_day / 3600000,
+      minute: (millis_of_day / 60000) % 60,
+      second: (millis_of_day / 1000) % 60,
+      millisecond: millis_of_day % 1000,
+      offset_minutes: offset_minutes
+    }
+
+  fn from_naive(naive, offset_minutes)
+    # @doc
+    #
+    # Tags a `NaiveDateTime`'s fields as the local time at `offset_minutes` —
+    # a relabeling, not a conversion: the fields are copied as they are.
+    #
+    # @param naive: the wall-clock reading to tag
+    # @param offset_minutes: the offset from UTC those fields are read at
+    # @return a `DateTime` with `naive`'s fields and the given offset
+    #
+    #   DateTime.from_naive(NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13}, -300)
+    #   # == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 0, second: 0, millisecond: 0, offset_minutes: -300}
+    DateTime{
+      year: naive.year,
+      month: naive.month,
+      day: naive.day,
+      hour: naive.hour,
+      minute: naive.minute,
+      second: naive.second,
+      millisecond: naive.millisecond,
+      offset_minutes: offset_minutes
+    }
+
+  fn parse(text)
+    # @doc
+    #
+    # Parses `"YYYY-MM-DDTHH:MM:SS±HH:MM"` (or a trailing `"Z"` for UTC) —
+    # either a `T` or a plain space between the date and the time, as
+    # `to_iso` renders or as the `U"..."` sigil is written. The seconds'
+    # fractional part is optional and any number of digits (padded or
+    # truncated to milliseconds), the same as `NaiveDateTime.parse`.
+    #
+    # @param text: a date-time in `"YYYY-MM-DD[T ]HH:MM:SS[.fraction](Z|±HH:MM)"` form
+    # @return the corresponding `DateTime`
+    #
+    #   DateTime.parse("2024-02-09T13:45:30.500Z")
+    #   # == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 500, offset_minutes: 0}
+    #   DateTime.parse("2024-02-09 13:45:30.123456-05:00")
+    #   # == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 123, offset_minutes: -300}
+    sep =
+      if String.contains(text, "T")
+        "T"
+      else
+        " "
+    [date_part, rest] = String.split(text, sep)
+    d = Date.parse(date_part)
+    split_at = offset_start(rest)
+    clock_part = String.slice(rest, 0, split_at)
+    offset_text = String.slice(rest, split_at, String.length(rest) - split_at)
+    [clock, fraction] =
+      if String.contains(clock_part, ".")
+        String.split(clock_part, ".")
+      else
+        [clock_part, ""]
+    [h, mi, s] = String.split(clock, ":")
+    offset_minutes = TimeZone.parse_offset_text(offset_text)
+    utc_ms = raw_millis(d.year, d.month, d.day, to_integer(h), to_integer(mi), to_integer(s), millis_from_fraction(fraction)) - offset_minutes * 60000
+    from_epoch_millis(utc_ms, offset_minutes)
+
+  fn date(self)
+    # @doc
+    #
+    # The `Date` half of `self`'s local reading, dropping the time of day and
+    # the offset.
+    #
+    # @param self: the date-time to read
+    # @return the `Date` self's local fields fall on
+    #
+    #   DateTime.date(DateTime{year: 2024, month: 2, day: 9, hour: 13})   # == Date{year: 2024, month: 2, day: 9}
+    Date{year: self.year, month: self.month, day: self.day}
+
+  fn to_naive(self)
+    # @doc
+    #
+    # `self`'s local fields as a `NaiveDateTime`, dropping the offset.
+    #
+    # @param self: the date-time to convert
+    # @return a `NaiveDateTime` with the same local fields
+    #
+    #   DateTime.to_naive(DateTime{year: 2024, month: 2, day: 9, hour: 13, offset_minutes: -300})
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 0, second: 0, millisecond: 0}
+    NaiveDateTime{
+      year: self.year,
+      month: self.month,
+      day: self.day,
+      hour: self.hour,
+      minute: self.minute,
+      second: self.second,
+      millisecond: self.millisecond
+    }
+
+  fn to_utc_epoch_millis(self)
+    # @doc
+    #
+    # The instant `self` names, as milliseconds since the epoch (UTC) — the
+    # bridge to arithmetic and comparison, and what makes two `DateTime`s at
+    # different offsets comparable.
+    #
+    # @param self: the date-time to convert
+    # @return an `Integer` millisecond count, negative before the epoch
+    #
+    #   DateTime.to_utc_epoch_millis(DateTime{year: 1970, month: 1, day: 1, hour: 1, offset_minutes: 60})   # == 0
+    raw_millis(self.year, self.month, self.day, self.hour, self.minute, self.second, self.millisecond) - self.offset_minutes * 60000
+
+  fn to_utc(self)
+    # @doc
+    #
+    # The same instant as `self`, with its fields expressed at UTC
+    # (`offset_minutes: 0`).
+    #
+    # @param self: the date-time to convert
+    # @return an equivalent `DateTime` at `offset_minutes: 0`
+    #
+    #   DateTime.to_utc(DateTime{year: 2024, month: 2, day: 9, hour: 8, offset_minutes: -300})
+    #   # == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
+    with_offset(self, 0)
+
+  fn with_offset(self, offset_minutes)
+    # @doc
+    #
+    # The same instant as `self`, with its fields re-expressed at
+    # `offset_minutes` — the way to convert between offsets.
+    #
+    # @param self: the date-time to convert
+    # @param offset_minutes: the offset from UTC to render the fields at
+    # @return an equivalent `DateTime` at the new offset
+    #
+    #   DateTime.with_offset(DateTime{year: 2024, month: 2, day: 9, hour: 13, offset_minutes: 0}, -300)
+    #   # == DateTime{year: 2024, month: 2, day: 9, hour: 8, minute: 0, second: 0, millisecond: 0, offset_minutes: -300}
+    from_epoch_millis(to_utc_epoch_millis(self), offset_minutes)
+
+  fn in_time_zone(self, time_zone)
+    # @doc
+    #
+    # The same instant as `self`, with its fields re-expressed at
+    # `time_zone`'s offset — `with_offset`, taking a `TimeZone` instead of a
+    # bare number.
+    #
+    # @param self: the date-time to convert
+    # @param time_zone: the `TimeZone` to render the fields in
+    # @return an equivalent `DateTime` at that zone's offset
+    #
+    #   DateTime.in_time_zone(DateTime{offset_minutes: 0}, TimeZone.fixed("IST", 330)).offset_minutes   # == 330
+    with_offset(self, time_zone.offset_minutes)
+
+  fn time_zone(self)
+    # @doc
+    #
+    # `self`'s offset as a `TimeZone`, named after the offset itself
+    # (`"UTC"` at `0`, otherwise `±HH:MM`) — `self` only ever keeps the
+    # number, never the name a zone arrived with.
+    #
+    # @param self: the date-time to read
+    # @return a `TimeZone` matching `self`'s offset
+    #
+    #   DateTime.time_zone(DateTime{offset_minutes: -300}).name   # == "-05:00"
+    TimeZone.from_offset_minutes(self.offset_minutes)
+
+  fn to_iso(self)
+    # @doc
+    #
+    # `self` rendered as `"YYYY-MM-DDTHH:MM:SS.mmm"` followed by `Z` (when
+    # `offset_minutes` is `0`) or a signed `±HH:MM` offset.
+    #
+    # @param self: the date-time to render
+    # @return the ISO-8601 string
+    #
+    #   DateTime.to_iso(DateTime{year: 2024, month: 2, day: 9, hour: 3, minute: 5, second: 9, millisecond: 7, offset_minutes: 0})
+    #   # == "2024-02-09T03:05:09.007Z"
+    #   DateTime.to_iso(DateTime{year: 2024, month: 2, day: 9, hour: 3, minute: 5, second: 9, millisecond: 7, offset_minutes: -300})
+    #   # == "2024-02-09T03:05:09.007-05:00"
+    clock = "#{pad(self.hour, 2)}:#{pad(self.minute, 2)}:#{pad(self.second, 2)}.#{pad(self.millisecond, 3)}"
+    "#{Date.to_iso(date(self))}T#{clock}#{TimeZone.offset_text(self.offset_minutes)}"
+
+  fn add_days(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` days, keeping the offset.
+    #
+    # @param self: the starting date-time
+    # @param n: how many days to add (negative subtracts)
+    # @return a new `DateTime`
+    #
+    #   DateTime.add_days(DateTime{year: 2024, month: 2, day: 28, hour: 12}, 1)
+    #   # == DateTime{year: 2024, month: 2, day: 29, hour: 12, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
+    shift(self, n * 86400000)
+
+  fn add_weeks(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` weeks (`n * 7` days), keeping the offset.
+    #
+    # @param self: the starting date-time
+    # @param n: how many weeks to add (negative subtracts)
+    # @return a new `DateTime`
+    #
+    #   DateTime.add_weeks(DateTime{year: 2024, month: 1, day: 1, hour: 12}, 1)
+    #   # == DateTime{year: 2024, month: 1, day: 8, hour: 12, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
+    shift(self, n * 604800000)
+
+  fn add_months(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` months, keeping the time of day and the offset —
+    # `Date.add_months` applied to the local date half, with the day-overflow
+    # normalization that implies.
+    #
+    # @param self: the starting date-time
+    # @param n: how many months to add (negative subtracts)
+    # @return a new `DateTime`
+    #
+    #   DateTime.add_months(DateTime{year: 2024, month: 1, day: 15, hour: 12}, 1)
+    #   # == DateTime{year: 2024, month: 2, day: 15, hour: 12, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
+    shifted = Date.add_months(date(self), n)
+    DateTime{
+      year: shifted.year,
+      month: shifted.month,
+      day: shifted.day,
+      hour: self.hour,
+      minute: self.minute,
+      second: self.second,
+      millisecond: self.millisecond,
+      offset_minutes: self.offset_minutes
+    }
+
+  fn add_hours(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` hours, keeping the offset.
+    #
+    # @param self: the starting date-time
+    # @param n: how many hours to add (negative subtracts)
+    # @return a new `DateTime`
+    #
+    #   DateTime.add_hours(DateTime{year: 2024, month: 2, day: 9, hour: 23}, 2)
+    #   # == DateTime{year: 2024, month: 2, day: 10, hour: 1, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
+    shift(self, n * 3600000)
+
+  fn add_minutes(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` minutes, keeping the offset.
+    #
+    # @param self: the starting date-time
+    # @param n: how many minutes to add (negative subtracts)
+    # @return a new `DateTime`
+    #
+    #   DateTime.add_minutes(DateTime{year: 2024, month: 2, day: 9, hour: 0, minute: 30}, 45)
+    #   # == DateTime{year: 2024, month: 2, day: 9, hour: 1, minute: 15, second: 0, millisecond: 0, offset_minutes: 0}
+    shift(self, n * 60000)
+
+  fn add_seconds(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` seconds, keeping the offset.
+    #
+    # @param self: the starting date-time
+    # @param n: how many seconds to add (negative subtracts)
+    # @return a new `DateTime`
+    #
+    #   DateTime.add_seconds(DateTime{year: 2024, month: 2, day: 9, second: 45}, 30)
+    #   # == DateTime{year: 2024, month: 2, day: 9, minute: 1, second: 15, millisecond: 0, offset_minutes: 0}
+    shift(self, n * 1000)
+
+  fn compare(self, other)
+    # @doc
+    #
+    # Orders two date-times by the instant they name (their UTC equivalent),
+    # as `-1`, `0` or `1` — not by their printed local fields, so two
+    # `DateTime`s at different offsets compare correctly.
+    #
+    # @param self: the first date-time
+    # @param other: the second date-time
+    # @return `-1` when `self` is earlier, `1` when later, `0` when equal
+    #
+    #   DateTime.compare(DateTime{hour: 1}, DateTime{hour: 2})                        # == -1
+    #   DateTime.compare(DateTime{hour: 12}, DateTime{hour: 7, offset_minutes: -300})  # == 0
+    cond
+      to_utc_epoch_millis(self) < to_utc_epoch_millis(other) -> -1
+      to_utc_epoch_millis(self) > to_utc_epoch_millis(other) -> 1
+      true -> 0
+
+  fn diff_millis(self, other)
+    # @doc
+    #
+    # The number of milliseconds from the instant `other` names to the one
+    # `self` names — positive when `self` is later, negative when earlier.
+    #
+    # @param self: the later (or earlier) date-time
+    # @param other: the date-time to measure from
+    # @return an `Integer` millisecond count
+    #
+    #   DateTime.diff_millis(DateTime{second: 10}, DateTime{second: 1})   # == 9000
+    to_utc_epoch_millis(self) - to_utc_epoch_millis(other)
+
+  fn day_of_week(self)
+    # @doc
+    #
+    # The day of the week `self`'s local date falls on. Delegates to
+    # `Date.day_of_week`.
+    #
+    # @param self: the date-time to inspect
+    # @return one of `:sunday`, `:monday`, `:tuesday`, `:wednesday`,
+    #   `:thursday`, `:friday`, `:saturday`
+    #
+    #   DateTime.day_of_week(DateTime{year: 1970, month: 1, day: 1})   # == :thursday
+    Date.day_of_week(date(self))
+
+  fnp raw_millis(year, month, day, hour, minute, second, millisecond)
+    # @doc
+    #
+    # (private) Milliseconds since the epoch for the given fields, as if they
+    # were UTC — before the offset is applied. Shared arithmetic behind
+    # `new`, `parse` and `to_utc_epoch_millis`.
+    native("date_to_epoch_day", [year, month, day]) * 86400000 + hour * 3600000 + minute * 60000 + second * 1000 + millisecond
+
+  fnp shift(self, millis)
+    # @doc
+    #
+    # (private) `self` moved by `millis` milliseconds of real time, keeping
+    # its offset. Backs the `add_*` family.
+    from_epoch_millis(to_utc_epoch_millis(self) + millis, self.offset_minutes)
+
+  fnp floor_div(a, b)
+    # @doc
+    #
+    # (private) `a` divided by `b`, rounding toward negative infinity — unlike
+    # `/`, which truncates toward zero. `b` is assumed positive.
+    (a - a % b) / b
+
+  fnp offset_start(rest)
+    # @doc
+    #
+    # (private) The index in `rest` (the text after the date) where its
+    # offset begins — the trailing `"Z"`, or the `+`/`-` of a `±HH:MM`. The
+    # clock text before it never contains any of those three characters, so
+    # whichever appears first is unambiguous. Backs `parse`.
+    cond
+      String.contains(rest, "Z") -> String.find(rest, "Z")
+      String.contains(rest, "+") -> String.find(rest, "+")
+      true -> String.find(rest, "-")
+
+  fnp millis_from_fraction(digits)
+    # @doc
+    #
+    # (private) A fractional-second string of any length as milliseconds:
+    # `"5"` is `500`, `"123456"` truncates to `123`. Backs `parse`.
+    if digits == ""
+      0
+    else
+      to_integer(String.slice(String.pad_right(digits, 3, "0"), 0, 3))
+
+  fnp pad(n, width)
+    # @doc
+    #
+    # (private) `n` rendered as decimal digits, left-padded with zeros to at
+    # least `width` characters. Backs `to_iso`.
+    String.pad_left(to_string(n), width, "0")

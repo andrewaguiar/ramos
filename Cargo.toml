@@ -1,0 +1,39 @@
+[package]
+name = "ramos"
+version = "0.1.0"
+edition = "2021"
+description = "Ramos Programming Language"
+authors = ["Andrew S Aguiar <andrewaguiar6@gmail.com>"]
+readme = "README.md"
+keywords = ["interpreter", "language", "ramos", "immutable"]
+categories = ["compilers", "command-line-utilities"]
+# Kept off crates.io for now; `cargo install --path .` still works.
+# To publish: drop `publish = false`.
+publish = false
+repository = "https://github.com/andrewaguiar/ramos"
+homepage = "https://www.andrewsaguiar.com/ramos/"
+license = "MIT"
+# Dev-only files that aren't needed to build or run the crate.
+exclude = [
+    "docs/",
+    "editors/",
+    ".claude/",
+    "AGENTS.md",
+    "release.sh",
+]
+
+[lib]
+name = "ramos"
+path = "src/lib.rs"
+
+# `cargo install --path .` (or `cargo install --git <url>`) builds and installs
+# this as the `ramos` executable on the user's PATH.
+[[bin]]
+name = "ramos"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

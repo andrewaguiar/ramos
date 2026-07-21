@@ -1,0 +1,22 @@
+# struct_errors.rmo — a struct makes a good error payload once a symbol and a
+# message aren't enough detail: it destructures in `case` like any other
+# pattern, field by field, including matching on a literal field value.
+
+struct DeclineReason
+  attributes
+    code: 0
+    message: nil
+
+fn charge(amount)
+  cond
+    amount <= 0 -> (:error, DeclineReason{code: 555, message: "must be positive"})
+    amount > 10000 -> (:error, DeclineReason{code: 556, message: "too large"})
+    true -> (:ok, amount)
+
+result =
+  case charge(50000)
+    (:ok, charged) -> "charged #{charged}"
+    (:error, DeclineReason{code: 556, message: message}) -> "too large: #{message}"
+    (:error, DeclineReason{message: message}) -> "declined: #{message}"
+
+print(result)

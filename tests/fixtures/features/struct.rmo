@@ -1,0 +1,29 @@
+# struct.rmo — a struct declares a typed record. `attributes` names each field
+# with its default, and instances are immutable: every update returns a new
+# one.
+
+struct Person
+  attributes
+    name: nil
+    age: 0
+
+  fn hello(self)
+    print("Ola #{self.name}, eu tenho #{self.age}")
+
+# Construction is the map-literal syntax prefixed by the struct name; omitted
+# fields take their declared defaults, and field access is dot syntax.
+andrew = Person{name: "Andrew", age: 40}
+andrew.hello()
+
+with_defaults = Person{}   # == Person{name: nil, age: 0}
+oldest =
+  andrew
+  | Struct.put(:age, 41)
+  | Struct.update(:age, do a -> a + 1)
+
+# `andrew.age = 41` rebinds `andrew` to a new instance, sugar for that same call.
+andrew.age = 41
+
+fields = Struct.keys(andrew)             # == [:name, :age]
+as_map = Struct.to_map(oldest)           # == {name: "Andrew", age: 42}
+is_person = Struct.is_a(andrew, Person)  # == true

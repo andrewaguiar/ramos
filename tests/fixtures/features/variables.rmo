@@ -1,0 +1,11 @@
+# variables.rmo — assignment binds a name to a value.
+
+x = 100
+name = "andrew"
+pi = 3.14
+
+# Rebinding, not mutation: `x` now names a new value, and 100 was never changed.
+x = x + 1
+
+# Names are snake_case, `a-z_` only — no `?` or `!`.
+main_user_name = name

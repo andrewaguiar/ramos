@@ -1,0 +1,268 @@
+module Map
+  # @module_doc
+  #
+  # Map — operations on key/value maps.
+  #
+  # `{name: "andrew"}` is a `Map`. A key is an `Integer`, a `String` or a
+  # `Symbol` — nothing else, so every map can be written as a literal:
+  # `{name: 1}` (the bare-name shorthand for the symbol `:name`), `{"host": 1}`
+  # and `{8080: 1}`. Putting a key of any other type is an error.
+  #
+  # Maps are immutable and insertion-ordered: `put` on an existing key replaces
+  # its value in place, a new key is appended, and every operation returns a new
+  # map rather than changing the one it was given.
+  #
+  #   config = {host: "localhost", port: 8080}
+  #   Map.get(config, :host, "?")   # == "localhost"
+  #
+  # The basics — `put`, `get`, `delete`, `has_key`, `keys`, `entries`,
+  # `from_list` — are host primitives. Everything that takes a lambda is written
+  # in Ramos on top of them, because a native cannot call back into the
+  # interpreter to run one.
+  #
+  # Kernel already covers the rest, so this module does not repeat it:
+  # `size(m)` counts the pairs and `to_list(m)` gives the values (also `values`,
+  # below, which reads as `Map`'s own the way `keys` does). For the pairs
+  # themselves, use `entries`.
+  #
+  # Conventions:
+  #   - `get` takes the value to fall back to, so a miss is never a surprise.
+  #   - key types never collide: `{a: 1}` and `{"a": 1}` are different maps.
+  #   - a predicate always takes the `(key, value)` pair and comes last:
+  #     `filter` and `reject` screen the whole map with one.
+  #   - merging is the `++` operator, with the right map winning a clash;
+  #     reach for `merge_with` when a clash should combine instead of
+  #     overwrite.
+  #   - equality ignores order: `{a: 1, b: 2} == {b: 2, a: 1}` is `true`.
+
+  fn entries(map)
+    # @doc
+    #
+    # The map's `(key, value)` pairs, in insertion order.
+    #
+    # @param map: the map to read
+    # @return a `List` of `(key, value)` tuples, in insertion order
+    #
+    #   Map.entries({a: 1, b: 2})   # == [(:a, 1), (:b, 2)]
+    native("map_entries", [map])
+
+  fn put(map, key, value)
+    # @doc
+    #
+    # A new map with `key` set to `value`. An existing key keeps its position;
+    # a new one is appended. The key must be an `Integer`, `String` or `Symbol`.
+    #
+    # @param map: the map to build on
+    # @param key: the key to set
+    # @param value: the value to store
+    # @return a new `Map` with `key` set to `value`
+    #
+    #   Map.put({a: 1}, :b, 2)   # == {a: 1, b: 2}
+    #   Map.put({a: 1}, :a, 9)   # == {a: 9}
+    native("map_put", [map, key, value])
+
+  fn get(map, key, default)
+    # @doc
+    #
+    # The value stored under `key`.
+    #
+    # @param map: the map to read
+    # @param key: the key to look up
+    # @param default: what to return when the map has no such key
+    # @return the value under `key`, or `default` when there is none
+    #
+    #   Map.get({a: 1}, :a, 0)   # == 1
+    #   Map.get({a: 1}, :b, 0)   # == 0
+    native("map_get", [map, key, default])
+
+  fn has_key(map, key)
+    # @doc
+    #
+    # Whether `map` holds `key`.
+    #
+    # @param map: the map to test
+    # @param key: the key to look for
+    # @return `true` when the key is present, `false` otherwise
+    #
+    #   Map.has_key({a: 1}, :a)   # == true
+    #   Map.has_key({a: 1}, :b)   # == false
+    native("map_has_key", [map, key])
+
+  fn keys(map)
+    # @doc
+    #
+    # The map's keys, in insertion order.
+    #
+    # @param map: the map to read
+    # @return a `List` of the keys, in insertion order
+    #
+    #   Map.keys({a: 1, b: 2})   # == [:a, :b]
+    native("map_keys", [map])
+
+  fn values(map)
+    # @doc
+    #
+    # The map's values, in insertion order — the counterpart to `keys`.
+    # `Kernel.to_list(map)` gives the same list; this is the name that reads
+    # as `Map`'s own, the way `keys` does.
+    #
+    # @param map: the map to read
+    # @return a `List` of the values, in insertion order
+    #
+    #   Map.values({a: 1, b: 2})   # == [1, 2]
+    to_list(map)
+
+  fn delete(map, key)
+    # @doc
+    #
+    # A new map without `key`. Removing a key that is not there is not an error.
+    #
+    # @param map: the map to remove from
+    # @param key: the key to drop
+    # @return a new `Map` without `key`
+    #
+    #   Map.delete({a: 1, b: 2}, :a)   # == {b: 2}
+    #   Map.delete({a: 1}, :z)         # == {a: 1}
+    native("map_delete", [map, key])
+
+  fn update(map, key, f)
+    # @doc
+    #
+    # A new map with `key`'s value replaced by `f` applied to it. A key that is
+    # not there is left alone, so `update` never adds one.
+    #
+    # @param map: the map to update
+    # @param key: the key whose value to replace
+    # @param f: a lambda from the old value to the new one
+    # @return a new `Map` with `key` updated, or the original when it is absent
+    #
+    #   Map.update({a: 1}, :a, do v -> v + 1)   # == {a: 2}
+    #   Map.update({a: 1}, :z, do v -> v + 1)   # == {a: 1}
+    cond
+      has_key(map, key) -> put(map, key, f(get(map, key, nil)))
+      true -> map
+
+  fn put_new(map, key, value)
+    # @doc
+    #
+    # A new map with `key` set to `value`, but only when `key` is not already
+    # there — the insert-only counterpart to `update`, which only touches a
+    # key that already exists. An existing key is left exactly as it was.
+    #
+    # @param map: the map to build on
+    # @param key: the key to set if absent
+    # @param value: the value to store when `key` is not already present
+    # @return a new `Map` with `key` set to `value`, or `map` unchanged if
+    #   `key` was already there
+    #
+    #   Map.put_new({a: 1}, :b, 2)   # == {a: 1, b: 2}
+    #   Map.put_new({a: 1}, :a, 9)   # == {a: 1}
+    cond
+      has_key(map, key) -> map
+      true -> put(map, key, value)
+
+  fn merge_with(a, b, f)
+    # @doc
+    #
+    # Merges `a` and `b` like `++`, except a key present in both is resolved by
+    # `f(a_value, b_value)` instead of `b`'s value silently winning. A key
+    # present in only one map keeps its value untouched.
+    #
+    # @param a: the base map
+    # @param b: the map to merge in
+    # @param f: a lambda `(a_value, b_value)` resolving a colliding key
+    # @return a new `Map`, `a` and `b` merged with `f` deciding collisions
+    #
+    #   Map.merge_with({a: 1, b: 2}, {b: 10, c: 3}, do x, y -> x + y)
+    #   # == {a: 1, b: 12, c: 3}
+    List.reduce(entries(b), a, do acc, pair -> merge_pair(acc, pair, f))
+
+  fnp merge_pair(acc, pair, f)
+    # @doc
+    #
+    # (private) One step of `merge_with`'s fold: puts `pair`'s key into `acc`,
+    # combining with the existing value through `f` when the key already
+    # exists there.
+    key = at(pair, 0)
+    value = at(pair, 1)
+    cond
+      has_key(acc, key) -> put(acc, key, f(get(acc, key, nil), value))
+      true -> put(acc, key, value)
+
+  fn filter(map, f)
+    # @doc
+    #
+    # The pairs for which `f` is truthy, in order.
+    #
+    # @param map: the map to filter
+    # @param f: a predicate lambda `(key, value)`
+    # @return a new `Map` of the pairs `f` accepted
+    #
+    #   Map.filter({a: 1, b: 2}, do k, v -> v > 1)   # == {b: 2}
+    from_list(List.filter(entries(map), do pair -> apply_pair(f, pair)))
+
+  fn reject(map, f)
+    # @doc
+    #
+    # Inverse of `filter`: the pairs for which `f` is falsy.
+    #
+    # @param map: the map to filter
+    # @param f: a predicate lambda `(key, value)`
+    # @return a new `Map` of the pairs `f` rejected
+    #
+    #   Map.reject({a: 1, b: 2}, do k, v -> v > 1)   # == {a: 1}
+    from_list(List.reject(entries(map), do pair -> apply_pair(f, pair)))
+
+  fnp apply_pair(f, pair)
+    f(at(pair, 0), at(pair, 1))
+
+  fn map_values(map, f)
+    # @doc
+    #
+    # A new map with each value replaced by `f` applied to it. Keys are kept.
+    #
+    # @param map: the map to walk
+    # @param f: a lambda from a value to its replacement
+    # @return a new `Map` with the same keys and mapped values
+    #
+    #   Map.map_values({a: 1, b: 2}, do v -> v * 10)   # == {a: 10, b: 20}
+    map_entries(map, do k, v -> (k, f(v)))
+
+  fn map_keys(map, f)
+    # @doc
+    #
+    # A new map with each key replaced by `f` applied to it. Values are kept;
+    # if `f` maps two keys onto one, the later pair wins.
+    #
+    # @param map: the map to walk
+    # @param f: a lambda from a key to its replacement
+    # @return a new `Map` with mapped keys and the same values
+    #
+    #   Map.map_keys({1: :a, 2: :b}, do k -> k * 10)   # == {10: :a, 20: :b}
+    map_entries(map, do k, v -> (f(k), v))
+
+  fn map_entries(map, f)
+    # @doc
+    #
+    # A new map built by replacing each pair with the `(key, value)` tuple `f`
+    # returns for it.
+    #
+    # @param map: the map to walk
+    # @param f: a lambda `(key, value)` returning the replacement pair
+    # @return a new `Map` of the returned pairs
+    #
+    #   Map.map_entries({a: 1}, do k, v -> (k, v + 1))   # == {a: 2}
+    from_list(List.map(entries(map), do pair -> apply_pair(f, pair)))
+
+  fn from_list(pairs)
+    # @doc
+    #
+    # A map built from a list of `(key, value)` tuples, in order. A repeated key
+    # keeps its first position and takes its last value.
+    #
+    # @param pairs: a `List` of `(key, value)` tuples
+    # @return the `Map` those pairs describe
+    #
+    #   Map.from_list([(:a, 1), (:b, 2)])   # == {a: 1, b: 2}
+    #   Map.from_list([])                   # == {}
+    native("map_from_list", [pairs])

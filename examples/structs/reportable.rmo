@@ -1,0 +1,5 @@
+# reportable.rmo — a trait implemented by anything that can describe itself.
+# `summary` has no body: it is required, and every implementer must define it.
+
+trait Reportable
+  fn summary(self)

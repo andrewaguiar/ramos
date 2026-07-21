@@ -1,0 +1,7 @@
+# string_concat.rmo — `<>` concatenates two strings.
+
+joined = "a" <> "b"                  # == "ab"
+greeting = "Ola" <> " " <> "Andrew"  # left-associative
+
+# `<>` binds looser than arithmetic, so `1 + 2` is evaluated first.
+counted = "total: " <> to_string(1 + 2)

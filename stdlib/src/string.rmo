@@ -1,0 +1,298 @@
+module String
+  # @module_doc
+  #
+  # String — operations on immutable, UTF-8 text.
+  #
+  # Strings in Ramos are double-quoted (`"hi"`), interpolated with `#{name}`, and
+  # concatenated with `<>`. Like every value in Ramos they are immutable: every
+  # function here returns a new string rather than mutating its input.
+  #
+  # Unlike lists, strings have no `head | tail` destructuring in the language,
+  # so the character-level primitives (indexing, slicing, casing, splitting,
+  # reversing) delegate to the host via `native`. Concatenation is the `<>`
+  # operator rather than a function here, and the rest compose through pipes
+  # just like the `List` module:
+  #
+  #   "  Hello World  "
+  #   | String.trim()
+  #   | String.downcase()
+  #   | String.replace(" ", "_")     # == "hello_world"
+  #
+  # Joining a list of strings back into one is `List.join` (not here), the
+  # natural inverse of `split`. Numeric parsing lives on `Kernel`
+  # (`to_integer` / `to_float`), and so does emptiness: `is_empty(s)` already
+  # covers strings, so this module does not repeat it.
+  #
+  # Conventions:
+  #   - indexes are zero-based and count Unicode code points.
+  #   - `at` returns a single-character string; Ramos has no separate char type.
+  #   - search functions that may miss return `nil`.
+
+  fn length(s)
+    # @doc
+    #
+    # Returns the number of Unicode code points in `s`.
+    #
+    # @param s: the string to measure
+    # @return the `Integer` count of code points in `s`
+    #
+    #   String.length("hello")   # == 5
+    native("string_length", [s])
+
+  fn at(s, index)
+    # @doc
+    #
+    # Returns the single-character string at zero-based `index`, or `nil` if
+    # out of range. Ramos has no separate char type, so the result is a `String`.
+    #
+    # @param s: the string to read from
+    # @param index: the zero-based code-point position to read
+    # @return the single-character `String` at `index`, or `nil` if out of range
+    #
+    #   String.at("hello", 1)   # == "e"
+    #   String.at("hello", 9)   # == nil
+    native("string_at", [s, index])
+
+  fn slice(s, start, count)
+    # @doc
+    #
+    # Returns `count` characters of `s` starting at zero-based `start`. `start`
+    # beyond the end yields `""`; `count` is clipped to the available tail.
+    #
+    # @param s: the string to slice
+    # @param start: the zero-based code-point position to start at
+    # @param count: how many characters to take
+    # @return a new `String` of up to `count` characters from `start`
+    #
+    #   String.slice("hello world", 0, 5)   # == "hello"
+    native("string_slice", [s, start, count])
+
+  fn contains(s, sub)
+    # @doc
+    #
+    # Returns `true` if `sub` occurs anywhere within `s`, else `false`.
+    #
+    # @param s: the string to search within
+    # @param sub: the substring to look for
+    # @return `true` if `sub` occurs in `s`, else `false`
+    #
+    #   String.contains("hello world", "world")   # == true
+    native("string_contains", [s, sub])
+
+  fn starts_with(s, prefix)
+    # @doc
+    #
+    # Returns `true` if `s` begins with `prefix`, else `false`.
+    #
+    # @param s: the string to test
+    # @param prefix: the prefix to look for
+    # @return `true` if `s` begins with `prefix`, else `false`
+    #
+    #   String.starts_with("hello", "he")   # == true
+    native("string_starts_with", [s, prefix])
+
+  fn ends_with(s, suffix)
+    # @doc
+    #
+    # Returns `true` if `s` ends with `suffix`, else `false`.
+    #
+    # @param s: the string to test
+    # @param suffix: the suffix to look for
+    # @return `true` if `s` ends with `suffix`, else `false`
+    #
+    #   String.ends_with("hello", "lo")   # == true
+    native("string_ends_with", [s, suffix])
+
+  fn find(s, sub)
+    # @doc
+    #
+    # Returns the zero-based index of the first occurrence of `sub` in `s`, or
+    # `nil` if it is not present.
+    #
+    # @param s: the string to search within
+    # @param sub: the substring to look for
+    # @return the zero-based `Integer` index of the first match, or `nil` if none
+    #
+    #   String.find("hello world", "world")   # == 6
+    #   String.find("hello", "z")             # == nil
+    native("string_find", [s, sub])
+
+  fn replace(s, pattern, replacement)
+    # @doc
+    #
+    # Returns a copy of `s` with every (non-overlapping) occurrence of `pattern`
+    # replaced by `replacement`.
+    #
+    # @param s: the string to rewrite
+    # @param pattern: the substring to replace
+    # @param replacement: the string to substitute for each `pattern`
+    # @return a new `String` with every `pattern` replaced by `replacement`
+    #
+    #   String.replace("a-b-c", "-", "_")   # == "a_b_c"
+    native("string_replace", [s, pattern, replacement])
+
+  fn split(s, sep)
+    # @doc
+    #
+    # Splits `s` at each occurrence of `sep`, returning a list of parts. Empty
+    # `sep` splits into one-character strings. To rejoin, use `List.join`.
+    #
+    # @param s: the string to split
+    # @param sep: the separator to split on (`""` splits into characters)
+    # @return a `List` of the `String` parts
+    #
+    #   String.split("a,b,c", ",")   # == ["a", "b", "c"]
+    native("string_split", [s, sep])
+
+  fn upcase(s)
+    # @doc
+    #
+    # Returns `s` with each ASCII letter uppercased.
+    #
+    # @param s: the string to uppercase
+    # @return a new `String` with each ASCII letter uppercased
+    #
+    #   String.upcase("hello")   # == "HELLO"
+    native("string_upcase", [s])
+
+  fn downcase(s)
+    # @doc
+    #
+    # Returns `s` with each ASCII letter lowercased.
+    #
+    # @param s: the string to lowercase
+    # @return a new `String` with each ASCII letter lowercased
+    #
+    #   String.downcase("HELLO")   # == "hello"
+    native("string_downcase", [s])
+
+  fn trim(s)
+    # @doc
+    #
+    # Returns `s` with leading and trailing whitespace removed.
+    #
+    # @param s: the string to trim
+    # @return a new `String` without leading or trailing whitespace
+    #
+    #   String.trim("  hi  ")   # == "hi"
+    native("string_trim", [s])
+
+  fn trim_left(s)
+    # @doc
+    #
+    # Returns `s` with leading whitespace removed.
+    #
+    # @param s: the string to trim
+    # @return a new `String` without leading whitespace
+    #
+    #   String.trim_left("  hi  ")   # == "hi  "
+    native("string_trim_left", [s])
+
+  fn trim_right(s)
+    # @doc
+    #
+    # Returns `s` with trailing whitespace removed.
+    #
+    # @param s: the string to trim
+    # @return a new `String` without trailing whitespace
+    #
+    #   String.trim_right("  hi  ")   # == "  hi"
+    native("string_trim_right", [s])
+
+  fn reverse(s)
+    # @doc
+    #
+    # Returns `s` with its characters in reverse order.
+    #
+    # @param s: the string to reverse
+    # @return a new `String` with the code points of `s` in reverse order
+    #
+    #   String.reverse("hello")   # == "olleh"
+    native("string_reverse", [s])
+
+  fn repeat(s, n)
+    # @doc
+    #
+    # Returns `s` concatenated with itself `n` times. `n <= 0` yields `""`.
+    #
+    # @param s: the string to repeat
+    # @param n: how many times to repeat `s`
+    # @return a new `String` of `s` repeated `n` times (`""` when `n <= 0`)
+    #
+    #   String.repeat("ab", 3)   # == "ababab"
+    native("string_repeat", [s, n])
+
+  fn to_list(s)
+    # @doc
+    #
+    # Splits `s` into a list of single-character strings, one per Unicode code
+    # point. The inverse of `from_list`.
+    #
+    # @param s: the string to explode
+    # @return a `List` of single-character `String`s, one per code point
+    #
+    #   String.to_list("abc")   # == ["a", "b", "c"]
+    native("string_to_list", [s])
+
+  fn pad_left(s, width, pad_char)
+    # @doc
+    #
+    # Returns `s` left-padded with `pad_char` until it reaches at least `width`
+    # characters. Already-long-enough `s` comes back unchanged. `pad_char` is
+    # a single character; a longer one may overshoot `width`.
+    #
+    # @param s: the string to pad
+    # @param width: the minimum length of the result
+    # @param pad_char: the single-character string to pad with
+    # @return `s`, left-padded to at least `width` characters
+    #
+    #   String.pad_left("7", 3, "0")     # == "007"
+    #   String.pad_left("hello", 3, "0") # == "hello"
+    cond
+      length(s) >= width -> s
+      true -> pad_left(pad_char <> s, width, pad_char)
+
+  fn pad_right(s, width, pad_char)
+    # @doc
+    #
+    # Returns `s` right-padded with `pad_char` until it reaches at least
+    # `width` characters. Already-long-enough `s` comes back unchanged.
+    # `pad_char` is a single character; a longer one may overshoot `width`.
+    #
+    # @param s: the string to pad
+    # @param width: the minimum length of the result
+    # @param pad_char: the single-character string to pad with
+    # @return `s`, right-padded to at least `width` characters
+    #
+    #   String.pad_right("7", 3, "0")     # == "700"
+    #   String.pad_right("hello", 3, "0") # == "hello"
+    cond
+      length(s) >= width -> s
+      true -> pad_right(s <> pad_char, width, pad_char)
+
+  fn capitalize(s)
+    # @doc
+    #
+    # Returns `s` with its first character uppercased and the rest
+    # lowercased. `""` comes back unchanged.
+    #
+    # @param s: the string to capitalize
+    # @return a new `String`, first character up, rest down
+    #
+    #   String.capitalize("hello WORLD")   # == "Hello world"
+    #   String.capitalize("")              # == ""
+    cond
+      s == "" -> ""
+      true -> upcase(at(s, 0)) <> downcase(slice(s, 1, length(s) - 1))
+
+  fn from_list(chars)
+    # @doc
+    #
+    # Concatenates a list of single-character strings into one string. The
+    # inverse of `to_list`.
+    #
+    # @param chars: a list of strings to concatenate
+    # @return a single `String`, the elements of `chars` joined in order
+    #
+    #   String.from_list(["a", "b", "c"])   # == "abc"
+    native("string_from_list", [chars])

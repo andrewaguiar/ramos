@@ -1,0 +1,16 @@
+# pipe.rmo — `|` passes the value on its left as the *first argument* to the
+# module function on its right, so data flows top to bottom. It always starts
+# its own line, at the same indentation as what comes before it.
+
+shouted = ["ana", "bob"]
+| List.map(do n -> String.upcase(n))
+
+# Pipes chain, each on its own line.
+sentence = ["ana", "bob"]
+| List.map(do n -> String.upcase(n))
+| List.join(", ")
+
+# `a` then `| M.f(b)` means exactly `M.f(a, b)` — these two are the same call.
+piped = [1, 2, 3, 4]
+| List.filter(do x -> Integer.is_even(x))
+plain = List.filter([1, 2, 3, 4], do x -> Integer.is_even(x))

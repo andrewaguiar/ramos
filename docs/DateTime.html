@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DateTime — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html" class="current">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">DateTime</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>DateTime — a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> plus a fixed offset from UTC, so it names a precise instant rather than just a wall-clock reading.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>DateTime — a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> plus a fixed offset from UTC, so it names a precise instant rather than just a wall-clock reading.</p>
+<p>There is no time zone database here (no dependency ships one) — an <code>offset_minutes</code> is a plain number, like <code>-300</code> for UTC-5 or <code>330</code> for UTC+5:30, not a zone name that shifts with daylight saving. The fields (<code>year</code>..<code>millisecond</code>) are the <em>local</em> reading at that offset:</p>
+<pre><code>utc = <span class="tok-type">DateTime</span>.now()
+ny = <span class="tok-type">DateTime</span>.now_at(-<span class="tok-lit">300</span>)
+utc.offset_minutes   <span class="tok-com"># == 0</span>
+ny.offset_minutes    <span class="tok-com"># == -300</span></code></pre>
+<p>Two <code><a href="DateTime.html">DateTime</a></code>s at different offsets can still name the same instant — <code>compare</code> and <code>diff_millis</code> account for the offset, so they agree with what a clock actually measures, not just the printed fields:</p>
+<pre><code>a = <span class="tok-type">DateTime</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">1</span>, <span class="tok-lit">1</span>, <span class="tok-lit">12</span>, <span class="tok-lit">0</span>, <span class="tok-lit">0</span>, <span class="tok-lit">0</span>)     <span class="tok-com"># noon UTC</span>
+b = <span class="tok-type">DateTime</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">1</span>, <span class="tok-lit">1</span>, <span class="tok-lit">7</span>, <span class="tok-lit">0</span>, <span class="tok-lit">0</span>, -<span class="tok-lit">300</span>)   <span class="tok-com"># 07:00 at UTC-5 — the same instant</span>
+<span class="tok-type">DateTime</span>.compare(a, b)   <span class="tok-com"># == 0</span></code></pre>
+<p><code>==</code> does not know this — it compares fields structurally like any other struct, so <code>a == b</code> above is <code>false</code> even though they name one instant. Convert with <code>with_offset</code> (or <code>to_utc</code>) before comparing fields directly.</p>
+<p><code>now_in</code> and <code>in_time_zone</code> take a <code><a href="TimeZone.html">TimeZone</a></code> (a name plus a fixed offset) rather than a bare number, when a name is worth carrying:</p>
+<pre><code>ist = <span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;IST&quot;</span>, <span class="tok-lit">330</span>)
+<span class="tok-type">DateTime</span>.now_in(ist).offset_minutes   <span class="tok-com"># == 330</span></code></pre>
+<p>Conventions:</p>
+<ul><li><code>compare</code> orders by instant (the UTC equivalent), not by the printed local fields.</li><li><code>to_iso</code> renders the offset as <code>Z</code> for UTC or <code>±HH:MM</code> otherwise (via <code><a href="TimeZone.html#offset_text">TimeZone.offset_text</a></code>), and <code>parse</code> reads the same shape back.</li><li>see <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> for the zone-free version of this shape, <code><a href="Date.html">Date</a></code> for the calendar day alone, and <code><a href="TimeZone.html">TimeZone</a></code> for the named-offset type.</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#new/7" class="fn-sig"><code>fn new(year, month, day, hour, minute, second, offset_minutes)</code></a>
+    <span class="fn-summary">Builds a <code><a href="DateTime.html">DateTime</a></code> from local fields at <code>offset_minutes</code> from UTC, with <code>millisecond: 0</code>. Every field past <code>year</code> normalizes when it overflows or underflows its natural range, the same way <code><a href="Date.html#new">Date.new</a></code>&#39;s <code>day</code> does.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#now/0" class="fn-sig"><code>fn now()</code></a>
+    <span class="fn-summary">The current instant, as UTC (<code>offset_minutes: 0</code>).</span>
+  </div>
+  <div class="fn-row">
+    <a href="#now_at/1" class="fn-sig"><code>fn now_at(offset_minutes)</code></a>
+    <span class="fn-summary">The current instant, as local fields at <code>offset_minutes</code> from UTC.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#now_in/1" class="fn-sig"><code>fn now_in(time_zone)</code></a>
+    <span class="fn-summary">The current instant, as local fields in <code>time_zone</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#from_epoch_millis/2" class="fn-sig"><code>fn from_epoch_millis(utc_ms, offset_minutes)</code></a>
+    <span class="fn-summary">The <code><a href="DateTime.html">DateTime</a></code> for the instant <code>utc_ms</code> milliseconds after the epoch, with its fields expressed at <code>offset_minutes</code> from UTC.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#from_naive/2" class="fn-sig"><code>fn from_naive(naive, offset_minutes)</code></a>
+    <span class="fn-summary">Tags a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code>&#39;s fields as the local time at <code>offset_minutes</code> — a relabeling, not a conversion: the fields are copied as they are.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#parse/1" class="fn-sig"><code>fn parse(text)</code></a>
+    <span class="fn-summary">Parses <code>&quot;YYYY-MM-DDTHH:MM:SS±HH:MM&quot;</code> (or a trailing <code>&quot;Z&quot;</code> for UTC) — either a <code>T</code> or a plain space between the date and the time, as <code>to_iso</code> renders or as the <code>U&quot;...&quot;</code> sigil is written. The seconds&#39; fractional part is optional and any number of digits (padded or truncated to milliseconds), the same as <code><a href="NaiveDateTime.html#parse">NaiveDateTime.parse</a></code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#date/1" class="fn-sig"><code>fn date(self)</code></a>
+    <span class="fn-summary">The <code><a href="Date.html">Date</a></code> half of <code>self</code>&#39;s local reading, dropping the time of day and the offset.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_naive/1" class="fn-sig"><code>fn to_naive(self)</code></a>
+    <span class="fn-summary"><code>self</code>&#39;s local fields as a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code>, dropping the offset.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_utc_epoch_millis/1" class="fn-sig"><code>fn to_utc_epoch_millis(self)</code></a>
+    <span class="fn-summary">The instant <code>self</code> names, as milliseconds since the epoch (UTC) — the bridge to arithmetic and comparison, and what makes two <code><a href="DateTime.html">DateTime</a></code>s at different offsets comparable.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_utc/1" class="fn-sig"><code>fn to_utc(self)</code></a>
+    <span class="fn-summary">The same instant as <code>self</code>, with its fields expressed at UTC (<code>offset_minutes: 0</code>).</span>
+  </div>
+  <div class="fn-row">
+    <a href="#with_offset/2" class="fn-sig"><code>fn with_offset(self, offset_minutes)</code></a>
+    <span class="fn-summary">The same instant as <code>self</code>, with its fields re-expressed at <code>offset_minutes</code> — the way to convert between offsets.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#in_time_zone/2" class="fn-sig"><code>fn in_time_zone(self, time_zone)</code></a>
+    <span class="fn-summary">The same instant as <code>self</code>, with its fields re-expressed at <code>time_zone</code>&#39;s offset — <code>with_offset</code>, taking a <code><a href="TimeZone.html">TimeZone</a></code> instead of a bare number.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#time_zone/1" class="fn-sig"><code>fn time_zone(self)</code></a>
+    <span class="fn-summary"><code>self</code>&#39;s offset as a <code><a href="TimeZone.html">TimeZone</a></code>, named after the offset itself (<code>&quot;UTC&quot;</code> at <code>0</code>, otherwise <code>±HH:MM</code>) — <code>self</code> only ever keeps the number, never the name a zone arrived with.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_iso/1" class="fn-sig"><code>fn to_iso(self)</code></a>
+    <span class="fn-summary"><code>self</code> rendered as <code>&quot;YYYY-MM-DDTHH:MM:SS.mmm&quot;</code> followed by <code>Z</code> (when <code>offset_minutes</code> is <code>0</code>) or a signed <code>±HH:MM</code> offset.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_days/2" class="fn-sig"><code>fn add_days(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> days, keeping the offset.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_weeks/2" class="fn-sig"><code>fn add_weeks(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> weeks (<code>n * 7</code> days), keeping the offset.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_months/2" class="fn-sig"><code>fn add_months(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> months, keeping the time of day and the offset — <code><a href="Date.html#add_months">Date.add_months</a></code> applied to the local date half, with the day-overflow normalization that implies.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_hours/2" class="fn-sig"><code>fn add_hours(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> hours, keeping the offset.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_minutes/2" class="fn-sig"><code>fn add_minutes(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> minutes, keeping the offset.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#add_seconds/2" class="fn-sig"><code>fn add_seconds(self, n)</code></a>
+    <span class="fn-summary"><code>self</code> shifted by <code>n</code> seconds, keeping the offset.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#compare/2" class="fn-sig"><code>fn compare(self, other)</code></a>
+    <span class="fn-summary">Orders two date-times by the instant they name (their UTC equivalent), as <code>-1</code>, <code>0</code> or <code>1</code> — not by their printed local fields, so two <code><a href="DateTime.html">DateTime</a></code>s at different offsets compare correctly.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#diff_millis/2" class="fn-sig"><code>fn diff_millis(self, other)</code></a>
+    <span class="fn-summary">The number of milliseconds from the instant <code>other</code> names to the one <code>self</code> names — positive when <code>self</code> is later, negative when earlier.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#day_of_week/1" class="fn-sig"><code>fn day_of_week(self)</code></a>
+    <span class="fn-summary">The day of the week <code>self</code>&#39;s local date falls on. Delegates to <code><a href="Date.html#day_of_week">Date.day_of_week</a></code>.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#raw_millis/7" class="fn-sig"><code>fnp raw_millis(year, month, day, hour, minute, second, millisecond)</code></a>
+    <span class="fn-summary">(private) Milliseconds since the epoch for the given fields, as if they were UTC — before the offset is applied. Shared arithmetic behind <code>new</code>, <code>parse</code> and <code>to_utc_epoch_millis</code>.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#shift/2" class="fn-sig"><code>fnp shift(self, millis)</code></a>
+    <span class="fn-summary">(private) <code>self</code> moved by <code>millis</code> milliseconds of real time, keeping its offset. Backs the <code>add_*</code> family.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#floor_div/2" class="fn-sig"><code>fnp floor_div(a, b)</code></a>
+    <span class="fn-summary">(private) <code>a</code> divided by <code>b</code>, rounding toward negative infinity — unlike <code>/</code>, which truncates toward zero. <code>b</code> is assumed positive.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#offset_start/1" class="fn-sig"><code>fnp offset_start(rest)</code></a>
+    <span class="fn-summary">(private) The index in <code>rest</code> (the text after the date) where its offset begins — the trailing <code>&quot;Z&quot;</code>, or the <code>+</code>/<code>-</code> of a <code>±HH:MM</code>. The clock text before it never contains any of those three characters, so whichever appears first is unambiguous. Backs <code>parse</code>.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#millis_from_fraction/1" class="fn-sig"><code>fnp millis_from_fraction(digits)</code></a>
+    <span class="fn-summary">(private) A fractional-second string of any length as milliseconds: <code>&quot;5&quot;</code> is <code>500</code>, <code>&quot;123456&quot;</code> truncates to <code>123</code>. Backs <code>parse</code>.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#pad/2" class="fn-sig"><code>fnp pad(n, width)</code></a>
+    <span class="fn-summary">(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>to_iso</code>.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="new/7">
+  <h3 class="fn-title"><code>fn new(year, month, day, hour, minute, second, offset_minutes)</code> <a class="anchor" href="#new/7">¶</a></h3>
+<p>Builds a <code><a href="DateTime.html">DateTime</a></code> from local fields at <code>offset_minutes</code> from UTC, with <code>millisecond: 0</code>. Every field past <code>year</code> normalizes when it overflows or underflows its natural range, the same way <code><a href="Date.html#new">Date.new</a></code>&#39;s <code>day</code> does.</p>
+<pre><code><span class="tok-type">DateTime</span>.new(<span class="tok-lit">2024</span>, <span class="tok-lit">2</span>, <span class="tok-lit">9</span>, <span class="tok-lit">13</span>, <span class="tok-lit">45</span>, <span class="tok-lit">30</span>, <span class="tok-lit">0</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 0, offset_minutes: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>year</code></dt>
+  <dd>the calendar year, any integer</dd>
+  <dt><code>month</code></dt>
+  <dd>the month, <code>1</code>..<code>12</code></dd>
+  <dt><code>day</code></dt>
+  <dd>the day of month; out-of-range values roll over</dd>
+  <dt><code>hour</code></dt>
+  <dd>the hour, <code>0</code>..<code>23</code>; out-of-range values roll over</dd>
+  <dt><code>minute</code></dt>
+  <dd>the minute, <code>0</code>..<code>59</code>; out-of-range values roll over</dd>
+  <dt><code>second</code></dt>
+  <dd>the second, <code>0</code>..<code>59</code>; out-of-range values roll over</dd>
+  <dt><code>offset_minutes</code></dt>
+  <dd>the offset from UTC, in minutes (e.g. <code>-300</code> for UTC-5)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="now/0">
+  <h3 class="fn-title"><code>fn now()</code> <a class="anchor" href="#now/0">¶</a></h3>
+<p>The current instant, as UTC (<code>offset_minutes: 0</code>).</p>
+<pre><code><span class="tok-type">DateTime</span>.now().offset_minutes   <span class="tok-com"># == 0</span></code></pre>
+<p class="returns"><strong>Returns:</strong> the current <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="now_at/1">
+  <h3 class="fn-title"><code>fn now_at(offset_minutes)</code> <a class="anchor" href="#now_at/1">¶</a></h3>
+<p>The current instant, as local fields at <code>offset_minutes</code> from UTC.</p>
+<pre><code><span class="tok-type">DateTime</span>.now_at(-<span class="tok-lit">300</span>).offset_minutes   <span class="tok-com"># == -300</span></code></pre>
+<dl class="params">
+  <dt><code>offset_minutes</code></dt>
+  <dd>the offset from UTC, in minutes</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the current <code><a href="DateTime.html">DateTime</a></code>, expressed at that offset</p>
+</div>
+<div class="fn-detail" id="now_in/1">
+  <h3 class="fn-title"><code>fn now_in(time_zone)</code> <a class="anchor" href="#now_in/1">¶</a></h3>
+<p>The current instant, as local fields in <code>time_zone</code>.</p>
+<pre><code><span class="tok-type">DateTime</span>.now_in(<span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;IST&quot;</span>, <span class="tok-lit">330</span>)).offset_minutes   <span class="tok-com"># == 330</span></code></pre>
+<dl class="params">
+  <dt><code>time_zone</code></dt>
+  <dd>the <code><a href="TimeZone.html">TimeZone</a></code> to express the current instant in</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the current <code><a href="DateTime.html">DateTime</a></code>, at <code>time_zone</code>&#39;s offset</p>
+</div>
+<div class="fn-detail" id="from_epoch_millis/2">
+  <h3 class="fn-title"><code>fn from_epoch_millis(utc_ms, offset_minutes)</code> <a class="anchor" href="#from_epoch_millis/2">¶</a></h3>
+<p>The <code><a href="DateTime.html">DateTime</a></code> for the instant <code>utc_ms</code> milliseconds after the epoch, with its fields expressed at <code>offset_minutes</code> from UTC.</p>
+<pre><code><span class="tok-type">DateTime</span>.from_epoch_millis(<span class="tok-lit">0</span>, <span class="tok-lit">0</span>)
+<span class="tok-com"># == DateTime{year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}</span>
+<span class="tok-type">DateTime</span>.from_epoch_millis(<span class="tok-lit">0</span>, <span class="tok-lit">60</span>)
+<span class="tok-com"># == DateTime{year: 1970, month: 1, day: 1, hour: 1, minute: 0, second: 0, millisecond: 0, offset_minutes: 60}</span></code></pre>
+<dl class="params">
+  <dt><code>utc_ms</code></dt>
+  <dd>the instant, as milliseconds since the epoch (UTC)</dd>
+  <dt><code>offset_minutes</code></dt>
+  <dd>the offset from UTC to render the fields at</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the corresponding <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="from_naive/2">
+  <h3 class="fn-title"><code>fn from_naive(naive, offset_minutes)</code> <a class="anchor" href="#from_naive/2">¶</a></h3>
+<p>Tags a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code>&#39;s fields as the local time at <code>offset_minutes</code> — a relabeling, not a conversion: the fields are copied as they are.</p>
+<pre><code><span class="tok-type">DateTime</span>.from_naive(<span class="tok-type">NaiveDateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">13</span>}, -<span class="tok-lit">300</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 0, second: 0, millisecond: 0, offset_minutes: -300}</span></code></pre>
+<dl class="params">
+  <dt><code>naive</code></dt>
+  <dd>the wall-clock reading to tag</dd>
+  <dt><code>offset_minutes</code></dt>
+  <dd>the offset from UTC those fields are read at</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="DateTime.html">DateTime</a></code> with <code>naive</code>&#39;s fields and the given offset</p>
+</div>
+<div class="fn-detail" id="parse/1">
+  <h3 class="fn-title"><code>fn parse(text)</code> <a class="anchor" href="#parse/1">¶</a></h3>
+<p>Parses <code>&quot;YYYY-MM-DDTHH:MM:SS±HH:MM&quot;</code> (or a trailing <code>&quot;Z&quot;</code> for UTC) — either a <code>T</code> or a plain space between the date and the time, as <code>to_iso</code> renders or as the <code>U&quot;...&quot;</code> sigil is written. The seconds&#39; fractional part is optional and any number of digits (padded or truncated to milliseconds), the same as <code><a href="NaiveDateTime.html#parse">NaiveDateTime.parse</a></code>.</p>
+<pre><code><span class="tok-type">DateTime</span>.parse(<span class="tok-str">&quot;2024-02-09T13:45:30.500Z&quot;</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 500, offset_minutes: 0}</span>
+<span class="tok-type">DateTime</span>.parse(<span class="tok-str">&quot;2024-02-09 13:45:30.123456-05:00&quot;</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 123, offset_minutes: -300}</span></code></pre>
+<dl class="params">
+  <dt><code>text</code></dt>
+  <dd>a date-time in <code>&quot;YYYY-MM-DD[T ]HH:MM:SS[.fraction](Z|±HH:MM)&quot;</code> form</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the corresponding <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="date/1">
+  <h3 class="fn-title"><code>fn date(self)</code> <a class="anchor" href="#date/1">¶</a></h3>
+<p>The <code><a href="Date.html">Date</a></code> half of <code>self</code>&#39;s local reading, dropping the time of day and the offset.</p>
+<pre><code><span class="tok-type">DateTime</span>.date(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">13</span>})   <span class="tok-com"># == Date{year: 2024, month: 2, day: 9}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to read</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the <code><a href="Date.html">Date</a></code> self&#39;s local fields fall on</p>
+</div>
+<div class="fn-detail" id="to_naive/1">
+  <h3 class="fn-title"><code>fn to_naive(self)</code> <a class="anchor" href="#to_naive/1">¶</a></h3>
+<p><code>self</code>&#39;s local fields as a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code>, dropping the offset.</p>
+<pre><code><span class="tok-type">DateTime</span>.to_naive(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">13</span>, offset_minutes: -<span class="tok-lit">300</span>})
+<span class="tok-com"># == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 0, second: 0, millisecond: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to convert</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> with the same local fields</p>
+</div>
+<div class="fn-detail" id="to_utc_epoch_millis/1">
+  <h3 class="fn-title"><code>fn to_utc_epoch_millis(self)</code> <a class="anchor" href="#to_utc_epoch_millis/1">¶</a></h3>
+<p>The instant <code>self</code> names, as milliseconds since the epoch (UTC) — the bridge to arithmetic and comparison, and what makes two <code><a href="DateTime.html">DateTime</a></code>s at different offsets comparable.</p>
+<pre><code><span class="tok-type">DateTime</span>.to_utc_epoch_millis(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">1970</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>, hour: <span class="tok-lit">1</span>, offset_minutes: <span class="tok-lit">60</span>})   <span class="tok-com"># == 0</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to convert</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> millisecond count, negative before the epoch</p>
+</div>
+<div class="fn-detail" id="to_utc/1">
+  <h3 class="fn-title"><code>fn to_utc(self)</code> <a class="anchor" href="#to_utc/1">¶</a></h3>
+<p>The same instant as <code>self</code>, with its fields expressed at UTC (<code>offset_minutes: 0</code>).</p>
+<pre><code><span class="tok-type">DateTime</span>.to_utc(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">8</span>, offset_minutes: -<span class="tok-lit">300</span>})
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to convert</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an equivalent <code><a href="DateTime.html">DateTime</a></code> at <code>offset_minutes: 0</code></p>
+</div>
+<div class="fn-detail" id="with_offset/2">
+  <h3 class="fn-title"><code>fn with_offset(self, offset_minutes)</code> <a class="anchor" href="#with_offset/2">¶</a></h3>
+<p>The same instant as <code>self</code>, with its fields re-expressed at <code>offset_minutes</code> — the way to convert between offsets.</p>
+<pre><code><span class="tok-type">DateTime</span>.with_offset(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">13</span>, offset_minutes: <span class="tok-lit">0</span>}, -<span class="tok-lit">300</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 9, hour: 8, minute: 0, second: 0, millisecond: 0, offset_minutes: -300}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to convert</dd>
+  <dt><code>offset_minutes</code></dt>
+  <dd>the offset from UTC to render the fields at</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an equivalent <code><a href="DateTime.html">DateTime</a></code> at the new offset</p>
+</div>
+<div class="fn-detail" id="in_time_zone/2">
+  <h3 class="fn-title"><code>fn in_time_zone(self, time_zone)</code> <a class="anchor" href="#in_time_zone/2">¶</a></h3>
+<p>The same instant as <code>self</code>, with its fields re-expressed at <code>time_zone</code>&#39;s offset — <code>with_offset</code>, taking a <code><a href="TimeZone.html">TimeZone</a></code> instead of a bare number.</p>
+<pre><code><span class="tok-type">DateTime</span>.in_time_zone(<span class="tok-type">DateTime</span>{offset_minutes: <span class="tok-lit">0</span>}, <span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;IST&quot;</span>, <span class="tok-lit">330</span>)).offset_minutes   <span class="tok-com"># == 330</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to convert</dd>
+  <dt><code>time_zone</code></dt>
+  <dd>the <code><a href="TimeZone.html">TimeZone</a></code> to render the fields in</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an equivalent <code><a href="DateTime.html">DateTime</a></code> at that zone&#39;s offset</p>
+</div>
+<div class="fn-detail" id="time_zone/1">
+  <h3 class="fn-title"><code>fn time_zone(self)</code> <a class="anchor" href="#time_zone/1">¶</a></h3>
+<p><code>self</code>&#39;s offset as a <code><a href="TimeZone.html">TimeZone</a></code>, named after the offset itself (<code>&quot;UTC&quot;</code> at <code>0</code>, otherwise <code>±HH:MM</code>) — <code>self</code> only ever keeps the number, never the name a zone arrived with.</p>
+<pre><code><span class="tok-type">DateTime</span>.time_zone(<span class="tok-type">DateTime</span>{offset_minutes: -<span class="tok-lit">300</span>}).name   <span class="tok-com"># == &quot;-05:00&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to read</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="TimeZone.html">TimeZone</a></code> matching <code>self</code>&#39;s offset</p>
+</div>
+<div class="fn-detail" id="to_iso/1">
+  <h3 class="fn-title"><code>fn to_iso(self)</code> <a class="anchor" href="#to_iso/1">¶</a></h3>
+<p><code>self</code> rendered as <code>&quot;YYYY-MM-DDTHH:MM:SS.mmm&quot;</code> followed by <code>Z</code> (when <code>offset_minutes</code> is <code>0</code>) or a signed <code>±HH:MM</code> offset.</p>
+<pre><code><span class="tok-type">DateTime</span>.to_iso(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">3</span>, minute: <span class="tok-lit">5</span>, second: <span class="tok-lit">9</span>, millisecond: <span class="tok-lit">7</span>, offset_minutes: <span class="tok-lit">0</span>})
+<span class="tok-com"># == &quot;2024-02-09T03:05:09.007Z&quot;</span>
+<span class="tok-type">DateTime</span>.to_iso(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">3</span>, minute: <span class="tok-lit">5</span>, second: <span class="tok-lit">9</span>, millisecond: <span class="tok-lit">7</span>, offset_minutes: -<span class="tok-lit">300</span>})
+<span class="tok-com"># == &quot;2024-02-09T03:05:09.007-05:00&quot;</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to render</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the ISO-8601 string</p>
+</div>
+<div class="fn-detail" id="add_days/2">
+  <h3 class="fn-title"><code>fn add_days(self, n)</code> <a class="anchor" href="#add_days/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> days, keeping the offset.</p>
+<pre><code><span class="tok-type">DateTime</span>.add_days(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">28</span>, hour: <span class="tok-lit">12</span>}, <span class="tok-lit">1</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 29, hour: 12, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many days to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_weeks/2">
+  <h3 class="fn-title"><code>fn add_weeks(self, n)</code> <a class="anchor" href="#add_weeks/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> weeks (<code>n * 7</code> days), keeping the offset.</p>
+<pre><code><span class="tok-type">DateTime</span>.add_weeks(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>, hour: <span class="tok-lit">12</span>}, <span class="tok-lit">1</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 1, day: 8, hour: 12, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many weeks to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_months/2">
+  <h3 class="fn-title"><code>fn add_months(self, n)</code> <a class="anchor" href="#add_months/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> months, keeping the time of day and the offset — <code><a href="Date.html#add_months">Date.add_months</a></code> applied to the local date half, with the day-overflow normalization that implies.</p>
+<pre><code><span class="tok-type">DateTime</span>.add_months(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">15</span>, hour: <span class="tok-lit">12</span>}, <span class="tok-lit">1</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 15, hour: 12, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many months to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_hours/2">
+  <h3 class="fn-title"><code>fn add_hours(self, n)</code> <a class="anchor" href="#add_hours/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> hours, keeping the offset.</p>
+<pre><code><span class="tok-type">DateTime</span>.add_hours(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">23</span>}, <span class="tok-lit">2</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 10, hour: 1, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many hours to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_minutes/2">
+  <h3 class="fn-title"><code>fn add_minutes(self, n)</code> <a class="anchor" href="#add_minutes/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> minutes, keeping the offset.</p>
+<pre><code><span class="tok-type">DateTime</span>.add_minutes(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, hour: <span class="tok-lit">0</span>, minute: <span class="tok-lit">30</span>}, <span class="tok-lit">45</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 9, hour: 1, minute: 15, second: 0, millisecond: 0, offset_minutes: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many minutes to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="add_seconds/2">
+  <h3 class="fn-title"><code>fn add_seconds(self, n)</code> <a class="anchor" href="#add_seconds/2">¶</a></h3>
+<p><code>self</code> shifted by <code>n</code> seconds, keeping the offset.</p>
+<pre><code><span class="tok-type">DateTime</span>.add_seconds(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">2024</span>, month: <span class="tok-lit">2</span>, day: <span class="tok-lit">9</span>, second: <span class="tok-lit">45</span>}, <span class="tok-lit">30</span>)
+<span class="tok-com"># == DateTime{year: 2024, month: 2, day: 9, minute: 1, second: 15, millisecond: 0, offset_minutes: 0}</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the starting date-time</dd>
+  <dt><code>n</code></dt>
+  <dd>how many seconds to add (negative subtracts)</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new <code><a href="DateTime.html">DateTime</a></code></p>
+</div>
+<div class="fn-detail" id="compare/2">
+  <h3 class="fn-title"><code>fn compare(self, other)</code> <a class="anchor" href="#compare/2">¶</a></h3>
+<p>Orders two date-times by the instant they name (their UTC equivalent), as <code>-1</code>, <code>0</code> or <code>1</code> — not by their printed local fields, so two <code><a href="DateTime.html">DateTime</a></code>s at different offsets compare correctly.</p>
+<pre><code><span class="tok-type">DateTime</span>.compare(<span class="tok-type">DateTime</span>{hour: <span class="tok-lit">1</span>}, <span class="tok-type">DateTime</span>{hour: <span class="tok-lit">2</span>})                        <span class="tok-com"># == -1</span>
+<span class="tok-type">DateTime</span>.compare(<span class="tok-type">DateTime</span>{hour: <span class="tok-lit">12</span>}, <span class="tok-type">DateTime</span>{hour: <span class="tok-lit">7</span>, offset_minutes: -<span class="tok-lit">300</span>})  <span class="tok-com"># == 0</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the first date-time</dd>
+  <dt><code>other</code></dt>
+  <dd>the second date-time</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>-1</code> when <code>self</code> is earlier, <code>1</code> when later, <code>0</code> when equal</p>
+</div>
+<div class="fn-detail" id="diff_millis/2">
+  <h3 class="fn-title"><code>fn diff_millis(self, other)</code> <a class="anchor" href="#diff_millis/2">¶</a></h3>
+<p>The number of milliseconds from the instant <code>other</code> names to the one <code>self</code> names — positive when <code>self</code> is later, negative when earlier.</p>
+<pre><code><span class="tok-type">DateTime</span>.diff_millis(<span class="tok-type">DateTime</span>{second: <span class="tok-lit">10</span>}, <span class="tok-type">DateTime</span>{second: <span class="tok-lit">1</span>})   <span class="tok-com"># == 9000</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the later (or earlier) date-time</dd>
+  <dt><code>other</code></dt>
+  <dd>the date-time to measure from</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> millisecond count</p>
+</div>
+<div class="fn-detail" id="day_of_week/1">
+  <h3 class="fn-title"><code>fn day_of_week(self)</code> <a class="anchor" href="#day_of_week/1">¶</a></h3>
+<p>The day of the week <code>self</code>&#39;s local date falls on. Delegates to <code><a href="Date.html#day_of_week">Date.day_of_week</a></code>.</p>
+<pre><code>`:thursday`, `:friday`, `:saturday`</code></pre>
+<pre><code><span class="tok-type">DateTime</span>.day_of_week(<span class="tok-type">DateTime</span>{year: <span class="tok-lit">1970</span>, month: <span class="tok-lit">1</span>, day: <span class="tok-lit">1</span>})   <span class="tok-com"># == :thursday</span></code></pre>
+<dl class="params">
+  <dt><code>self</code></dt>
+  <dd>the date-time to inspect</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> one of <code>:sunday</code>, <code>:monday</code>, <code>:tuesday</code>, <code>:wednesday</code>,</p>
+</div>
+<div class="fn-detail" id="raw_millis/7">
+  <h3 class="fn-title"><code>fnp raw_millis(year, month, day, hour, minute, second, millisecond)</code> <span class="badge private">private</span> <a class="anchor" href="#raw_millis/7">¶</a></h3>
+<p>(private) Milliseconds since the epoch for the given fields, as if they were UTC — before the offset is applied. Shared arithmetic behind <code>new</code>, <code>parse</code> and <code>to_utc_epoch_millis</code>.</p>
+</div>
+<div class="fn-detail" id="shift/2">
+  <h3 class="fn-title"><code>fnp shift(self, millis)</code> <span class="badge private">private</span> <a class="anchor" href="#shift/2">¶</a></h3>
+<p>(private) <code>self</code> moved by <code>millis</code> milliseconds of real time, keeping its offset. Backs the <code>add_*</code> family.</p>
+</div>
+<div class="fn-detail" id="floor_div/2">
+  <h3 class="fn-title"><code>fnp floor_div(a, b)</code> <span class="badge private">private</span> <a class="anchor" href="#floor_div/2">¶</a></h3>
+<p>(private) <code>a</code> divided by <code>b</code>, rounding toward negative infinity — unlike <code>/</code>, which truncates toward zero. <code>b</code> is assumed positive.</p>
+</div>
+<div class="fn-detail" id="offset_start/1">
+  <h3 class="fn-title"><code>fnp offset_start(rest)</code> <span class="badge private">private</span> <a class="anchor" href="#offset_start/1">¶</a></h3>
+<p>(private) The index in <code>rest</code> (the text after the date) where its offset begins — the trailing <code>&quot;Z&quot;</code>, or the <code>+</code>/<code>-</code> of a <code>±HH:MM</code>. The clock text before it never contains any of those three characters, so whichever appears first is unambiguous. Backs <code>parse</code>.</p>
+</div>
+<div class="fn-detail" id="millis_from_fraction/1">
+  <h3 class="fn-title"><code>fnp millis_from_fraction(digits)</code> <span class="badge private">private</span> <a class="anchor" href="#millis_from_fraction/1">¶</a></h3>
+<p>(private) A fractional-second string of any length as milliseconds: <code>&quot;5&quot;</code> is <code>500</code>, <code>&quot;123456&quot;</code> truncates to <code>123</code>. Backs <code>parse</code>.</p>
+</div>
+<div class="fn-detail" id="pad/2">
+  <h3 class="fn-title"><code>fnp pad(n, width)</code> <span class="badge private">private</span> <a class="anchor" href="#pad/2">¶</a></h3>
+<p>(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>to_iso</code>.</p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

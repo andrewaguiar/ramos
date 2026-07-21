@@ -1,0 +1,22 @@
+# case.rmo — `case` matches a value against patterns top to bottom and runs
+# the first match. `_` is the wildcard. Where `if` branches on a condition and
+# `cond` on a chain of them, `case` branches on the *shape* of a value.
+
+x = 2
+
+# A block whose value is assigned starts on the line after `=`.
+matched =
+  case x
+    1 -> :one
+    2 -> :two
+    _ -> :other
+
+# An arm body can be a block: keep the `->` at the end of the arm and indent
+# the body; its last expression is the arm's value.
+described =
+  case [1, 2, 3]
+    [] -> "empty"
+    [only] -> "single: #{only}"
+    [head | tail] ->
+      rest = size(tail)
+      "head #{head} and #{rest} more"

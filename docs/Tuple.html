@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tuple — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html" class="current">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">Tuple</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>Tuple — operations on fixed-size, immutable tuples.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>Tuple — operations on fixed-size, immutable tuples.</p>
+<p>A tuple in Ramos is a small, fixed-arity record written with parentheses, e.g. <code>(1, 2)</code> or <code>(:ok, value)</code>. Tuples are immutable and heterogeneous, and their arity is fixed at creation — unlike lists, you cannot &quot;cons&quot; onto a tuple or recurse over its elements generically.</p>
+<p>Kernel already reads tuples — <code>size(t)</code>, <code>at(t, i)</code> and <code>to_list(t)</code> all work on one — so this module does not repeat them. What is left is the writer <code>set</code>, the constructor <code>from_list</code>, and the conveniences built on top. Reading by position is <code>at</code>, or destructuring when the arity is known:</p>
+<pre><code>result = (<span class="tok-lit">:ok</span>, <span class="tok-lit">42</span>)
+at(result, <span class="tok-lit">0</span>)               <span class="tok-com"># == :ok</span>
+(status, value) = result    <span class="tok-com"># status == :ok, value == 42</span>
+to_list((<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;b&quot;</span>, <span class="tok-str">&quot;c&quot;</span>))    <span class="tok-com"># == [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]</span></code></pre>
+<p>Tagged tuples <code>(:ok, value)</code> / <code>(:error, reason)</code> are the idiomatic result type for fallible operations — see the README&#39;s pattern-matching section.</p>
+<p>Conventions:</p>
+<ul><li>indexes are zero-based.</li><li>out-of-range access returns <code>nil</code>; out-of-range <code>put</code> returns the tuple unchanged (tuples cannot change arity).</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#set/3" class="fn-sig"><code>fn set(tuple, index, value)</code></a>
+    <span class="fn-summary">Returns a new tuple with the element at zero-based <code>index</code> replaced by <code>value</code>. An out-of-range <code>index</code> returns <code>tuple</code> unchanged — tuples cannot change arity.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#replace_at/3" class="fn-sig"><code>fnp replace_at(items, index, value)</code></a>
+    <span class="fn-summary"></span>
+  </div>
+  <div class="fn-row">
+    <a href="#from_list/1" class="fn-sig"><code>fn from_list(list)</code></a>
+    <span class="fn-summary">A tuple of the list&#39;s elements, in order — the inverse of Kernel&#39;s <code>to_list</code>. This is the only way to build a tuple whose arity is not written in the source.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#last/1" class="fn-sig"><code>fn last(tuple)</code></a>
+    <span class="fn-summary">Returns the last element of <code>tuple</code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#to_map/1" class="fn-sig"><code>fn to_map(tuple)</code></a>
+    <span class="fn-summary">Converts a tuple of <code>(key, value)</code> pairs into a map. Later pairs win on duplicate keys.</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="set/3">
+  <h3 class="fn-title"><code>fn set(tuple, index, value)</code> <a class="anchor" href="#set/3">¶</a></h3>
+<p>Returns a new tuple with the element at zero-based <code>index</code> replaced by <code>value</code>. An out-of-range <code>index</code> returns <code>tuple</code> unchanged — tuples cannot change arity.</p>
+<pre><code>is out of range</code></pre>
+<pre><code><span class="tok-type">Tuple</span>.set((<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>), <span class="tok-lit">1</span>, <span class="tok-lit">:x</span>)   <span class="tok-com"># == (1, :x, 3)</span>
+<span class="tok-type">Tuple</span>.set((<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>), <span class="tok-lit">9</span>, <span class="tok-lit">:x</span>)   <span class="tok-com"># == (1, 2, 3)</span></code></pre>
+<dl class="params">
+  <dt><code>tuple</code></dt>
+  <dd>the tuple to update</dd>
+  <dt><code>index</code></dt>
+  <dd>the zero-based position to replace</dd>
+  <dt><code>value</code></dt>
+  <dd>the new element to store at <code>index</code></dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a new tuple with <code>index</code> replaced, or <code>tuple</code> unchanged if <code>index</code></p>
+</div>
+<div class="fn-detail" id="replace_at/3">
+  <h3 class="fn-title"><code>fnp replace_at(items, index, value)</code> <span class="badge private">private</span> <a class="anchor" href="#replace_at/3">¶</a></h3>
+</div>
+<div class="fn-detail" id="from_list/1">
+  <h3 class="fn-title"><code>fn from_list(list)</code> <a class="anchor" href="#from_list/1">¶</a></h3>
+<p>A tuple of the list&#39;s elements, in order — the inverse of Kernel&#39;s <code>to_list</code>. This is the only way to build a tuple whose arity is not written in the source.</p>
+<pre><code><span class="tok-type">Tuple</span>.from_list([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])   <span class="tok-com"># == (1, 2, 3)</span>
+<span class="tok-type">Tuple</span>.from_list([<span class="tok-lit">:ok</span>, <span class="tok-lit">42</span>])   <span class="tok-com"># == (:ok, 42)</span></code></pre>
+<p>An empty list yields the zero-arity tuple, which has no literal form — <code>()</code> is not something you can write.</p>
+<dl class="params">
+  <dt><code>list</code></dt>
+  <dd>the list to convert</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="Tuple.html">Tuple</a></code> of the list&#39;s elements, in order</p>
+</div>
+<div class="fn-detail" id="last/1">
+  <h3 class="fn-title"><code>fn last(tuple)</code> <a class="anchor" href="#last/1">¶</a></h3>
+<p>Returns the last element of <code>tuple</code>.</p>
+<pre><code><span class="tok-type">Tuple</span>.last((<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>))   <span class="tok-com"># == 3</span></code></pre>
+<dl class="params">
+  <dt><code>tuple</code></dt>
+  <dd>the tuple to read from</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> the last element, or <code>nil</code> if <code>tuple</code> is empty</p>
+</div>
+<div class="fn-detail" id="to_map/1">
+  <h3 class="fn-title"><code>fn to_map(tuple)</code> <a class="anchor" href="#to_map/1">¶</a></h3>
+<p>Converts a tuple of <code>(key, value)</code> pairs into a map. Later pairs win on duplicate keys.</p>
+<pre><code><span class="tok-type">Tuple</span>.to_map(((<span class="tok-lit">:a</span>, <span class="tok-lit">1</span>), (<span class="tok-lit">:b</span>, <span class="tok-lit">2</span>)))   <span class="tok-com"># == {a: 1, b: 2}</span></code></pre>
+<dl class="params">
+  <dt><code>tuple</code></dt>
+  <dd>a tuple whose elements are <code>(key, value)</code> pair tuples</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> a <code><a href="Map.html">Map</a></code> built from the pairs, later pairs winning on duplicate keys</p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

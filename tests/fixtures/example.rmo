@@ -1,0 +1,165 @@
+# example.rmo — lexer fixture exercising every Ramos language feature.
+#
+# NOTE: real Ramos enforces one definition per file (a loader rule, PLAN phase 5).
+# This fixture intentionally packs a trait, structs, and a module into one file
+# so the lexer sees every construct; only the lexer reads it.
+
+trait Describable
+  # @module_doc
+  #
+  # A contract: one default implementation, one required function.
+
+  fn describe(self)
+    "#{self.name} (#{self.age})"
+
+  fn is_adult(self)  # required, no body
+
+struct Person
+  implements Describable
+
+  attributes
+    name: nil
+    age: 0
+    tags: []
+
+  fn is_adult(self)
+    self.age >= 18
+
+  fn greet(self)
+    print("Ola #{self.name}, eu tenho #{self.age}")
+
+module Examples
+  # @module_doc
+  #
+  # Examples — one function per language area.
+
+  fn pi()
+    3.14
+
+  fn default_name()
+    "anonymous"
+
+  fn literals()
+    int = 42
+    float = 3.14
+    neg = -7
+    string = "andrew"
+    escaped = "line\n\ttab \"quoted\" \\ \#{not_interpolated}"
+    multiline =
+      """
+        Hi there
+
+        This is a multiline #{string} string
+          with extra indentation kept
+      """
+    sym = :ok
+    flag = true or false
+    nothing = nil
+    list = [1, 2, 3]
+    tuple = (1, :two, "three")
+    map = {name: "andrew", age: 40}
+    (int, float, neg, string, escaped, multiline, sym, flag, nothing, list, tuple, map)
+
+  fn sigils()
+    date = D"2024-02-29"
+    time = T"13:45:30"
+    naive = N"2024-02-09T13:45:30.500"
+    zoned = U"2024-02-09T13:45:30.500Z"
+    (date, time, naive, zoned)
+
+  fn operators(a, b)
+    sum = a + b
+    diff = a - b
+    prod = a * b
+    quot = a / b
+    rem = -7 % 3
+    pow = 2 ** 10
+    mixed = 1 + 1.5
+    joined = "a" <> "b"
+    appended = [1, 2] ++ [3, 4]
+    merged = {a: 1} ++ {b: 2}
+    checks = a == b or a != b and not (a < b) or a <= b and a > b or a >= b
+    (sum, diff, prod, quot, rem, pow, mixed, joined, appended, merged, checks)
+
+  fn branching(x)
+    case x
+      1 -> :one
+      (:ok, value) -> value
+      [head | tail] when head > 0 ->
+        doubled = head * 2
+        [doubled] ++ tail
+      {name: n} -> "named #{n}"
+      Person{age: age} when age >= 18 -> :adult
+      _ ->
+        cond
+          x == nil -> :nothing
+          true -> :other
+
+  fn validating(data)
+    # `run` halts on the first match that fails, yielding that value; the
+    # trailing `case` takes the block's result as its subject.
+    summary =
+      run
+        :ok = validate_id(data)
+        (:ok, name) = validate_name(data)
+        "validated #{name}"
+
+    run
+      :ok = validate_age(data)
+      :ok = validate_birthday(data)
+    case
+      :ok -> (:ok, summary)
+      err -> err
+
+  fn destructuring()
+    [first, second | rest] = [1, 2, 3, 4]
+    (name, age) = ("Andrew", 40)
+    ((a, _), [head | _]) = ((1, 2), [3, 4, 5])
+    {name: mapped_name, age: mapped_age} = {name: "Andrew", age: 40}
+    (first, second, rest, name, age, a, head, mapped_name, mapped_age)
+
+  fn lambdas()
+    add = do x, y -> x + y
+    double_then_add =
+      do x, y
+        z = x + y
+        z * 2
+    add(1, double_then_add(2, 3))
+
+  fn pipes(people)
+    people
+    | List.filter(do p -> p.is_adult())
+    | List.map(do p -> p.describe())
+    | List.join(", ")
+
+  fn fluent()
+    {}
+    | Map.put(:a, 100)
+    | Map.put(:b, 50)
+
+  fn checked(amount)
+    cond
+      amount <= 0 -> (:error, (:not_positive, "must be positive"))
+      amount > 10000 -> (:error, (:too_large, "too large"))
+      true -> (:ok, amount)
+
+  fn report(amount)
+    case checked(amount)
+      (:ok, value) -> value
+      (:error, (:not_positive, message)) ->
+        print("validation: #{message}")
+        :invalid
+      (:error, _) -> :unknown
+
+  fnp sum_all(list)
+    List.reduce(list, 0, do acc, x -> acc + x)
+
+alias Examples as Ex
+
+person = Person{name: "Andrew", age: 40, tags: [:admin]}
+person.greet()
+person
+| Describable.describe()
+print(Ex.pi())
+print(Examples.default_name())
+

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Examples — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html" class="current">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content examples">
+<h1>Examples</h1>
+<p>One short program per language feature, each taken straight from the fixtures in <code>tests/fixtures/features/</code> — so every snippet here lexes and parses as real Ramos.</p>
+<p>For the prose version of the same ground, see the <a href="guide.html">language guide</a>.</p>
+<ul class="example-toc">
+  <li><a href="#actor">Actor</a> <span class="example-summary">a module implements <code><a href="Actor.html">Actor</a></code> by defining <code>call</code>, which returns <code>(reply, new_state)</code>. <code>cast</code> has no reply: it returns only the new state, and runs later — before the next call, or at program end.</span></li>
+  <li><a href="#alias">Alias</a> <span class="example-summary"><code>alias</code> gives a module a shorter name, cutting the verbosity of long namespaces. It works for pure modules and struct modules alike.</span></li>
+  <li><a href="#arithmetic">Arithmetic</a> <span class="example-summary">arithmetic operators. Whitespace around a binary operator is required: <code>1 + 2</code>, never <code>1+2</code>.</span></li>
+  <li><a href="#case">Case</a> <span class="example-summary"><code>case</code> matches a value against patterns top to bottom and runs the first match. <code>_</code> is the wildcard. Where <code>if</code> branches on a condition and <code>cond</code> on a chain of them, <code>case</code> branches on the <em>shape</em> of a value.</span></li>
+  <li><a href="#comments">Comments</a> <span class="example-summary">a comment runs from <code>#</code> to the end of the line.</span></li>
+  <li><a href="#comparison">Comparison</a> <span class="example-summary">comparison operators, each returning a bool.</span></li>
+  <li><a href="#cond">Cond</a> <span class="example-summary"><code>cond</code> takes the first arm whose condition is truthy. It is <code>case</code> over a sequence of guards, for when no single value is matched.</span></li>
+  <li><a href="#destructuring">Destructuring</a> <span class="example-summary">patterns work in plain assignment, not just in <code>case</code>.</span></li>
+  <li><a href="#doc_comments">Doc comments</a> <span class="example-summary">documentation lives inline, as a comment block placed immediately below the definition it describes. <code>@module_doc</code> documents a module, <code>@doc</code> a function; each marker is followed by an empty <code>#</code> line.</span></li>
+  <li><a href="#error_tuples">Error tuples</a> <span class="example-summary">Ramos has no exceptions. A function that can fail returns a tagged tuple instead: <code>(:ok, value)</code> on success, <code>(:error, (:type, msg))</code> on failure. The error is an ordinary value, so it is matched like any other.</span></li>
+  <li><a href="#guards">Guards</a> <span class="example-summary">a <code>when</code> guard sits between a pattern and its <code>-&gt;</code>, narrowing a match beyond the pattern&#39;s shape.</span></li>
+  <li><a href="#if">If</a> <span class="example-summary"><code>if</code> is the two-branch conditional: a condition, an indented body, and an optional <code>else</code>. Any value works as the condition, since only <code>false</code> and <code>nil</code> are falsy. There is no <code>else if</code> — a chain of conditions is <code>cond</code>.</span></li>
+  <li><a href="#implements">Implements</a> <span class="example-summary">a struct declares the traits it implements with <code>implements</code>, at the top of the struct body. It must define every function the trait requires; the trait&#39;s defaults come for free.</span></li>
+  <li><a href="#lambdas">Lambdas</a> <span class="example-summary">anonymous functions. Lambdas are values, so they can be bound, passed and piped.</span></li>
+  <li><a href="#list_concat">List concat</a> <span class="example-summary"><code>++</code> concatenates two lists, returning a new one.</span></li>
+  <li><a href="#literals">Literals</a> <span class="example-summary">one of every literal Ramos has.</span></li>
+  <li><a href="#logical">Logical</a> <span class="example-summary">the word-form logical operators. Ramos has no <code>&amp;&amp;</code>, <code>||</code> or <code>!</code>.</span></li>
+  <li><a href="#map_merge">Map merge</a> <span class="example-summary"><code>++</code> merges two maps, returning a new one.</span></li>
+  <li><a href="#module">Module</a> <span class="example-summary">a pure module is a namespace of functions with no per-instance state. It is itself a value, so it can be passed around and inspected.</span></li>
+  <li><a href="#multiline_strings">Multiline strings</a> <span class="example-summary"><code>&quot;&quot;&quot;</code> opens a multiline string. The opening quotes are followed straight by a newline, content sits one level (2 spaces) past the opening line, and the closing quotes stand alone at the opening line&#39;s indentation. Every content line keeps its trailing newline.</span></li>
+  <li><a href="#namespaced_module">Namespaced module</a> <span class="example-summary">module names are CamelCase and may be namespaced with <code>.</code>. The namespace maps to the file path: <code>MyApp.Business.SystemUser</code> lives at <code>src/my_app/business/system_user.rmo</code>.</span></li>
+  <li><a href="#pipe">Pipe</a> <span class="example-summary"><code>|</code> passes the value on its left as the <em>first argument</em> to the module function on its right, so data flows top to bottom. It always starts its own line, at the same indentation as what comes before it.</span></li>
+  <li><a href="#private_functions">Private functions</a> <span class="example-summary"><code>fnp</code> defines a private function, callable only from inside its own module. <code>fn</code> is public.</span></li>
+  <li><a href="#run">Run</a> <span class="example-summary"><code>run</code> is a block of matches. Statements run in order; the first <code>pattern = value</code> that does not match ends the block and <em>is</em> its result, so a chain of validations reads flat instead of as nested cases.</span></li>
+  <li><a href="#sigils">Sigils</a> <span class="example-summary">a letter hugging a string desugars to a <code>.parse</code> call.</span></li>
+  <li><a href="#string_concat">String concat</a> <span class="example-summary"><code>&lt;&gt;</code> concatenates two strings.</span></li>
+  <li><a href="#string_interpolation">String interpolation</a> <span class="example-summary"><code>#{...}</code> embeds an expression inside a string.</span></li>
+  <li><a href="#struct">Struct</a> <span class="example-summary">a struct declares a typed record. <code>attributes</code> names each field with its default, and instances are immutable: every update returns a new one.</span></li>
+  <li><a href="#struct_errors">Struct errors</a> <span class="example-summary">a struct makes a good error payload once a symbol and a message aren&#39;t enough detail: it destructures in <code>case</code> like any other pattern, field by field, including matching on a literal field value.</span></li>
+  <li><a href="#trait">Trait</a> <span class="example-summary">a trait declares a contract of functions. A function <em>with</em> a body is a default implementation; a function <em>without</em> one is required, and every implementer must define it.</span></li>
+  <li><a href="#variables">Variables</a> <span class="example-summary">assignment binds a name to a value.</span></li>
+</ul>
+<section class="example" id="actor">
+  <h2>Actor <a class="anchor" href="#actor">¶</a></h2>
+  <p class="example-summary">a module implements <code><a href="Actor.html">Actor</a></code> by defining <code>call</code>, which returns <code>(reply, new_state)</code>. <code>cast</code> has no reply: it returns only the new state, and runs later — before the next call, or at program end.</p>
+<pre><code><span class="tok-kw">module</span> <span class="tok-type">Cache</span>
+  <span class="tok-kw">implements</span> <span class="tok-type">Actor</span>
+
+  <span class="tok-kw">fn</span> call(f, args, state, config)
+    <span class="tok-kw">case</span> f
+      <span class="tok-lit">:get</span> -&gt;
+        [key] = args
+        (<span class="tok-type">Map</span>.get(state, key, <span class="tok-lit">nil</span>), state)
+      <span class="tok-lit">:set</span> -&gt;
+        [key, value] = args
+        (<span class="tok-lit">:ok</span>, <span class="tok-type">Map</span>.put(state, key, value))
+
+  <span class="tok-kw">fn</span> cast(f, args, state, config)
+    [key] = args
+    <span class="tok-type">Map</span>.delete(state, key)</code></pre>
+<p>client half — callers never write <code>call_actor</code> / <code>cast_actor</code></p>
+<pre><code>  <span class="tok-kw">fn</span> start()
+    start_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, {}, {})
+
+  <span class="tok-kw">fn</span> get(key)
+    call_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:get</span>, [key])
+
+  <span class="tok-kw">fn</span> set(key, value)
+    call_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:set</span>, [key, value])
+  <span class="tok-kw">fn</span> clear(key)
+    cast_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:clear</span>, [key])</code></pre>
+</section>
+<section class="example" id="alias">
+  <h2>Alias <a class="anchor" href="#alias">¶</a></h2>
+  <p class="example-summary"><code>alias</code> gives a module a shorter name, cutting the verbosity of long namespaces. It works for pure modules and struct modules alike.</p>
+<pre><code><span class="tok-kw">alias</span> <span class="tok-type">Geometry</span> <span class="tok-kw">as</span> <span class="tok-type">Geo</span>
+<span class="tok-kw">alias</span> <span class="tok-type">Geometry</span>.<span class="tok-type">Circle</span> <span class="tok-kw">as</span> <span class="tok-type">Circle</span>
+<span class="tok-kw">alias</span> <span class="tok-type">Geometry</span>.<span class="tok-type">Rectangle</span> <span class="tok-kw">as</span> <span class="tok-type">Rect</span>
+
+area = <span class="tok-type">Geo</span>.circle_area(<span class="tok-lit">5</span>)   <span class="tok-com"># == 78.5</span>
+circle = <span class="tok-type">Circle</span>.area(<span class="tok-lit">5</span>)
+rectangle = <span class="tok-type">Rect</span>.area(<span class="tok-lit">10</span>, <span class="tok-lit">20</span>)</code></pre>
+<p>Without <code>as</code>, the local name is the path&#39;s last segment — what most aliases want. <code>as</code> is for breaking a collision between two of them.</p>
+<pre><code><span class="tok-kw">alias</span> <span class="tok-type">Drawing</span>.<span class="tok-type">Shapes</span>.<span class="tok-type">Ellipse</span>
+
+ellipse = <span class="tok-type">Ellipse</span>.area(<span class="tok-lit">10</span>, <span class="tok-lit">20</span>)</code></pre>
+<p>A module aliases the modules it uses at the top of its own body.</p>
+<pre><code><span class="tok-kw">module</span> <span class="tok-type">Report</span>
+  <span class="tok-kw">alias</span> <span class="tok-type">Geometry</span>.<span class="tok-type">Circle</span>
+  <span class="tok-kw">alias</span> <span class="tok-type">Drawing</span>.<span class="tok-type">Shapes</span>.<span class="tok-type">Ellipse</span> <span class="tok-kw">as</span> <span class="tok-type">Oval</span>
+
+  <span class="tok-kw">fn</span> areas(r)
+    (<span class="tok-type">Circle</span>.area(r), <span class="tok-type">Oval</span>.area(r, r))</code></pre>
+</section>
+<section class="example" id="arithmetic">
+  <h2>Arithmetic <a class="anchor" href="#arithmetic">¶</a></h2>
+  <p class="example-summary">arithmetic operators. Whitespace around a binary operator is required: <code>1 + 2</code>, never <code>1+2</code>.</p>
+<pre><code>sum = <span class="tok-lit">1</span> + <span class="tok-lit">2</span>
+difference = <span class="tok-lit">10</span> - <span class="tok-lit">4</span>
+product = <span class="tok-lit">3</span> * <span class="tok-lit">4</span>
+quotient = <span class="tok-lit">10</span> / <span class="tok-lit">3</span>          <span class="tok-com"># int / int truncates toward zero  # == 3</span>
+remainder = -<span class="tok-lit">7</span> % <span class="tok-lit">3</span>         <span class="tok-com"># follows the sign of the divisor  # == 2</span>
+power = <span class="tok-lit">2</span> ** <span class="tok-lit">10</span>            <span class="tok-com"># == 1024</span>
+negated = -<span class="tok-lit">5</span>               <span class="tok-com"># unary minus may hug its operand</span></code></pre>
+<p>Mixing an int and a float widens the int to a float.</p>
+<pre><code>widened = <span class="tok-lit">1</span> + <span class="tok-lit">1.5</span>          <span class="tok-com"># == 2.5</span>
+float_division = <span class="tok-lit">10</span> / <span class="tok-lit">4.0</span>  <span class="tok-com"># == 2.5</span></code></pre>
+<p>Precedence: <code>**</code> binds tighter than unary minus, <code>*</code> tighter than <code>+</code>.</p>
+<pre><code>precedence = -<span class="tok-lit">2</span> ** <span class="tok-lit">2</span> + <span class="tok-lit">3</span> * <span class="tok-lit">4</span>   <span class="tok-com"># == (-(2 ** 2)) + 12 == 8</span></code></pre>
+</section>
+<section class="example" id="case">
+  <h2>Case <a class="anchor" href="#case">¶</a></h2>
+  <p class="example-summary"><code>case</code> matches a value against patterns top to bottom and runs the first match. <code>_</code> is the wildcard. Where <code>if</code> branches on a condition and <code>cond</code> on a chain of them, <code>case</code> branches on the <em>shape</em> of a value.</p>
+<pre><code>x = <span class="tok-lit">2</span></code></pre>
+<p>A block whose value is assigned starts on the line after <code>=</code>.</p>
+<pre><code>matched =
+  <span class="tok-kw">case</span> x
+    <span class="tok-lit">1</span> -&gt; <span class="tok-lit">:one</span>
+    <span class="tok-lit">2</span> -&gt; <span class="tok-lit">:two</span>
+    _ -&gt; <span class="tok-lit">:other</span></code></pre>
+<p>An arm body can be a block: keep the <code>-&gt;</code> at the end of the arm and indent the body; its last expression is the arm&#39;s value.</p>
+<pre><code>described =
+  <span class="tok-kw">case</span> [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>]
+    [] -&gt; <span class="tok-str">&quot;empty&quot;</span>
+    [only] -&gt; <span class="tok-str">&quot;single: #{only}&quot;</span>
+    [head | tail] -&gt;
+      rest = size(tail)
+      <span class="tok-str">&quot;head #{head} and #{rest} more&quot;</span></code></pre>
+</section>
+<section class="example" id="comments">
+  <h2>Comments <a class="anchor" href="#comments">¶</a></h2>
+  <p class="example-summary">a comment runs from <code>#</code> to the end of the line.</p>
+<p>A comment can stand on its own line, above the code it describes.</p>
+<pre><code>x = <span class="tok-lit">1</span>  <span class="tok-com"># ...or trail a statement.</span></code></pre>
+<p>Blank comment lines are ignored, and so are the blank lines around them:</p>
+<p>A <code>#</code> inside a string is just a character, not a comment.</p>
+<pre><code>marker = <span class="tok-str">&quot;# not a comment&quot;</span>
+print(marker)</code></pre>
+</section>
+<section class="example" id="comparison">
+  <h2>Comparison <a class="anchor" href="#comparison">¶</a></h2>
+  <p class="example-summary">comparison operators, each returning a bool.</p>
+<pre><code>equal = <span class="tok-lit">1</span> == <span class="tok-lit">1</span>
+not_equal = <span class="tok-lit">1</span> != <span class="tok-lit">2</span>
+less = <span class="tok-lit">1</span> &lt; <span class="tok-lit">2</span>
+greater = <span class="tok-lit">1</span> &gt; <span class="tok-lit">2</span>
+less_or_equal = <span class="tok-lit">1</span> &lt;= <span class="tok-lit">2</span>
+greater_or_equal = <span class="tok-lit">1</span> &gt;= <span class="tok-lit">2</span></code></pre>
+<p>Comparison binds looser than arithmetic, so the sum happens first.</p>
+<pre><code>in_range = <span class="tok-lit">1</span> + <span class="tok-lit">2</span> * <span class="tok-lit">3</span> == <span class="tok-lit">7</span></code></pre>
+</section>
+<section class="example" id="cond">
+  <h2>Cond <a class="anchor" href="#cond">¶</a></h2>
+  <p class="example-summary"><code>cond</code> takes the first arm whose condition is truthy. It is <code>case</code> over a sequence of guards, for when no single value is matched.</p>
+<pre><code>x = <span class="tok-lit">5</span></code></pre>
+<p>A block whose value is assigned starts on the line after <code>=</code>.</p>
+<pre><code>sign =
+  <span class="tok-kw">cond</span>
+    x &gt; <span class="tok-lit">0</span> -&gt; <span class="tok-lit">:positive</span>
+    x &lt; <span class="tok-lit">0</span> -&gt; <span class="tok-lit">:negative</span>
+    <span class="tok-lit">true</span> -&gt; <span class="tok-lit">:zero</span></code></pre>
+<p><code>true -&gt;</code> is the idiomatic catch-all arm. Arms take blocks too.</p>
+<pre><code>label =
+  <span class="tok-kw">cond</span>
+    x &gt; <span class="tok-lit">100</span> -&gt;
+      big = x * <span class="tok-lit">2</span>
+      <span class="tok-str">&quot;big: #{big}&quot;</span>
+    <span class="tok-lit">true</span> -&gt; <span class="tok-str">&quot;small&quot;</span></code></pre>
+</section>
+<section class="example" id="destructuring">
+  <h2>Destructuring <a class="anchor" href="#destructuring">¶</a></h2>
+  <p class="example-summary">patterns work in plain assignment, not just in <code>case</code>.</p>
+<p>Lists destructure with the cons operator <code>|</code>.</p>
+<pre><code>[head | tail] = [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>]              <span class="tok-com"># head == 1, tail == [2, 3]</span>
+[first, second | rest] = [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>]  <span class="tok-com"># first == 1, second == 2, rest == [3, 4]</span></code></pre>
+<p>Tuples are the idiomatic way to unpack a small fixed record.</p>
+<pre><code>person = (<span class="tok-str">&quot;Andrew&quot;</span>, <span class="tok-lit">40</span>)
+(name, age) = person                   <span class="tok-com"># name == &quot;Andrew&quot;, age == 40</span></code></pre>
+<p>Any combination nests, and <code>_</code> discards.</p>
+<pre><code>((a, _), [b | _]) = ((<span class="tok-lit">1</span>, <span class="tok-lit">2</span>), [<span class="tok-lit">3</span>, <span class="tok-lit">4</span>, <span class="tok-lit">5</span>])   <span class="tok-com"># a == 1, b == 3</span></code></pre>
+<p>Maps and struct instances destructure by field.</p>
+<pre><code>{name: bound_name} = {name: <span class="tok-str">&quot;andrew&quot;</span>, age: <span class="tok-lit">40</span>}
+<span class="tok-type">Person</span>{age: bound_age} = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;Andrew&quot;</span>, age: <span class="tok-lit">40</span>}</code></pre>
+</section>
+<section class="example" id="doc_comments">
+  <h2>Doc comments <a class="anchor" href="#doc_comments">¶</a></h2>
+  <p class="example-summary">documentation lives inline, as a comment block placed immediately below the definition it describes. <code>@module_doc</code> documents a module, <code>@doc</code> a function; each marker is followed by an empty <code>#</code> line.</p>
+<pre><code><span class="tok-kw">module</span> <span class="tok-type">Greeter</span></code></pre>
+<p>@module_doc</p>
+<p>Greeter — builds greetings.</p>
+<pre><code><span class="tok-type">Greeter</span>.greet(<span class="tok-str">&quot;Andrew&quot;</span>)   <span class="tok-com"># == &quot;Ola Andrew&quot;</span></code></pre>
+<pre><code>  <span class="tok-kw">fn</span> greet(name)</code></pre>
+<p>@doc</p>
+<p>Returns the greeting for <code>name</code>.</p>
+<pre><code><span class="tok-type">Greeter</span>.greet(<span class="tok-str">&quot;Andrew&quot;</span>)   <span class="tok-com"># == &quot;Ola Andrew&quot;</span></code></pre>
+<pre><code>    &quot;Ola #{name}&quot;</code></pre>
+</section>
+<section class="example" id="error_tuples">
+  <h2>Error tuples <a class="anchor" href="#error_tuples">¶</a></h2>
+  <p class="example-summary">Ramos has no exceptions. A function that can fail returns a tagged tuple instead: <code>(:ok, value)</code> on success, <code>(:error, (:type, msg))</code> on failure. The error is an ordinary value, so it is matched like any other.</p>
+<pre><code><span class="tok-kw">fn</span> withdraw(balance, amount)
+  <span class="tok-kw">cond</span>
+    amount &lt;= <span class="tok-lit">0</span> -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:invalid_amount</span>, <span class="tok-str">&quot;amount must be positive&quot;</span>))
+    amount &gt; balance -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:insufficient_funds</span>, <span class="tok-str">&quot;balance is too low&quot;</span>))
+    <span class="tok-lit">true</span> -&gt; (<span class="tok-lit">:ok</span>, balance - amount)</code></pre>
+<p><code>case</code> reads the tag, and the error&#39;s own shape destructures in the pattern, so each failure is handled where it is named.</p>
+<pre><code>result =
+  <span class="tok-kw">case</span> withdraw(<span class="tok-lit">100</span>, <span class="tok-lit">250</span>)
+    (<span class="tok-lit">:ok</span>, remaining) -&gt; <span class="tok-str">&quot;left: #{remaining}&quot;</span>
+    (<span class="tok-lit">:error</span>, (<span class="tok-lit">:invalid_amount</span>, message)) -&gt; <span class="tok-str">&quot;bad request: #{message}&quot;</span>
+    (<span class="tok-lit">:error</span>, (<span class="tok-lit">:insufficient_funds</span>, message)) -&gt; <span class="tok-str">&quot;declined: #{message}&quot;</span>
+    (<span class="tok-lit">:error</span>, (_, message)) -&gt; <span class="tok-str">&quot;failed: #{message}&quot;</span>
+
+print(result)</code></pre>
+<p><code>run</code> chains steps that each return <code>(:ok, _)</code>, stopping at the first one that does not match — the flat alternative to nesting a <code>case</code> per step.</p>
+<pre><code>total =
+  <span class="tok-kw">run</span>
+    (<span class="tok-lit">:ok</span>, after_rent) = withdraw(<span class="tok-lit">1000</span>, <span class="tok-lit">400</span>)
+    (<span class="tok-lit">:ok</span>, after_food) = withdraw(after_rent, <span class="tok-lit">200</span>)
+    after_food
+
+print(total)</code></pre>
+</section>
+<section class="example" id="guards">
+  <h2>Guards <a class="anchor" href="#guards">¶</a></h2>
+  <p class="example-summary">a <code>when</code> guard sits between a pattern and its <code>-&gt;</code>, narrowing a match beyond the pattern&#39;s shape.</p>
+<pre><code><span class="tok-kw">fn</span> classify(list)
+  <span class="tok-kw">case</span> list
+    [head | _] <span class="tok-kw">when</span> head &gt; <span class="tok-lit">100</span> -&gt; <span class="tok-lit">:big</span>
+    [head | _] <span class="tok-kw">when</span> head &gt; <span class="tok-lit">0</span> -&gt; <span class="tok-lit">:small</span>
+    [_ | _] -&gt; <span class="tok-lit">:non_positive</span>
+    [] -&gt; <span class="tok-lit">:empty</span></code></pre>
+<p>Guards are plain expressions, so they combine with <code>and</code> / <code>or</code> / <code>not</code>.</p>
+<pre><code><span class="tok-kw">fn</span> admits(user)
+  <span class="tok-kw">case</span> user
+    ({name: n, age: a}, <span class="tok-lit">:admin</span>) <span class="tok-kw">when</span> a &gt; <span class="tok-lit">18</span> <span class="tok-kw">and</span> <span class="tok-kw">not</span> (n == <span class="tok-str">&quot;&quot;</span>) -&gt; <span class="tok-str">&quot;Admin #{n}&quot;</span>
+    ({name: n}, <span class="tok-lit">:guest</span>) -&gt; <span class="tok-str">&quot;Guest #{n}&quot;</span>
+    _ -&gt; <span class="tok-str">&quot;Unknown&quot;</span></code></pre>
+</section>
+<section class="example" id="if">
+  <h2>If <a class="anchor" href="#if">¶</a></h2>
+  <p class="example-summary"><code>if</code> is the two-branch conditional: a condition, an indented body, and an optional <code>else</code>. Any value works as the condition, since only <code>false</code> and <code>nil</code> are falsy. There is no <code>else if</code> — a chain of conditions is <code>cond</code>.</p>
+<pre><code>x = <span class="tok-lit">5</span>
+
+<span class="tok-kw">if</span> x &gt; <span class="tok-lit">3</span>
+  print(<span class="tok-str">&quot;big&quot;</span>)
+<span class="tok-kw">else</span>
+  print(<span class="tok-str">&quot;small&quot;</span>)</code></pre>
+<p><code>else</code> is optional; without one, the branch not taken yields <code>nil</code>.</p>
+<pre><code><span class="tok-kw">if</span> x &gt; <span class="tok-lit">100</span>
+  print(<span class="tok-str">&quot;never&quot;</span>)</code></pre>
+<p><code>if</code> is an expression, so it can be assigned — the block starts on its own line, like any other block on the right of <code>=</code>.</p>
+<pre><code>grade =
+  <span class="tok-kw">if</span> x &gt; <span class="tok-lit">3</span>
+    <span class="tok-lit">:high</span>
+  <span class="tok-kw">else</span>
+    <span class="tok-lit">:low</span></code></pre>
+<p>Any truthy value: <code>is_truthy</code> is the same rule written down.</p>
+<pre><code><span class="tok-kw">if</span> <span class="tok-str">&quot;text&quot;</span>
+  print(is_truthy(x))</code></pre>
+<p>One guarded statement fits on one line: <code>&lt;statement&gt; when &lt;condition&gt;</code> — the same conditional, so no <code>else</code> half and no assignment on the left.</p>
+<pre><code>print(<span class="tok-str">&quot;big&quot;</span>) <span class="tok-kw">when</span> x &gt; <span class="tok-lit">3</span></code></pre>
+</section>
+<section class="example" id="implements">
+  <h2>Implements <a class="anchor" href="#implements">¶</a></h2>
+  <p class="example-summary">a struct declares the traits it implements with <code>implements</code>, at the top of the struct body. It must define every function the trait requires; the trait&#39;s defaults come for free.</p>
+<pre><code><span class="tok-kw">struct</span> <span class="tok-type">Person</span>
+  <span class="tok-kw">implements</span> <span class="tok-type">Helloable</span>
+  <span class="tok-kw">implements</span> <span class="tok-type">Describable</span>
+
+  <span class="tok-kw">attributes</span>
+    name: <span class="tok-lit">nil</span>
+    age: <span class="tok-lit">0</span>
+
+  <span class="tok-kw">fn</span> is_over_eighteen(<span class="tok-kw">self</span>)   <span class="tok-com"># required by Helloable</span>
+    <span class="tok-kw">self</span>.age &gt; <span class="tok-lit">18</span></code></pre>
+</section>
+<section class="example" id="lambdas">
+  <h2>Lambdas <a class="anchor" href="#lambdas">¶</a></h2>
+  <p class="example-summary">anonymous functions. Lambdas are values, so they can be bound, passed and piped.</p>
+<p>Single-expression: use <code>-&gt;</code> and stay on one line.</p>
+<pre><code>add = <span class="tok-kw">do</span> x, y -&gt; x + y
+three = add(<span class="tok-lit">1</span>, <span class="tok-lit">2</span>)</code></pre>
+<p>Multi-statement: drop the <code>-&gt;</code>, indent the body, last expression returns. The body is a block, so — like a <code>case</code> — it starts on the line after the <code>=</code>.</p>
+<pre><code>double_then_add =
+  <span class="tok-kw">do</span> x, y
+    z = x + y
+    z * <span class="tok-lit">2</span>
+
+ten = double_then_add(<span class="tok-lit">2</span>, <span class="tok-lit">3</span>)</code></pre>
+<p>No parameters, and passed straight into a function call.</p>
+<pre><code>answer = <span class="tok-kw">do</span> -&gt; <span class="tok-lit">42</span>
+doubled = <span class="tok-type">List</span>.map([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-kw">do</span> x -&gt; x * <span class="tok-lit">2</span>)</code></pre>
+</section>
+<section class="example" id="list_concat">
+  <h2>List concat <a class="anchor" href="#list_concat">¶</a></h2>
+  <p class="example-summary"><code>++</code> concatenates two lists, returning a new one.</p>
+<pre><code>joined = [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>] ++ [<span class="tok-lit">3</span>, <span class="tok-lit">4</span>]   <span class="tok-com"># == [1, 2, 3, 4]</span>
+prepended = [<span class="tok-lit">0</span>] ++ joined   <span class="tok-com"># == [0, 1, 2, 3, 4]</span>
+with_empty = [] ++ [<span class="tok-lit">1</span>]      <span class="tok-com"># == [1]</span></code></pre>
+<p><code>[head | tail]</code> is the cons form — a literal/pattern shape, not an operator.</p>
+<pre><code>[head | tail] = joined</code></pre>
+</section>
+<section class="example" id="literals">
+  <h2>Literals <a class="anchor" href="#literals">¶</a></h2>
+  <p class="example-summary">one of every literal Ramos has.</p>
+<pre><code>int = <span class="tok-lit">42</span>
+float = <span class="tok-lit">3.14</span>
+string = <span class="tok-str">&quot;andrew&quot;</span>
+symbol = <span class="tok-lit">:symbol</span>
+yes = <span class="tok-lit">true</span>
+no = <span class="tok-lit">false</span>
+nothing = <span class="tok-lit">nil</span>
+list = [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>]
+tuple = (<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>)
+map = {name: <span class="tok-str">&quot;andrew&quot;</span>}</code></pre>
+<p>Only <code>false</code> and <code>nil</code> are falsy...</p>
+<pre><code>falsy = [<span class="tok-lit">false</span>, <span class="tok-lit">nil</span>]</code></pre>
+<p>...everything else is truthy, including 0, &quot;&quot; and [].</p>
+<pre><code>truthy = [<span class="tok-lit">0</span>, <span class="tok-str">&quot;&quot;</span>, []]</code></pre>
+</section>
+<section class="example" id="logical">
+  <h2>Logical <a class="anchor" href="#logical">¶</a></h2>
+  <p class="example-summary">the word-form logical operators. Ramos has no <code>&amp;&amp;</code>, <code>||</code> or <code>!</code>.</p>
+<pre><code>both = <span class="tok-lit">true</span> <span class="tok-kw">and</span> <span class="tok-lit">false</span>   <span class="tok-com"># `and` short-circuits: a false left side skips the right</span>
+either = <span class="tok-lit">true</span> <span class="tok-kw">or</span> <span class="tok-lit">false</span>  <span class="tok-com"># `or` short-circuits too</span>
+negated = <span class="tok-kw">not</span> <span class="tok-lit">true</span></code></pre>
+<p>Precedence, loosest to tightest: <code>or</code> &lt; <code>and</code> &lt; <code>not</code> &lt; comparison.</p>
+<pre><code>mixed = <span class="tok-lit">1</span> &lt; <span class="tok-lit">2</span> <span class="tok-kw">and</span> <span class="tok-kw">not</span> (<span class="tok-lit">3</span> &gt; <span class="tok-lit">4</span>) <span class="tok-kw">or</span> <span class="tok-lit">false</span></code></pre>
+</section>
+<section class="example" id="map_merge">
+  <h2>Map merge <a class="anchor" href="#map_merge">¶</a></h2>
+  <p class="example-summary"><code>++</code> merges two maps, returning a new one.</p>
+<pre><code>merged = {a: <span class="tok-lit">1</span>} ++ {b: <span class="tok-lit">2</span>}      <span class="tok-com"># == {a: 1, b: 2}</span>
+overridden = {a: <span class="tok-lit">1</span>} ++ {a: <span class="tok-lit">2</span>}  <span class="tok-com"># right side wins on duplicate keys  # == {a: 2}</span>
+defaults = {} ++ merged</code></pre>
+<p>Maps are insertion-ordered and immutable — <code>++</code> returns a new map.</p>
+<pre><code>nested = {user: {name: <span class="tok-str">&quot;andrew&quot;</span>, age: <span class="tok-lit">40</span>}, active: <span class="tok-lit">true</span>}</code></pre>
+</section>
+<section class="example" id="module">
+  <h2>Module <a class="anchor" href="#module">¶</a></h2>
+  <p class="example-summary">a pure module is a namespace of functions with no per-instance state. It is itself a value, so it can be passed around and inspected.</p>
+<pre><code><span class="tok-kw">module</span> <span class="tok-type">PersonUtils</span>
+  <span class="tok-kw">fn</span> hello(person)
+    print(<span class="tok-str">&quot;Ola #{person.name}, eu tenho #{person.age}&quot;</span>)
+
+  <span class="tok-kw">fn</span> hi_all(people)
+    people
+    | <span class="tok-type">List</span>.map(<span class="tok-kw">do</span> p -&gt; <span class="tok-str">&quot;hi #{p.name}&quot;</span>)
+    | <span class="tok-type">List</span>.join(<span class="tok-str">&quot;, &quot;</span>)</code></pre>
+</section>
+<section class="example" id="multiline_strings">
+  <h2>Multiline strings <a class="anchor" href="#multiline_strings">¶</a></h2>
+  <p class="example-summary"><code>&quot;&quot;&quot;</code> opens a multiline string. The opening quotes are followed straight by a newline, content sits one level (2 spaces) past the opening line, and the closing quotes stand alone at the opening line&#39;s indentation. Every content line keeps its trailing newline.</p>
+<p>Like <code>case</code> or <code>run</code>, a multiline string being assigned starts on the line after the <code>=</code>, so the assignment does not hang open across the content.</p>
+<pre><code>str =
+  <span class="tok-str">&quot;&quot;&quot;
+    Hi there
+
+    This is a multiline string
+  &quot;&quot;&quot;</span>
+
+print(str)</code></pre>
+<p>Here the string opens at the function-body level, so &quot;Usage: ...&quot; is flush left in the value while &quot;  -h ...&quot; keeps its two extra spaces. Interpolation works exactly as in single-line strings.</p>
+<pre><code><span class="tok-kw">fn</span> usage(name)
+  <span class="tok-str">&quot;&quot;&quot;
+    Usage: #{name} &lt;file&gt;
+      -h  show this help
+  &quot;&quot;&quot;</span></code></pre>
+</section>
+<section class="example" id="namespaced_module">
+  <h2>Namespaced module <a class="anchor" href="#namespaced_module">¶</a></h2>
+  <p class="example-summary">module names are CamelCase and may be namespaced with <code>.</code>. The namespace maps to the file path: <code>MyApp.Business.SystemUser</code> lives at <code>src/my_app/business/system_user.rmo</code>.</p>
+<pre><code><span class="tok-kw">module</span> <span class="tok-type">MyApp</span>.<span class="tok-type">Business</span>.<span class="tok-type">SystemUser</span>
+  <span class="tok-kw">fn</span> create(name)
+    (<span class="tok-lit">:ok</span>, name)
+
+  <span class="tok-kw">fn</span> describe()
+    <span class="tok-str">&quot;a namespaced module&quot;</span></code></pre>
+</section>
+<section class="example" id="pipe">
+  <h2>Pipe <a class="anchor" href="#pipe">¶</a></h2>
+  <p class="example-summary"><code>|</code> passes the value on its left as the <em>first argument</em> to the module function on its right, so data flows top to bottom. It always starts its own line, at the same indentation as what comes before it.</p>
+<pre><code>shouted = [<span class="tok-str">&quot;ana&quot;</span>, <span class="tok-str">&quot;bob&quot;</span>]
+| <span class="tok-type">List</span>.map(<span class="tok-kw">do</span> n -&gt; <span class="tok-type">String</span>.upcase(n))</code></pre>
+<p>Pipes chain, each on its own line.</p>
+<pre><code>sentence = [<span class="tok-str">&quot;ana&quot;</span>, <span class="tok-str">&quot;bob&quot;</span>]
+| <span class="tok-type">List</span>.map(<span class="tok-kw">do</span> n -&gt; <span class="tok-type">String</span>.upcase(n))
+| <span class="tok-type">List</span>.join(<span class="tok-str">&quot;, &quot;</span>)</code></pre>
+<p><code>a</code> then <code>| M.f(b)</code> means exactly <code>M.f(a, b)</code> — these two are the same call.</p>
+<pre><code>piped = [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>]
+| <span class="tok-type">List</span>.filter(<span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))
+plain = <span class="tok-type">List</span>.filter([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))</code></pre>
+</section>
+<section class="example" id="private_functions">
+  <h2>Private functions <a class="anchor" href="#private_functions">¶</a></h2>
+  <p class="example-summary"><code>fnp</code> defines a private function, callable only from inside its own module. <code>fn</code> is public.</p>
+<pre><code><span class="tok-kw">module</span> <span class="tok-type">Accounts</span>
+  <span class="tok-kw">fn</span> create(name)
+    (<span class="tok-lit">:ok</span>, normalize(name))   <span class="tok-com"># a public function may call a private one</span>
+
+  <span class="tok-kw">fnp</span> normalize(name)
+    <span class="tok-type">String</span>.downcase(name)</code></pre>
+</section>
+<section class="example" id="run">
+  <h2>Run <a class="anchor" href="#run">¶</a></h2>
+  <p class="example-summary"><code>run</code> is a block of matches. Statements run in order; the first <code>pattern = value</code> that does not match ends the block and <em>is</em> its result, so a chain of validations reads flat instead of as nested cases.</p>
+<p>Bindings flow to later statements; the result is the last one&#39;s value, or the value that failed to match, e.g. (:error, (:invalid_price, &quot;...&quot;)). The block starts on the line after <code>=</code>, as every assigned block must.</p>
+<pre><code>total =
+  <span class="tok-kw">run</span>
+    (<span class="tok-lit">:ok</span>, price) = fetch_price(item)
+    (<span class="tok-lit">:ok</span>, qty) = fetch_quantity(item)
+    price * qty</code></pre>
+<p>A <code>run</code> may close with a <code>case</code> written without a subject: the block&#39;s result is the subject, so success and failure are handled side by side.</p>
+<pre><code><span class="tok-kw">run</span>
+  <span class="tok-lit">:ok</span> = validate_id(data)
+  <span class="tok-lit">:ok</span> = validate_name(data)
+  <span class="tok-lit">:ok</span> = validate_age(data)
+<span class="tok-kw">case</span>
+  <span class="tok-lit">:ok</span> -&gt;
+    print(<span class="tok-str">&quot;valid&quot;</span>)
+
+  err -&gt;
+    print(<span class="tok-str">&quot;rejected: #{err}&quot;</span>)</code></pre>
+</section>
+<section class="example" id="sigils">
+  <h2>Sigils <a class="anchor" href="#sigils">¶</a></h2>
+  <p class="example-summary">a letter hugging a string desugars to a <code>.parse</code> call.</p>
+<pre><code>date = <span class="tok-str">D&quot;2024-02-29&quot;</span>                    <span class="tok-com"># == Date.parse(&quot;2024-02-29&quot;)</span>
+time = <span class="tok-str">T&quot;13:45:30&quot;</span>                      <span class="tok-com"># == Time.parse(&quot;13:45:30&quot;)</span>
+naive = <span class="tok-str">N&quot;2024-02-09T13:45:30.500&quot;</span>      <span class="tok-com"># == NaiveDateTime.parse(...)</span>
+zoned = <span class="tok-str">U&quot;2024-02-09T13:45:30.500Z&quot;</span>     <span class="tok-com"># == DateTime.parse(...)</span></code></pre>
+</section>
+<section class="example" id="string_concat">
+  <h2>String concat <a class="anchor" href="#string_concat">¶</a></h2>
+  <p class="example-summary"><code>&lt;&gt;</code> concatenates two strings.</p>
+<pre><code>joined = <span class="tok-str">&quot;a&quot;</span> &lt;&gt; <span class="tok-str">&quot;b&quot;</span>                  <span class="tok-com"># == &quot;ab&quot;</span>
+greeting = <span class="tok-str">&quot;Ola&quot;</span> &lt;&gt; <span class="tok-str">&quot; &quot;</span> &lt;&gt; <span class="tok-str">&quot;Andrew&quot;</span>  <span class="tok-com"># left-associative</span></code></pre>
+<p><code>&lt;&gt;</code> binds looser than arithmetic, so <code>1 + 2</code> is evaluated first.</p>
+<pre><code>counted = <span class="tok-str">&quot;total: &quot;</span> &lt;&gt; to_string(<span class="tok-lit">1</span> + <span class="tok-lit">2</span>)</code></pre>
+</section>
+<section class="example" id="string_interpolation">
+  <h2>String interpolation <a class="anchor" href="#string_interpolation">¶</a></h2>
+  <p class="example-summary"><code>#{...}</code> embeds an expression inside a string.</p>
+<pre><code>name = <span class="tok-str">&quot;andrew&quot;</span>
+greeting = <span class="tok-str">&quot;Ola #{name}, you have #{1 + 1} new messages&quot;</span></code></pre>
+<p>Any expression works, including calls...</p>
+<pre><code>report = <span class="tok-str">&quot;size: #{size([1, 2, 3])}&quot;</span></code></pre>
+<p>...and a string holding an interpolation of its own.</p>
+<pre><code>nested = <span class="tok-str">&quot;outer #{&quot;inner #{name}&quot;}&quot;</span></code></pre>
+<p>Escapes: \n \t \&quot; \\ and \#{, which suppresses interpolation.</p>
+<pre><code>escaped = <span class="tok-str">&quot;line\n\ttab \&quot;quoted\&quot; backslash \\ literal \#{name}&quot;</span></code></pre>
+</section>
+<section class="example" id="struct">
+  <h2>Struct <a class="anchor" href="#struct">¶</a></h2>
+  <p class="example-summary">a struct declares a typed record. <code>attributes</code> names each field with its default, and instances are immutable: every update returns a new one.</p>
+<pre><code><span class="tok-kw">struct</span> <span class="tok-type">Person</span>
+  <span class="tok-kw">attributes</span>
+    name: <span class="tok-lit">nil</span>
+    age: <span class="tok-lit">0</span>
+
+  <span class="tok-kw">fn</span> hello(<span class="tok-kw">self</span>)
+    print(<span class="tok-str">&quot;Ola #{self.name}, eu tenho #{self.age}&quot;</span>)</code></pre>
+<p>Construction is the map-literal syntax prefixed by the struct name; omitted fields take their declared defaults, and field access is dot syntax.</p>
+<pre><code>andrew = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;Andrew&quot;</span>, age: <span class="tok-lit">40</span>}
+andrew.hello()
+
+with_defaults = <span class="tok-type">Person</span>{}   <span class="tok-com"># == Person{name: nil, age: 0}</span>
+oldest =
+  andrew
+  | <span class="tok-type">Struct</span>.put(<span class="tok-lit">:age</span>, <span class="tok-lit">41</span>)
+  | <span class="tok-type">Struct</span>.update(<span class="tok-lit">:age</span>, <span class="tok-kw">do</span> a -&gt; a + <span class="tok-lit">1</span>)</code></pre>
+<p><code>andrew.age = 41</code> rebinds <code>andrew</code> to a new instance, sugar for that same call.</p>
+<pre><code>andrew.age = <span class="tok-lit">41</span>
+
+fields = <span class="tok-type">Struct</span>.keys(andrew)             <span class="tok-com"># == [:name, :age]</span>
+as_map = <span class="tok-type">Struct</span>.to_map(oldest)           <span class="tok-com"># == {name: &quot;Andrew&quot;, age: 42}</span>
+is_person = <span class="tok-type">Struct</span>.is_a(andrew, <span class="tok-type">Person</span>)  <span class="tok-com"># == true</span></code></pre>
+</section>
+<section class="example" id="struct_errors">
+  <h2>Struct errors <a class="anchor" href="#struct_errors">¶</a></h2>
+  <p class="example-summary">a struct makes a good error payload once a symbol and a message aren&#39;t enough detail: it destructures in <code>case</code> like any other pattern, field by field, including matching on a literal field value.</p>
+<pre><code><span class="tok-kw">struct</span> <span class="tok-type">DeclineReason</span>
+  <span class="tok-kw">attributes</span>
+    code: <span class="tok-lit">0</span>
+    message: <span class="tok-lit">nil</span>
+
+<span class="tok-kw">fn</span> charge(amount)
+  <span class="tok-kw">cond</span>
+    amount &lt;= <span class="tok-lit">0</span> -&gt; (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">555</span>, message: <span class="tok-str">&quot;must be positive&quot;</span>})
+    amount &gt; <span class="tok-lit">10000</span> -&gt; (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">556</span>, message: <span class="tok-str">&quot;too large&quot;</span>})
+    <span class="tok-lit">true</span> -&gt; (<span class="tok-lit">:ok</span>, amount)
+
+result =
+  <span class="tok-kw">case</span> charge(<span class="tok-lit">50000</span>)
+    (<span class="tok-lit">:ok</span>, charged) -&gt; <span class="tok-str">&quot;charged #{charged}&quot;</span>
+    (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">556</span>, message: message}) -&gt; <span class="tok-str">&quot;too large: #{message}&quot;</span>
+    (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{message: message}) -&gt; <span class="tok-str">&quot;declined: #{message}&quot;</span>
+
+print(result)</code></pre>
+</section>
+<section class="example" id="trait">
+  <h2>Trait <a class="anchor" href="#trait">¶</a></h2>
+  <p class="example-summary">a trait declares a contract of functions. A function <em>with</em> a body is a default implementation; a function <em>without</em> one is required, and every implementer must define it.</p>
+<pre><code><span class="tok-kw">trait</span> <span class="tok-type">Helloable</span>
+  <span class="tok-kw">fn</span> hello(<span class="tok-kw">self</span>)
+    print(<span class="tok-str">&quot;Ola #{self.name}, eu tenho #{self.age}&quot;</span>)
+
+  <span class="tok-kw">fn</span> describe(<span class="tok-kw">self</span>)
+    <span class="tok-str">&quot;#{self.name} (#{self.age})&quot;</span>
+
+  <span class="tok-kw">fn</span> is_over_eighteen(<span class="tok-kw">self</span>)   <span class="tok-com"># required, no body</span></code></pre>
+</section>
+<section class="example" id="variables">
+  <h2>Variables <a class="anchor" href="#variables">¶</a></h2>
+  <p class="example-summary">assignment binds a name to a value.</p>
+<pre><code>x = <span class="tok-lit">100</span>
+name = <span class="tok-str">&quot;andrew&quot;</span>
+pi = <span class="tok-lit">3.14</span></code></pre>
+<p>Rebinding, not mutation: <code>x</code> now names a new value, and 100 was never changed.</p>
+<pre><code>x = x + <span class="tok-lit">1</span></code></pre>
+<p>Names are snake_case, <code>a-z_</code> only — no <code>?</code> or <code>!</code>.</p>
+<pre><code>main_user_name = name</code></pre>
+</section>
+</section>
+</main>
+</body>
+</html>

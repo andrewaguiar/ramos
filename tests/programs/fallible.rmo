@@ -1,0 +1,17 @@
+# Errors as values: no exceptions, `run` flattens a chain of fallible steps.
+fn parse_port(text)
+  cond
+    is_empty(text) -> (:error, :blank)
+    true -> (:ok, to_integer(text))
+
+fn checked(text)
+  result =
+    run
+      (:ok, port) = parse_port(text)
+      (:ok, port * 2)
+  case result
+    (:ok, doubled) -> "doubled to #{doubled}"
+    (:error, reason) -> "rejected: #{reason}"
+
+println(checked("8080"))
+println(checked(""))

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dir — Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+<nav class="sidebar">
+  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="guide.html">Language guide</a></li>
+    <li><a href="examples.html">Examples</a></li>
+    <li><a href="programs.html">Programs</a></li>
+  </ul>
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Actor.html">Actor</a></li>
+    <li><a href="Config.html">Config</a></li>
+    <li><a href="Date.html">Date</a></li>
+    <li><a href="DateTime.html">DateTime</a></li>
+    <li><a href="Dir.html" class="current">Dir</a></li>
+    <li><a href="File.html">File</a></li>
+    <li><a href="Float.html">Float</a></li>
+    <li><a href="Global.html">Global</a></li>
+    <li><a href="Integer.html">Integer</a></li>
+    <li><a href="Kernel.html">Kernel</a></li>
+    <li><a href="List.html">List</a></li>
+    <li><a href="Map.html">Map</a></li>
+    <li><a href="Module.html">Module</a></li>
+    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
+    <li><a href="String.html">String</a></li>
+    <li><a href="Struct.html">Struct</a></li>
+    <li><a href="Test.html">Test</a></li>
+    <li><a href="Thread.html">Thread</a></li>
+    <li><a href="Time.html">Time</a></li>
+    <li><a href="TimeZone.html">TimeZone</a></li>
+    <li><a href="Tuple.html">Tuple</a></li>
+  </ul>
+</nav>
+<section class="content">
+  <h1 class="module-header">Dir</h1>
+
+<section class="module-summary">
+<h2>Summary</h2>
+  <p>Dir — inspecting and manipulating directories on the host filesystem.</p>
+</section>
+<section class="module-description">
+<h2>Module documentation</h2>
+<p>Dir — inspecting and manipulating directories on the host filesystem.</p>
+<p>Like <code><a href="File.html">File</a></code>, every function here is <em>effectful</em> and reports outcome as a value you pattern match rather than by raising:</p>
+<ul><li>fallible operations return <code>(:ok, value)</code> or <code>(:error, reason)</code></li><li>operations with nothing to hand back return the bare <code>:ok</code></li><li><code>exists</code> and <code>is_dir</code> return a plain <code>true</code>/<code>false</code></li></ul>
+<p><code>reason</code> is a lowercase symbol — <code>:enoent</code> (no such directory), <code>:eacces</code> (permission denied), <code>:eexist</code>, or <code>:io_error</code>:</p>
+<pre><code><span class="tok-kw">case</span> <span class="tok-type">Dir</span>.ls(<span class="tok-str">&quot;src&quot;</span>)
+  (<span class="tok-lit">:ok</span>, entries) -&gt; <span class="tok-type">List</span>.each(entries, <span class="tok-kw">do</span> e -&gt; print(e))
+  (<span class="tok-lit">:error</span>, <span class="tok-lit">:enoent</span>) -&gt; print(<span class="tok-str">&quot;no such directory&quot;</span>)
+  (<span class="tok-lit">:error</span>, reason) -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:dir_failed</span>, reason))</code></pre>
+<p>The current working directory is process-wide state: <code>cd</code> changes it for every later relative path (in <code><a href="Dir.html">Dir</a></code> and <code><a href="File.html">File</a></code> alike), and <code>cwd</code> reads it.</p>
+<p>Conventions:</p>
+<ul><li>paths are host-native strings; relative paths resolve against the cwd.</li><li><code>ls</code> returns bare entry names (not full paths), sorted.</li><li><code>mkdir</code> creates parent directories as needed and is happy if the directory already exists.</li></ul>
+</section>
+<section class="functions-summary">
+<h2>Functions</h2>
+  <div class="fn-row">
+    <a href="#cwd/0" class="fn-sig"><code>fn cwd()</code></a>
+    <span class="fn-summary">Returns the process&#39;s current working directory.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#cd/1" class="fn-sig"><code>fn cd(path)</code></a>
+    <span class="fn-summary">Changes the process&#39;s current working directory to <code>path</code>. Affects every relative path used afterwards, in both <code><a href="Dir.html">Dir</a></code> and <code><a href="File.html">File</a></code>.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#mkdir/1" class="fn-sig"><code>fn mkdir(path)</code></a>
+    <span class="fn-summary">Creates the directory at <code>path</code>, including any missing parent directories (like <code>mkdir -p</code>). Succeeds if the directory already exists.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#ls/1" class="fn-sig"><code>fn ls(path)</code></a>
+    <span class="fn-summary">Lists the entries of the directory at <code>path</code> — the bare names of the files and subdirectories it contains (not full paths), sorted.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#exists/1" class="fn-sig"><code>fn exists(path)</code></a>
+    <span class="fn-summary">Returns <code>true</code> if something exists at <code>path</code> (a file or a directory), else <code>false</code>. Use <code>is_dir</code> to require that it is a directory.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#is_dir/1" class="fn-sig"><code>fn is_dir(path)</code></a>
+    <span class="fn-summary">Returns <code>true</code> if <code>path</code> exists and is a directory, else <code>false</code> (including when <code>path</code> is a regular file or does not exist).</span>
+  </div>
+</section>
+<section class="functions-detail">
+<div class="fn-detail" id="cwd/0">
+  <h3 class="fn-title"><code>fn cwd()</code> <a class="anchor" href="#cwd/0">¶</a></h3>
+<p>Returns the process&#39;s current working directory.</p>
+<pre><code><span class="tok-type">Dir</span>.cwd()   <span class="tok-com"># (:ok, &quot;/home/andrew/dev/ramos&quot;) — whatever it happens to be</span></code></pre>
+<p class="returns"><strong>Returns:</strong> <code>(:ok, path)</code>, or <code>(:error, reason)</code> if it cannot be determined</p>
+</div>
+<div class="fn-detail" id="cd/1">
+  <h3 class="fn-title"><code>fn cd(path)</code> <a class="anchor" href="#cd/1">¶</a></h3>
+<p>Changes the process&#39;s current working directory to <code>path</code>. Affects every relative path used afterwards, in both <code><a href="Dir.html">Dir</a></code> and <code><a href="File.html">File</a></code>.</p>
+<pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;src&quot;</span>)
+<span class="tok-type">Dir</span>.cd(<span class="tok-str">&quot;src&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
+<dl class="params">
+  <dt><code>path</code></dt>
+  <dd>the directory to change into</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> (e.g. <code>:enoent</code>) on failure</p>
+</div>
+<div class="fn-detail" id="mkdir/1">
+  <h3 class="fn-title"><code>fn mkdir(path)</code> <a class="anchor" href="#mkdir/1">¶</a></h3>
+<p>Creates the directory at <code>path</code>, including any missing parent directories (like <code>mkdir -p</code>). Succeeds if the directory already exists.</p>
+<pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;build/cache&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
+<dl class="params">
+  <dt><code>path</code></dt>
+  <dd>the directory to create</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> on failure</p>
+</div>
+<div class="fn-detail" id="ls/1">
+  <h3 class="fn-title"><code>fn ls(path)</code> <a class="anchor" href="#ls/1">¶</a></h3>
+<p>Lists the entries of the directory at <code>path</code> — the bare names of the files and subdirectories it contains (not full paths), sorted.</p>
+<pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;stdlib&quot;</span>)
+<span class="tok-type">File</span>.write(<span class="tok-str">&quot;stdlib/dir.rmo&quot;</span>, <span class="tok-str">&quot;&quot;</span>)
+<span class="tok-type">File</span>.write(<span class="tok-str">&quot;stdlib/file.rmo&quot;</span>, <span class="tok-str">&quot;&quot;</span>)
+<span class="tok-type">Dir</span>.ls(<span class="tok-str">&quot;stdlib&quot;</span>)   <span class="tok-com"># == (:ok, [&quot;dir.rmo&quot;, &quot;file.rmo&quot;])</span></code></pre>
+<dl class="params">
+  <dt><code>path</code></dt>
+  <dd>the directory to list</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>(:ok, names)</code> (a sorted list of strings), or <code>(:error, reason)</code></p>
+</div>
+<div class="fn-detail" id="exists/1">
+  <h3 class="fn-title"><code>fn exists(path)</code> <a class="anchor" href="#exists/1">¶</a></h3>
+<p>Returns <code>true</code> if something exists at <code>path</code> (a file or a directory), else <code>false</code>. Use <code>is_dir</code> to require that it is a directory.</p>
+<pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;stdlib&quot;</span>)
+<span class="tok-type">Dir</span>.exists(<span class="tok-str">&quot;stdlib&quot;</span>)   <span class="tok-com"># == true</span>
+<span class="tok-type">Dir</span>.exists(<span class="tok-str">&quot;missing&quot;</span>)  <span class="tok-com"># == false</span></code></pre>
+<dl class="params">
+  <dt><code>path</code></dt>
+  <dd>the path to test</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>true</code> if <code>path</code> exists, else <code>false</code></p>
+</div>
+<div class="fn-detail" id="is_dir/1">
+  <h3 class="fn-title"><code>fn is_dir(path)</code> <a class="anchor" href="#is_dir/1">¶</a></h3>
+<p>Returns <code>true</code> if <code>path</code> exists and is a directory, else <code>false</code> (including when <code>path</code> is a regular file or does not exist).</p>
+<pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;stdlib&quot;</span>)
+<span class="tok-type">File</span>.write(<span class="tok-str">&quot;stdlib/dir.rmo&quot;</span>, <span class="tok-str">&quot;&quot;</span>)
+<span class="tok-type">Dir</span>.is_dir(<span class="tok-str">&quot;stdlib&quot;</span>)           <span class="tok-com"># == true</span>
+<span class="tok-type">Dir</span>.is_dir(<span class="tok-str">&quot;stdlib/dir.rmo&quot;</span>)  <span class="tok-com"># == false</span></code></pre>
+<dl class="params">
+  <dt><code>path</code></dt>
+  <dd>the path to test</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>true</code> if <code>path</code> is a directory, else <code>false</code></p>
+</div>
+</section>
+</section>
+</main>
+</body>
+</html>

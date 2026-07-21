@@ -1,0 +1,8 @@
+trait Geometry.Describable
+  fn area(self)
+
+  fn describe(self)
+    "#{name(self)} covering #{area(self)}"
+
+  fn name(self)
+    "shape"

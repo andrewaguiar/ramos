@@ -1,0 +1,334 @@
+struct NaiveDateTime
+  # @module_doc
+  #
+  # NaiveDateTime — a calendar date and a time of day, with no time zone.
+  # `Date` plus `hour`/`minute`/`second`/`millisecond`.
+  #
+  # "Naive" is the standard term for this shape: a wall-clock reading with no
+  # attached zone or offset, so it cannot be converted to a precise instant on
+  # its own. Reach for `DateTime` when the offset from UTC matters — logging a
+  # timestamp, scheduling something relative to now, comparing readings taken
+  # in different places.
+  #
+  #   dt = NaiveDateTime.new(2024, 2, 9, 13, 45, 30)
+  #   dt.hour     # == 13
+  #   dt.minute   # == 45
+  #
+  # As with `Date`, an out-of-range field normalizes rather than raising —
+  # `second: 60` rolls into the next minute, `hour: -1` into the previous
+  # day's last hour:
+  #
+  #   NaiveDateTime.new(2024, 2, 9, 23, 59, 60)   # == NaiveDateTime{year: 2024, month: 2, day: 10, hour: 0, minute: 0, second: 0, millisecond: 0}
+  #
+  # Conventions:
+  #   - `compare` follows `Integer.compare`: `-1`, `0`, `1`.
+  #   - `to_iso`/`parse` round-trip through `"YYYY-MM-DDTHH:MM:SS.mmm"`, always
+  #     with milliseconds — the precision `now` reads the clock at.
+
+  attributes
+    year: 1970
+    month: 1
+    day: 1
+    hour: 0
+    minute: 0
+    second: 0
+    millisecond: 0
+
+  fn new(year, month, day, hour, minute, second)
+    # @doc
+    #
+    # Builds a `NaiveDateTime` with `millisecond: 0`. Every field past `year`
+    # normalizes when it overflows or underflows its natural range, the same
+    # way `Date.new`'s `day` does.
+    #
+    # @param year: the calendar year, any integer
+    # @param month: the month, `1`..`12`
+    # @param day: the day of month; out-of-range values roll over
+    # @param hour: the hour, `0`..`23`; out-of-range values roll over
+    # @param minute: the minute, `0`..`59`; out-of-range values roll over
+    # @param second: the second, `0`..`59`; out-of-range values roll over
+    # @return a new `NaiveDateTime`
+    #
+    #   NaiveDateTime.new(2024, 2, 9, 13, 45, 30)
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 0}
+    #   NaiveDateTime.new(2024, 2, 9, 24, 0, 0)
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 10, hour: 0, minute: 0, second: 0, millisecond: 0}
+    assert(month >= 1 and month <= 12, "NaiveDateTime.new: month must be 1..12, got #{month}")
+    from_epoch_millis(raw_millis(year, month, day, hour, minute, second, 0))
+
+  fn now()
+    # @doc
+    #
+    # The current date and time, read from the wall clock as UTC.
+    #
+    # @return the current `NaiveDateTime`
+    #
+    #   NaiveDateTime.now().year > 2000   # == true
+    from_epoch_millis(Kernel.now())
+
+  fn from_epoch_millis(ms)
+    # @doc
+    #
+    # The `NaiveDateTime` that is `ms` milliseconds after 1970-01-01T00:00:00.000
+    # (millisecond `0`). Negative values reach before the epoch.
+    #
+    # @param ms: milliseconds since the epoch, as an `Integer`
+    # @return the corresponding `NaiveDateTime`
+    #
+    #   NaiveDateTime.from_epoch_millis(0)
+    #   # == NaiveDateTime{year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, millisecond: 0}
+    #   NaiveDateTime.from_epoch_millis(-1)
+    #   # == NaiveDateTime{year: 1969, month: 12, day: 31, hour: 23, minute: 59, second: 59, millisecond: 999}
+    epoch_day = floor_div(ms, 86400000)
+    millis_of_day = ms % 86400000
+    (year, month, day) = native("date_from_epoch_day", [epoch_day])
+    NaiveDateTime{
+      year: year,
+      month: month,
+      day: day,
+      hour: millis_of_day / 3600000,
+      minute: (millis_of_day / 60000) % 60,
+      second: (millis_of_day / 1000) % 60,
+      millisecond: millis_of_day % 1000
+    }
+
+  fn parse(text)
+    # @doc
+    #
+    # Parses `"YYYY-MM-DDTHH:MM:SS"` or `"YYYY-MM-DD HH:MM:SS"` — either a `T`
+    # or a plain space between the date and the time, as `to_iso` renders or
+    # as the `N"..."` sigil is written. The seconds' fractional part is
+    # optional and any number of digits (padded or truncated to
+    # milliseconds): `"...:30"`, `"...:30.5"` and `"...:30.123456"` are all
+    # valid, meaning `0`, `500` and `123` milliseconds respectively.
+    #
+    # @param text: a date-time in `"YYYY-MM-DD[T ]HH:MM:SS[.fraction]"` form
+    # @return the corresponding `NaiveDateTime`
+    #
+    #   NaiveDateTime.parse("2024-02-09T13:45:30.500")
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 500}
+    #   NaiveDateTime.parse("2024-02-09 13:45:30.123456")
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 45, second: 30, millisecond: 123}
+    sep =
+      if String.contains(text, "T")
+        "T"
+      else
+        " "
+    [date_part, clock_part] = String.split(text, sep)
+    d = Date.parse(date_part)
+    [clock, fraction] =
+      if String.contains(clock_part, ".")
+        String.split(clock_part, ".")
+      else
+        [clock_part, ""]
+    [h, mi, s] = String.split(clock, ":")
+    from_epoch_millis(raw_millis(d.year, d.month, d.day, to_integer(h), to_integer(mi), to_integer(s), millis_from_fraction(fraction)))
+
+  fn date(self)
+    # @doc
+    #
+    # The `Date` half of `self`, dropping the time of day.
+    #
+    # @param self: the date-time to read
+    # @return the `Date` self falls on
+    #
+    #   NaiveDateTime.date(NaiveDateTime{year: 2024, month: 2, day: 9, hour: 13})
+    #   # == Date{year: 2024, month: 2, day: 9}
+    Date{year: self.year, month: self.month, day: self.day}
+
+  fn to_epoch_millis(self)
+    # @doc
+    #
+    # `self` as milliseconds since 1970-01-01T00:00:00.000.
+    #
+    # @param self: the date-time to convert
+    # @return an `Integer` millisecond count, negative before the epoch
+    #
+    #   NaiveDateTime.to_epoch_millis(NaiveDateTime{year: 1970, month: 1, day: 1})   # == 0
+    raw_millis(self.year, self.month, self.day, self.hour, self.minute, self.second, self.millisecond)
+
+  fn to_iso(self)
+    # @doc
+    #
+    # `self` rendered as `"YYYY-MM-DDTHH:MM:SS.mmm"`, zero-padded.
+    #
+    # @param self: the date-time to render
+    # @return the ISO-8601-shaped string
+    #
+    #   NaiveDateTime.to_iso(NaiveDateTime{year: 2024, month: 2, day: 9, hour: 3, minute: 5, second: 9, millisecond: 7})
+    #   # == "2024-02-09T03:05:09.007"
+    "#{Date.to_iso(date(self))}T#{pad(self.hour, 2)}:#{pad(self.minute, 2)}:#{pad(self.second, 2)}.#{pad(self.millisecond, 3)}"
+
+  fn add_days(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` days, keeping the time of day.
+    #
+    # @param self: the starting date-time
+    # @param n: how many days to add (negative subtracts)
+    # @return a new `NaiveDateTime`
+    #
+    #   NaiveDateTime.add_days(NaiveDateTime{year: 2024, month: 2, day: 28, hour: 12}, 1)
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 29, hour: 12}
+    shift(self, n * 86400000)
+
+  fn add_weeks(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` weeks (`n * 7` days), keeping the time of day.
+    #
+    # @param self: the starting date-time
+    # @param n: how many weeks to add (negative subtracts)
+    # @return a new `NaiveDateTime`
+    #
+    #   NaiveDateTime.add_weeks(NaiveDateTime{year: 2024, month: 1, day: 1, hour: 12}, 1)
+    #   # == NaiveDateTime{year: 2024, month: 1, day: 8, hour: 12}
+    shift(self, n * 604800000)
+
+  fn add_months(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` months, keeping the time of day — `Date.add_months`
+    # applied to the date half, with the day-overflow normalization that
+    # implies.
+    #
+    # @param self: the starting date-time
+    # @param n: how many months to add (negative subtracts)
+    # @return a new `NaiveDateTime`
+    #
+    #   NaiveDateTime.add_months(NaiveDateTime{year: 2024, month: 1, day: 15, hour: 12}, 1)
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 15, hour: 12}
+    shifted = Date.add_months(date(self), n)
+    NaiveDateTime{
+      year: shifted.year,
+      month: shifted.month,
+      day: shifted.day,
+      hour: self.hour,
+      minute: self.minute,
+      second: self.second,
+      millisecond: self.millisecond
+    }
+
+  fn add_hours(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` hours.
+    #
+    # @param self: the starting date-time
+    # @param n: how many hours to add (negative subtracts)
+    # @return a new `NaiveDateTime`
+    #
+    #   NaiveDateTime.add_hours(NaiveDateTime{year: 2024, month: 2, day: 9, hour: 23}, 2)
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 10, hour: 1}
+    shift(self, n * 3600000)
+
+  fn add_minutes(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` minutes.
+    #
+    # @param self: the starting date-time
+    # @param n: how many minutes to add (negative subtracts)
+    # @return a new `NaiveDateTime`
+    #
+    #   NaiveDateTime.add_minutes(NaiveDateTime{year: 2024, month: 2, day: 9, hour: 0, minute: 30}, 45)
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 1, minute: 15}
+    shift(self, n * 60000)
+
+  fn add_seconds(self, n)
+    # @doc
+    #
+    # `self` shifted by `n` seconds.
+    #
+    # @param self: the starting date-time
+    # @param n: how many seconds to add (negative subtracts)
+    # @return a new `NaiveDateTime`
+    #
+    #   NaiveDateTime.add_seconds(NaiveDateTime{year: 2024, month: 2, day: 9, second: 45}, 30)
+    #   # == NaiveDateTime{year: 2024, month: 2, day: 9, minute: 1, second: 15}
+    shift(self, n * 1000)
+
+  fn compare(self, other)
+    # @doc
+    #
+    # Orders two date-times as `-1`, `0` or `1` — the shape `Integer.compare`
+    # uses, since there is no built-in `<`/`>` for structs.
+    #
+    # @param self: the first date-time
+    # @param other: the second date-time
+    # @return `-1` when `self` is earlier, `1` when later, `0` when equal
+    #
+    #   NaiveDateTime.compare(NaiveDateTime{hour: 1}, NaiveDateTime{hour: 2})   # == -1
+    #   NaiveDateTime.compare(NaiveDateTime{hour: 2}, NaiveDateTime{hour: 1})   # == 1
+    #   NaiveDateTime.compare(NaiveDateTime{hour: 1}, NaiveDateTime{hour: 1})   # == 0
+    cond
+      to_epoch_millis(self) < to_epoch_millis(other) -> -1
+      to_epoch_millis(self) > to_epoch_millis(other) -> 1
+      true -> 0
+
+  fn diff_millis(self, other)
+    # @doc
+    #
+    # The number of milliseconds from `other` to `self` — positive when
+    # `self` is later, negative when earlier.
+    #
+    # @param self: the later (or earlier) date-time
+    # @param other: the date-time to measure from
+    # @return an `Integer` millisecond count
+    #
+    #   NaiveDateTime.diff_millis(NaiveDateTime{second: 10}, NaiveDateTime{second: 1})   # == 9000
+    to_epoch_millis(self) - to_epoch_millis(other)
+
+  fn day_of_week(self)
+    # @doc
+    #
+    # The day of the week `self` falls on. Delegates to `Date.day_of_week`.
+    #
+    # @param self: the date-time to inspect
+    # @return one of `:sunday`, `:monday`, `:tuesday`, `:wednesday`,
+    #   `:thursday`, `:friday`, `:saturday`
+    #
+    #   NaiveDateTime.day_of_week(NaiveDateTime{year: 1970, month: 1, day: 1})   # == :thursday
+    Date.day_of_week(date(self))
+
+  fnp raw_millis(year, month, day, hour, minute, second, millisecond)
+    # @doc
+    #
+    # (private) Milliseconds since the epoch for the given fields, computed
+    # straight from the unchecked `date_to_epoch_day` native — the shared
+    # arithmetic behind `new`, `parse` and `to_epoch_millis`.
+    native("date_to_epoch_day", [year, month, day]) * 86400000 + hour * 3600000 + minute * 60000 + second * 1000 + millisecond
+
+  fnp shift(self, millis)
+    # @doc
+    #
+    # (private) `self` moved by `millis` milliseconds. Backs the `add_*`
+    # family.
+    from_epoch_millis(to_epoch_millis(self) + millis)
+
+  fnp floor_div(a, b)
+    # @doc
+    #
+    # (private) `a` divided by `b`, rounding toward negative infinity — unlike
+    # `/`, which truncates toward zero. `b` is assumed positive. Needed to
+    # turn a possibly-negative millisecond count into the right epoch day:
+    # `%` (floor modulo) already gives the right millisecond-of-day on its
+    # own, but `/` alone would round a negative count the wrong way.
+    (a - a % b) / b
+
+  fnp millis_from_fraction(digits)
+    # @doc
+    #
+    # (private) A fractional-second string of any length as milliseconds:
+    # `"5"` is `500`, `"123456"` truncates to `123`. Backs `parse`.
+    if digits == ""
+      0
+    else
+      to_integer(String.slice(String.pad_right(digits, 3, "0"), 0, 3))
+
+  fnp pad(n, width)
+    # @doc
+    #
+    # (private) `n` rendered as decimal digits, left-padded with zeros to at
+    # least `width` characters. Backs `to_iso`.
+    String.pad_left(to_string(n), width, "0")

@@ -1,0 +1,9 @@
+# An entrypoint module: `ramos run` calls `main()`.
+module Greeting
+  fn main()
+    ["Andrew", "Ana"]
+    | List.map(do name -> greeting(name))
+    | List.each(do line -> println(line))
+
+  fnp greeting(name)
+    "Ola #{name}, you are #{String.length(name)} letters long"

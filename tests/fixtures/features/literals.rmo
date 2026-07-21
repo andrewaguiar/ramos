@@ -1,0 +1,18 @@
+# literals.rmo — one of every literal Ramos has.
+
+int = 42
+float = 3.14
+string = "andrew"
+symbol = :symbol
+yes = true
+no = false
+nothing = nil
+list = [1, 2, 3]
+tuple = (1, 2, 3)
+map = {name: "andrew"}
+
+# Only `false` and `nil` are falsy...
+falsy = [false, nil]
+
+# ...everything else is truthy, including 0, "" and [].
+truthy = [0, "", []]

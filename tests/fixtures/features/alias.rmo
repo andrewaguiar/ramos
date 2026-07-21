@@ -1,0 +1,24 @@
+# alias.rmo — `alias` gives a module a shorter name, cutting the verbosity of
+# long namespaces. It works for pure modules and struct modules alike.
+
+alias Geometry as Geo
+alias Geometry.Circle as Circle
+alias Geometry.Rectangle as Rect
+
+area = Geo.circle_area(5)   # == 78.5
+circle = Circle.area(5)
+rectangle = Rect.area(10, 20)
+
+# Without `as`, the local name is the path's last segment — what most aliases
+# want. `as` is for breaking a collision between two of them.
+alias Drawing.Shapes.Ellipse
+
+ellipse = Ellipse.area(10, 20)
+
+# A module aliases the modules it uses at the top of its own body.
+module Report
+  alias Geometry.Circle
+  alias Drawing.Shapes.Ellipse as Oval
+
+  fn areas(r)
+    (Circle.area(r), Oval.area(r, r))

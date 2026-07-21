@@ -1,0 +1,13 @@
+# string_interpolation.rmo — `#{...}` embeds an expression inside a string.
+
+name = "andrew"
+greeting = "Ola #{name}, you have #{1 + 1} new messages"
+
+# Any expression works, including calls...
+report = "size: #{size([1, 2, 3])}"
+
+# ...and a string holding an interpolation of its own.
+nested = "outer #{"inner #{name}"}"
+
+# Escapes: \n \t \" \\ and \#{, which suppresses interpolation.
+escaped = "line\n\ttab \"quoted\" backslash \\ literal \#{name}"

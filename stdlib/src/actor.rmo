@@ -1,0 +1,71 @@
+trait Actor
+  # @module_doc
+  #
+  # Actor — a named process that holds state and answers messages.
+  #
+  # A module implements `Actor` by defining one function, `call`, which takes
+  # the operation, its arguments, the actor's current state and its config, and
+  # returns a `(reply, new_state)` tuple. The actor's state is whatever the last
+  # `call` returned; nothing mutates, the actor simply holds the newest value.
+  #
+  #   module Counter
+  #     implements Actor
+  #
+  #     fn call(f, args, state, config)
+  #       case f
+  #         :bump -> (state + 1, state + 1)
+  #         :read -> (state, state)
+  #
+  #     fn start()
+  #       start_actor(:counter, Counter, 0, {})
+  #
+  #     fn bump()
+  #       call_actor(:counter, Counter, :bump, [])
+  #
+  # The convention is to keep `call` as the server half and wrap each operation
+  # in a plain function — the client half — so callers never write
+  # `call_actor` themselves.
+  #
+  # Each actor runs on **its own thread**, with its own memory: a fresh scope
+  # that cannot see the caller's bindings, and state reachable only by sending
+  # a message. One actor handles its own messages one at a time, in order, but
+  # different actors run in parallel.
+  #
+  # That memory does not include the actor registry, so a handler cannot send
+  # messages to another actor or to itself.
+
+  fn cast(f, args, state, config)
+    # @doc
+    #
+    # Handle one message sent with `cast_actor`, returning only the new state —
+    # a cast has no reply to send anywhere, which is the whole difference from
+    # `call`.
+    #
+    # The default runs the module's own `call` and discards the reply, so an
+    # actor that already handles an operation synchronously can be cast to
+    # without writing anything extra. Override it for work that only makes
+    # sense fire-and-forget.
+    #
+    # `cast_actor` returns as soon as the message is sent, so the handler may
+    # still be running when the next statement starts.
+    #
+    # @param f: the operation, conventionally a symbol
+    # @param args: a `List` of arguments for the operation
+    # @param state: the actor's current state
+    # @param config: the config given to `start_actor`
+    # @return the actor's new state
+    (reply, new_state) = call(f, args, state, config)
+    new_state
+
+  fn call(f, args, state, config)
+    # @doc
+    #
+    # Handle one message. Required — every implementer defines it.
+    #
+    # @param f: the operation, conventionally a symbol such as `:get`
+    # @param args: a `List` of arguments for the operation
+    # @param state: the actor's current state
+    # @param config: the config given to `start_actor`, unchanged for the
+    #   actor's lifetime
+    # @return a `(reply, new_state)` tuple: the reply goes back to the caller
+    #   and `new_state` becomes the actor's state

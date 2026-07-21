@@ -1,0 +1,91 @@
+module Tuple
+  # @module_doc
+  #
+  # Tuple — operations on fixed-size, immutable tuples.
+  #
+  # A tuple in Ramos is a small, fixed-arity record written with parentheses, e.g.
+  # `(1, 2)` or `(:ok, value)`. Tuples are immutable and heterogeneous, and their
+  # arity is fixed at creation — unlike lists, you cannot "cons" onto a tuple or
+  # recurse over its elements generically.
+  #
+  # Kernel already reads tuples — `size(t)`, `at(t, i)` and `to_list(t)` all
+  # work on one — so this module does not repeat them. What is left is the
+  # writer `set`, the constructor `from_list`, and the conveniences built on
+  # top. Reading by position is `at`, or destructuring when the arity is known:
+  #
+  #   result = (:ok, 42)
+  #   at(result, 0)               # == :ok
+  #   (status, value) = result    # status == :ok, value == 42
+  #   to_list(("a", "b", "c"))    # == ["a", "b", "c"]
+  #
+  # Tagged tuples `(:ok, value)` / `(:error, reason)` are the idiomatic result
+  # type for fallible operations — see the README's pattern-matching section.
+  #
+  # Conventions:
+  #   - indexes are zero-based.
+  #   - out-of-range access returns `nil`; out-of-range `put` returns the tuple
+  #     unchanged (tuples cannot change arity).
+
+  fn set(tuple, index, value)
+    # @doc
+    #
+    # Returns a new tuple with the element at zero-based `index` replaced by
+    # `value`. An out-of-range `index` returns `tuple` unchanged — tuples
+    # cannot change arity.
+    #
+    # @param tuple: the tuple to update
+    # @param index: the zero-based position to replace
+    # @param value: the new element to store at `index`
+    # @return a new tuple with `index` replaced, or `tuple` unchanged if `index`
+    #   is out of range
+    #
+    #   Tuple.set((1, 2, 3), 1, :x)   # == (1, :x, 3)
+    #   Tuple.set((1, 2, 3), 9, :x)   # == (1, 2, 3)
+    cond
+      index < 0 -> tuple
+      index >= size(tuple) -> tuple
+      true -> replace_at(to_list(tuple), index, value)
+
+  fnp replace_at(items, index, value)
+    from_list(List.take(items, index) ++ [value] ++ List.drop(items, index + 1))
+
+  fn from_list(list)
+    # @doc
+    #
+    # A tuple of the list's elements, in order — the inverse of Kernel's
+    # `to_list`. This is the only way to build a tuple whose arity is not
+    # written in the source.
+    #
+    # @param list: the list to convert
+    # @return a `Tuple` of the list's elements, in order
+    #
+    #   Tuple.from_list([1, 2, 3])   # == (1, 2, 3)
+    #   Tuple.from_list([:ok, 42])   # == (:ok, 42)
+    #
+    # An empty list yields the zero-arity tuple, which has no literal form —
+    # `()` is not something you can write.
+    native("tuple_from_list", [list])
+
+  fn last(tuple)
+    # @doc
+    #
+    # Returns the last element of `tuple`.
+    #
+    # @param tuple: the tuple to read from
+    # @return the last element, or `nil` if `tuple` is empty
+    #
+    #   Tuple.last((1, 2, 3))   # == 3
+    at(tuple, size(tuple) - 1)
+
+  fn to_map(tuple)
+    # @doc
+    #
+    # Converts a tuple of `(key, value)` pairs into a map. Later pairs win on
+    # duplicate keys.
+    #
+    # @param tuple: a tuple whose elements are `(key, value)` pair tuples
+    # @return a `Map` built from the pairs, later pairs winning on duplicate keys
+    #
+    #   Tuple.to_map(((:a, 1), (:b, 2)))   # == {a: 1, b: 2}
+    put_pair = do acc, pair -> Map.put(acc, at(pair, 0), at(pair, 1))
+    List.reduce(to_list(tuple), {}, put_pair)

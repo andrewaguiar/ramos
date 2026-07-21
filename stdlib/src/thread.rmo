@@ -1,0 +1,140 @@
+module Thread
+  # @module_doc
+  #
+  # Thread — run a computation on another thread and collect its result.
+  #
+  # A thread is a one-shot piece of parallel work. `start` starts a
+  # zero-argument lambda on its own thread and hands back a handle at once,
+  # without waiting; `await` waits on the handle and returns what the lambda
+  # produced. Between the two, the caller and the spawned work run at the same
+  # time.
+  #
+  #   t = Thread.start(do -> slow_sum())
+  #   other_work()                        # runs while the thread does
+  #   total = Thread.await(t)             # now wait for it
+  #
+  # To fan several out and gather them, start them all, then `await_all` the
+  # handles — every thread is already running, so the wait is for the slowest,
+  # not the sum:
+  #
+  #   [do -> a(), do -> b(), do -> c()]
+  #   | List.map(do f -> Thread.start(f))
+  #   | Thread.await_all()
+  #
+  # The concurrency is real. Two threads each sleeping 300ms finish in ~300ms,
+  # not 600 — the sleeps overlap.
+  #
+  # A thread produces a **value**, where an [[Actor]] holds **state** and answers
+  # messages over its lifetime. Reach for a thread to fan a batch of independent
+  # work out and gather it back; reach for an actor for something long-lived that
+  # many callers talk to.
+  #
+  # What crosses to the worker is the lambda alone — it carries its own captured
+  # scope. Everything else is fresh, exactly as for an actor: the worker has its
+  # own root and **cannot see the caller's running actors**, so a started lambda
+  # cannot message an actor. A failure inside the lambda is not lost; it surfaces
+  # as a runtime error at the `await` that collects it.
+  #
+  # A thread's output is **live**: it prints to the same place as the caller, as
+  # it happens, so a started `println` may land in either order relative to the
+  # caller's — though never split, since a whole line is written at once. (An
+  # actor is the opposite: it buffers and delivers its output at the reply, so
+  # actor lines never interleave.)
+  #
+  # **Await what you start.** A handle is a value, so it can be held, passed, and
+  # awaited from anywhere — but a thread nobody awaits is detached: its *result*
+  # is never collected, and it may be cut off when the program ends. There is no
+  # registry of threads and no automatic wait at program end; the handle is the
+  # only way back to the work.
+
+  fn start(f)
+    # @doc
+    #
+    # Starts `f`, a lambda of no arguments, on its own thread and returns a
+    # handle at once — the caller does not wait. Pass the handle to `await` for
+    # the result.
+    #
+    # Has no Ramos body beyond the native call: starting a thread runs a
+    # lambda, which an ordinary native handler cannot do — reaching back into
+    # the evaluator to run it — so the interpreter intercepts this particular
+    # `native` call rather than dispatching it through the plain native table.
+    #
+    # @param f: a lambda of no arguments
+    # @return a `Thread` handle
+    #
+    #   t = Thread.start(do -> 6 * 7)
+    #   Thread.await(t)   # == 42
+    native("start_thread", [f])
+
+  fn await(t)
+    # @doc
+    #
+    # Waits for the thread `t` to finish and returns what its lambda produced. A
+    # failure inside the lambda comes back here as a runtime error. The thread's
+    # output is written now, once; awaiting the same handle again returns the
+    # same value without printing twice.
+    #
+    # Has no Ramos body beyond the native call, for the reason given on
+    # `start`.
+    #
+    # @param t: a `Thread` handle from `start`
+    # @return whatever the started lambda returned
+    #
+    #   Thread.await(Thread.start(do -> "done"))   # == "done"
+    native("await_thread", [t])
+
+  fn await_all(threads)
+    # @doc
+    #
+    # Waits for every thread in `threads` and returns their results as a list, in
+    # the same order as the handles — however the threads happened to finish.
+    # Since each was already running, this waits for the slowest, not the sum.
+    #
+    # A failure in any of them surfaces as a runtime error, from the first
+    # handle whose thread failed. Pair it with `start` to run a batch at once:
+    #
+    #   [do -> 1 + 1, do -> 2 + 2]
+    #   | List.map(do f -> Thread.start(f))
+    #   | Thread.await_all()                # == [2, 4]
+    #
+    # @param threads: a `List` of `Thread` handles from `start`
+    # @return a `List` of their results, in the order of the handles
+    #
+    #   Thread.await_all([Thread.start(do -> :a), Thread.start(do -> :b)])   # == [:a, :b]
+    List.map(threads, do t -> await(t))
+
+  fn map(list, f)
+    # @doc
+    #
+    # A parallel `List.map`: `f` is applied to every element on its own thread,
+    # and the results are gathered in order. Every element's work overlaps, so a
+    # list of slow, independent computations finishes in about the time of the
+    # slowest rather than their sum.
+    #
+    # `f` runs on another thread, so it cannot reach the caller's actors — the
+    # same rule as `start`. Order is preserved: the result lines up with `list`
+    # however the threads happen to finish.
+    #
+    # @param list: the list to map over
+    # @param f: a lambda applied to each element, on its own thread
+    # @return a new list of `f` applied to each element, in the original order
+    #
+    #   Thread.map([1, 2, 3], do n -> n * n)   # == [1, 4, 9]
+    list
+    | List.map(do element -> start(do -> f(element)))
+    | await_all()
+
+  fn each(list, f)
+    # @doc
+    #
+    # Like `map`, but for side effects: `f` runs on its own thread for every
+    # element, all of them are waited for, and `nil` comes back. Use it to run a
+    # batch of independent effects at once and be sure they have all finished.
+    #
+    # @param list: the list to iterate over
+    # @param f: a lambda run once per element, on its own thread, for its effect
+    # @return `nil`
+    #
+    #   Thread.each([1, 2, 3], do n -> n)   # == nil
+    map(list, f)
+    nil

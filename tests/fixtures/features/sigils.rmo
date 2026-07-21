@@ -1,0 +1,6 @@
+# sigils.rmo — a letter hugging a string desugars to a `.parse` call.
+
+date = D"2024-02-29"                    # == Date.parse("2024-02-29")
+time = T"13:45:30"                      # == Time.parse("13:45:30")
+naive = N"2024-02-09T13:45:30.500"      # == NaiveDateTime.parse(...)
+zoned = U"2024-02-09T13:45:30.500Z"     # == DateTime.parse(...)

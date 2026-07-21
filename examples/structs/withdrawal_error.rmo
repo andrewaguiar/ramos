@@ -1,0 +1,8 @@
+# withdrawal_error.rmo — a struct used as an error payload: a plain `:error`
+# symbol has nowhere to carry a code and a message, so `Account.withdraw`
+# returns one of these instead.
+
+struct WithdrawalError
+  attributes
+    code: 0
+    message: nil

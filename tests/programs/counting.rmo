@@ -1,0 +1,13 @@
+# Folds and aggregates over a generated list.
+#
+# The size doubles as a phase 9(a) regression guard: building and mapping a list
+# recurses once per element on the native stack, and 5000 elements overflowed
+# the default stack before the interpreter moved onto a large-stack thread (the
+# ceiling was in the low hundreds on a debug build).
+numbers = List.range(1, 5000)
+
+println(size(numbers))
+println(List.sum(numbers))
+println(List.reduce(numbers, 0, do acc, n -> acc + n))
+println(List.count(numbers, do n -> Integer.is_even(n)))
+println(List.take(List.map(numbers, do n -> n * n), 5))

@@ -1,0 +1,16 @@
+# destructuring.rmo — patterns work in plain assignment, not just in `case`.
+
+# Lists destructure with the cons operator `|`.
+[head | tail] = [1, 2, 3]              # head == 1, tail == [2, 3]
+[first, second | rest] = [1, 2, 3, 4]  # first == 1, second == 2, rest == [3, 4]
+
+# Tuples are the idiomatic way to unpack a small fixed record.
+person = ("Andrew", 40)
+(name, age) = person                   # name == "Andrew", age == 40
+
+# Any combination nests, and `_` discards.
+((a, _), [b | _]) = ((1, 2), [3, 4, 5])   # a == 1, b == 3
+
+# Maps and struct instances destructure by field.
+{name: bound_name} = {name: "andrew", age: 40}
+Person{age: bound_age} = Person{name: "Andrew", age: 40}

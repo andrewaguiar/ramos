@@ -1,0 +1,17 @@
+# arithmetic.rmo — arithmetic operators. Whitespace around a binary operator
+# is required: `1 + 2`, never `1+2`.
+
+sum = 1 + 2
+difference = 10 - 4
+product = 3 * 4
+quotient = 10 / 3          # int / int truncates toward zero  # == 3
+remainder = -7 % 3         # follows the sign of the divisor  # == 2
+power = 2 ** 10            # == 1024
+negated = -5               # unary minus may hug its operand
+
+# Mixing an int and a float widens the int to a float.
+widened = 1 + 1.5          # == 2.5
+float_division = 10 / 4.0  # == 2.5
+
+# Precedence: `**` binds tighter than unary minus, `*` tighter than `+`.
+precedence = -2 ** 2 + 3 * 4   # == (-(2 ** 2)) + 12 == 8

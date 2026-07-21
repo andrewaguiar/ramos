@@ -1,0 +1,18 @@
+# doc_comments.rmo — documentation lives inline, as a comment block placed
+# immediately below the definition it describes. `@module_doc` documents a
+# module, `@doc` a function; each marker is followed by an empty `#` line.
+
+module Greeter
+  # @module_doc
+  #
+  # Greeter — builds greetings.
+  #
+  #   Greeter.greet("Andrew")   # == "Ola Andrew"
+
+  fn greet(name)
+    # @doc
+    #
+    # Returns the greeting for `name`.
+    #
+    #   Greeter.greet("Andrew")   # == "Ola Andrew"
+    "Ola #{name}"
