@@ -26,7 +26,7 @@ module Tuple
   #   - out-of-range access returns `nil`; out-of-range `put` returns the tuple
   #     unchanged (tuples cannot change arity).
 
-  fn set(tuple, index, value)
+  function set(tuple, index, value)
     # @doc
     #
     # Returns a new tuple with the element at zero-based `index` replaced by
@@ -46,10 +46,12 @@ module Tuple
       index >= size(tuple) -> tuple
       true -> replace_at(to_list(tuple), index, value)
 
-  fnp replace_at(items, index, value)
-    from_list(List.take(items, index) ++ [value] ++ List.drop(items, index + 1))
+  helper replace_at(items, index, value)
+    # Goes through `native` directly rather than the public `from_list`,
+    # which a helper cannot call.
+    native("tuple_from_list", [List.take(items, index) ++ [value] ++ List.drop(items, index + 1)])
 
-  fn from_list(list)
+  function from_list(list)
     # @doc
     #
     # A tuple of the list's elements, in order — the inverse of Kernel's
@@ -66,7 +68,7 @@ module Tuple
     # `()` is not something you can write.
     native("tuple_from_list", [list])
 
-  fn last(tuple)
+  function last(tuple)
     # @doc
     #
     # Returns the last element of `tuple`.
@@ -77,7 +79,7 @@ module Tuple
     #   Tuple.last((1, 2, 3))   # == 3
     at(tuple, size(tuple) - 1)
 
-  fn to_map(tuple)
+  function to_map(tuple)
     # @doc
     #
     # Converts a tuple of `(key, value)` pairs into a map. Later pairs win on

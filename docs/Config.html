@@ -78,77 +78,77 @@ settings =
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#call/4" class="fn-sig"><code>fn call(f, args, state, config)</code></a>
+    <a href="#call/4" class="fn-sig"><code>function call(f, args, state, config)</code></a>
     <span class="fn-summary">The server half. <code>:get</code> is the only operation — the settings are fixed for the run, so there is nothing else to ask for.</span>
   </div>
   <div class="fn-row">
-    <a href="#start/0" class="fn-sig"><code>fn start()</code></a>
+    <a href="#start/0" class="fn-sig"><code>function start()</code></a>
     <span class="fn-summary">Read the environment&#39;s file and start the <code>:config</code> actor on it. Call it once, before anything reads; starting it twice is an error.</span>
   </div>
   <div class="fn-row">
-    <a href="#get/2" class="fn-sig"><code>fn get(section, key)</code></a>
+    <a href="#get/2" class="fn-sig"><code>function get(section, key)</code></a>
     <span class="fn-summary">The value of <code>key</code> under <code>[section]</code>, as a <code><a href="String.html">String</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#path/0" class="fn-sig"><code>fn path()</code></a>
+    <a href="#path/0" class="fn-sig"><code>function path()</code></a>
     <span class="fn-summary">The file <code>start</code> will read, chosen from <code>APP_ENV</code>: <code>.env.&lt;downcased&gt;</code> when it is set, and <code>.env</code> when it is not. Reads nothing itself.</span>
   </div>
   <div class="fn-row private">
-    <a href="#get_impl/2" class="fn-sig"><code>fnp get_impl(args, state)</code></a>
+    <a href="#get_impl/2" class="fn-sig"><code>helper get_impl(args, state)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#parse/1" class="fn-sig"><code>fnp parse(text)</code></a>
+    <a href="#parse/1" class="fn-sig"><code>helper parse(text)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#parse_line/2" class="fn-sig"><code>fnp parse_line(acc, raw)</code></a>
+    <a href="#parse_line/2" class="fn-sig"><code>helper parse_line(acc, raw)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#is_skippable/1" class="fn-sig"><code>fnp is_skippable(line)</code></a>
+    <a href="#is_skippable/1" class="fn-sig"><code>helper is_skippable(line)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#is_header/1" class="fn-sig"><code>fnp is_header(line)</code></a>
+    <a href="#is_header/1" class="fn-sig"><code>helper is_header(line)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#header_name/1" class="fn-sig"><code>fnp header_name(line)</code></a>
+    <a href="#header_name/1" class="fn-sig"><code>helper header_name(line)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#put_pair/3" class="fn-sig"><code>fnp put_pair(sections, section, line)</code></a>
+    <a href="#put_pair/3" class="fn-sig"><code>helper put_pair(sections, section, line)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#put_entry/4" class="fn-sig"><code>fnp put_entry(sections, section, key, value)</code></a>
+    <a href="#put_entry/4" class="fn-sig"><code>helper put_entry(sections, section, key, value)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#key_of/2" class="fn-sig"><code>fnp key_of(line, split)</code></a>
+    <a href="#key_of/2" class="fn-sig"><code>helper key_of(line, split)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#value_of/2" class="fn-sig"><code>fnp value_of(line, split)</code></a>
+    <a href="#value_of/2" class="fn-sig"><code>helper value_of(line, split)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#unquote/1" class="fn-sig"><code>fnp unquote(value)</code></a>
+    <a href="#unquote/1" class="fn-sig"><code>helper unquote(value)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#take_quoted/2" class="fn-sig"><code>fnp take_quoted(value, quote)</code></a>
+    <a href="#take_quoted/2" class="fn-sig"><code>helper take_quoted(value, quote)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row private">
-    <a href="#drop_comment/1" class="fn-sig"><code>fnp drop_comment(value)</code></a>
+    <a href="#drop_comment/1" class="fn-sig"><code>helper drop_comment(value)</code></a>
     <span class="fn-summary"></span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="call/4">
-  <h3 class="fn-title"><code>fn call(f, args, state, config)</code> <a class="anchor" href="#call/4">¶</a></h3>
+  <h3 class="fn-title"><code>function call(f, args, state, config)</code> <a class="anchor" href="#call/4">¶</a></h3>
 <p>The server half. <code>:get</code> is the only operation — the settings are fixed for the run, so there is nothing else to ask for.</p>
 <dl class="params">
   <dt><code>f</code></dt>
@@ -163,7 +163,7 @@ settings =
 <p class="returns"><strong>Returns:</strong> a <code>(value, state)</code> tuple; a read leaves the settings alone</p>
 </div>
 <div class="fn-detail" id="start/0">
-  <h3 class="fn-title"><code>fn start()</code> <a class="anchor" href="#start/0">¶</a></h3>
+  <h3 class="fn-title"><code>function start()</code> <a class="anchor" href="#start/0">¶</a></h3>
 <p>Read the environment&#39;s file and start the <code>:config</code> actor on it. Call it once, before anything reads; starting it twice is an error.</p>
 <p>Reading happens here rather than inside the actor, so a missing or unreadable file surfaces at the call that started it.</p>
 <pre><code>`File`&#39;s reasons, so `:enoent` is &quot;no such file&quot;</code></pre>
@@ -172,7 +172,7 @@ settings =
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> when the file cannot be read —</p>
 </div>
 <div class="fn-detail" id="get/2">
-  <h3 class="fn-title"><code>fn get(section, key)</code> <a class="anchor" href="#get/2">¶</a></h3>
+  <h3 class="fn-title"><code>function get(section, key)</code> <a class="anchor" href="#get/2">¶</a></h3>
 <p>The value of <code>key</code> under <code>[section]</code>, as a <code><a href="String.html">String</a></code>.</p>
 <pre><code><span class="tok-kw">not</span> in the file</code></pre>
 <pre><code><span class="tok-type">Config</span>.start()
@@ -188,50 +188,50 @@ settings =
 <p class="returns"><strong>Returns:</strong> the value as a <code><a href="String.html">String</a></code>, or <code>nil</code> when the section or the key is</p>
 </div>
 <div class="fn-detail" id="path/0">
-  <h3 class="fn-title"><code>fn path()</code> <a class="anchor" href="#path/0">¶</a></h3>
+  <h3 class="fn-title"><code>function path()</code> <a class="anchor" href="#path/0">¶</a></h3>
 <p>The file <code>start</code> will read, chosen from <code>APP_ENV</code>: <code>.env.&lt;downcased&gt;</code> when it is set, and <code>.env</code> when it is not. Reads nothing itself.</p>
 <p>With <code>APP_ENV=PROD</code> this reads <code>.env.prod</code>; unset, as here, it is <code>.env</code>:</p>
 <pre><code><span class="tok-type">Config</span>.path()   <span class="tok-com"># == &quot;.env&quot;</span></code></pre>
 <p class="returns"><strong>Returns:</strong> the path as a <code><a href="String.html">String</a></code></p>
 </div>
 <div class="fn-detail" id="get_impl/2">
-  <h3 class="fn-title"><code>fnp get_impl(args, state)</code> <span class="badge private">private</span> <a class="anchor" href="#get_impl/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper get_impl(args, state)</code> <span class="badge private">private</span> <a class="anchor" href="#get_impl/2">¶</a></h3>
 </div>
 <div class="fn-detail" id="parse/1">
-  <h3 class="fn-title"><code>fnp parse(text)</code> <span class="badge private">private</span> <a class="anchor" href="#parse/1">¶</a></h3>
+  <h3 class="fn-title"><code>helper parse(text)</code> <span class="badge private">private</span> <a class="anchor" href="#parse/1">¶</a></h3>
 </div>
 <div class="fn-detail" id="parse_line/2">
-  <h3 class="fn-title"><code>fnp parse_line(acc, raw)</code> <span class="badge private">private</span> <a class="anchor" href="#parse_line/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper parse_line(acc, raw)</code> <span class="badge private">private</span> <a class="anchor" href="#parse_line/2">¶</a></h3>
 </div>
 <div class="fn-detail" id="is_skippable/1">
-  <h3 class="fn-title"><code>fnp is_skippable(line)</code> <span class="badge private">private</span> <a class="anchor" href="#is_skippable/1">¶</a></h3>
+  <h3 class="fn-title"><code>helper is_skippable(line)</code> <span class="badge private">private</span> <a class="anchor" href="#is_skippable/1">¶</a></h3>
 </div>
 <div class="fn-detail" id="is_header/1">
-  <h3 class="fn-title"><code>fnp is_header(line)</code> <span class="badge private">private</span> <a class="anchor" href="#is_header/1">¶</a></h3>
+  <h3 class="fn-title"><code>helper is_header(line)</code> <span class="badge private">private</span> <a class="anchor" href="#is_header/1">¶</a></h3>
 </div>
 <div class="fn-detail" id="header_name/1">
-  <h3 class="fn-title"><code>fnp header_name(line)</code> <span class="badge private">private</span> <a class="anchor" href="#header_name/1">¶</a></h3>
+  <h3 class="fn-title"><code>helper header_name(line)</code> <span class="badge private">private</span> <a class="anchor" href="#header_name/1">¶</a></h3>
 </div>
 <div class="fn-detail" id="put_pair/3">
-  <h3 class="fn-title"><code>fnp put_pair(sections, section, line)</code> <span class="badge private">private</span> <a class="anchor" href="#put_pair/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper put_pair(sections, section, line)</code> <span class="badge private">private</span> <a class="anchor" href="#put_pair/3">¶</a></h3>
 </div>
 <div class="fn-detail" id="put_entry/4">
-  <h3 class="fn-title"><code>fnp put_entry(sections, section, key, value)</code> <span class="badge private">private</span> <a class="anchor" href="#put_entry/4">¶</a></h3>
+  <h3 class="fn-title"><code>helper put_entry(sections, section, key, value)</code> <span class="badge private">private</span> <a class="anchor" href="#put_entry/4">¶</a></h3>
 </div>
 <div class="fn-detail" id="key_of/2">
-  <h3 class="fn-title"><code>fnp key_of(line, split)</code> <span class="badge private">private</span> <a class="anchor" href="#key_of/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper key_of(line, split)</code> <span class="badge private">private</span> <a class="anchor" href="#key_of/2">¶</a></h3>
 </div>
 <div class="fn-detail" id="value_of/2">
-  <h3 class="fn-title"><code>fnp value_of(line, split)</code> <span class="badge private">private</span> <a class="anchor" href="#value_of/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper value_of(line, split)</code> <span class="badge private">private</span> <a class="anchor" href="#value_of/2">¶</a></h3>
 </div>
 <div class="fn-detail" id="unquote/1">
-  <h3 class="fn-title"><code>fnp unquote(value)</code> <span class="badge private">private</span> <a class="anchor" href="#unquote/1">¶</a></h3>
+  <h3 class="fn-title"><code>helper unquote(value)</code> <span class="badge private">private</span> <a class="anchor" href="#unquote/1">¶</a></h3>
 </div>
 <div class="fn-detail" id="take_quoted/2">
-  <h3 class="fn-title"><code>fnp take_quoted(value, quote)</code> <span class="badge private">private</span> <a class="anchor" href="#take_quoted/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper take_quoted(value, quote)</code> <span class="badge private">private</span> <a class="anchor" href="#take_quoted/2">¶</a></h3>
 </div>
 <div class="fn-detail" id="drop_comment/1">
-  <h3 class="fn-title"><code>fnp drop_comment(value)</code> <span class="badge private">private</span> <a class="anchor" href="#drop_comment/1">¶</a></h3>
+  <h3 class="fn-title"><code>helper drop_comment(value)</code> <span class="badge private">private</span> <a class="anchor" href="#drop_comment/1">¶</a></h3>
 </div>
 </section>
 </section>

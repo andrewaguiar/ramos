@@ -3,7 +3,7 @@ module Shapes
   alias Geometry.Square
   alias Geometry.Rect
 
-  fn main()
+  function main()
     println(Square{side: 3}.describe())
     println(Rect{width: 2, height: 5}.describe())
 

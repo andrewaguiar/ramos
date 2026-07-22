@@ -32,7 +32,7 @@ struct TimeZone
     name: "UTC"
     offset_minutes: 0
 
-  fn utc()
+  function utc()
     # @doc
     #
     # The UTC zone: `offset_minutes: 0`.
@@ -42,7 +42,7 @@ struct TimeZone
     #   TimeZone.utc()   # == TimeZone{name: "UTC", offset_minutes: 0}
     TimeZone{name: "UTC", offset_minutes: 0}
 
-  fn fixed(name, offset_minutes)
+  function fixed(name, offset_minutes)
     # @doc
     #
     # A zone called `name`, at a fixed `offset_minutes` from UTC.
@@ -58,7 +58,7 @@ struct TimeZone
     )
     TimeZone{name: name, offset_minutes: offset_minutes}
 
-  fn from_offset_minutes(offset_minutes)
+  function from_offset_minutes(offset_minutes)
     # @doc
     #
     # A zone named after its own offset — `"UTC"` at `0`, otherwise the
@@ -77,7 +77,7 @@ struct TimeZone
         offset_text(offset_minutes)
     fixed(name, offset_minutes)
 
-  fn parse(text)
+  function parse(text)
     # @doc
     #
     # A zone parsed from `offset_text`'s shape: `"Z"` for UTC, or a signed
@@ -92,7 +92,7 @@ struct TimeZone
     #   TimeZone.parse("-05:00")   # == TimeZone{name: "-05:00", offset_minutes: -300}
     from_offset_minutes(parse_offset_text(text))
 
-  fn offset_text(offset_minutes)
+  function offset_text(offset_minutes)
     # @doc
     #
     # `offset_minutes` rendered as `"Z"` (when zero) or a signed `"±HH:MM"` —
@@ -115,7 +115,7 @@ struct TimeZone
       magnitude = Integer.abs(offset_minutes)
       "#{sign}#{pad(magnitude / 60, 2)}:#{pad(magnitude % 60, 2)}"
 
-  fn parse_offset_text(text)
+  function parse_offset_text(text)
     # @doc
     #
     # The inverse of `offset_text`: `"Z"` or a signed `"±HH:MM"` parsed back
@@ -139,7 +139,7 @@ struct TimeZone
       mm = to_integer(String.slice(text, 4, 2))
       sign * (hh * 60 + mm)
 
-  fn compare(self, other)
+  function compare(self, other)
     # @doc
     #
     # Orders two zones by `offset_minutes`, west to east, as `-1`, `0` or
@@ -154,7 +154,7 @@ struct TimeZone
     #   TimeZone.compare(TimeZone.utc(), TimeZone.fixed("Also UTC", 0))       # == 0
     Integer.compare(self.offset_minutes, other.offset_minutes)
 
-  fnp pad(n, width)
+  helper pad(n, width)
     # @doc
     #
     # (private) `n` rendered as decimal digits, left-padded with zeros to at

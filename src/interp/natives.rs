@@ -316,7 +316,7 @@ fn to_list(v: &Value) -> Result<Value, RuntimeError> {
     Ok(Value::List(List::from_vec(items)))
 }
 
-/// The names of the public (non-`fnp`) functions a module defines, in
+/// The names of the public (non-`helper`) functions a module defines, in
 /// declaration order. Backs `Module.functions`.
 fn module_functions(v: &Value) -> Result<Value, RuntimeError> {
     match v {

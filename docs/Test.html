@@ -56,7 +56,7 @@
 <span class="tok-kw">module</span> <span class="tok-type">MyApp</span>.<span class="tok-type">UserTest</span>
   <span class="tok-kw">implements</span> <span class="tok-type">Test</span></code></pre>
 <pre><code><span class="tok-kw">alias</span> <span class="tok-type">MyApp</span>.<span class="tok-type">User</span></code></pre>
-<pre><code><span class="tok-kw">fn</span> test_user_hello()
+<pre><code><span class="tok-kw">function</span> test_user_hello()
   user = <span class="tok-type">User</span>{name: <span class="tok-str">&quot;Andrew&quot;</span>}
   assert(user.hello() == <span class="tok-str">&quot;Ola Andrew&quot;</span>)</code></pre>
 <p>Tests live under <code>src/test/</code>, and follow the same rules as any other file: the namespace is the path, so <code>MyApp.UserTest</code> is <code>src/test/my_app/user_test.rmo</code>. A test module&#39;s name must end in <code><a href="Test.html">Test</a></code>, which is what makes it read as one in a failure report. A test reaches the code it exercises through the ordinary <code>alias</code>, resolved against <code>src/</code>.</p>

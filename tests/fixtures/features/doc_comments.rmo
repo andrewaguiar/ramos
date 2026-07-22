@@ -9,7 +9,7 @@ module Greeter
   #
   #   Greeter.greet("Andrew")   # == "Ola Andrew"
 
-  fn greet(name)
+  function greet(name)
     # @doc
     #
     # Returns the greeting for `name`.

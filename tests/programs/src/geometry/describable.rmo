@@ -1,8 +1,8 @@
 trait Geometry.Describable
-  fn area(self)
+  function area(self)
 
-  fn describe(self)
+  function describe(self)
     "#{name(self)} covering #{area(self)}"
 
-  fn name(self)
+  function name(self)
     "shape"

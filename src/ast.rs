@@ -70,7 +70,7 @@ pub struct FnDef {
     /// Empty for declarations (trait requirements, native seams like
     /// `Kernel.native`).
     pub body: Block,
-    pub private: bool, // fnp
+    pub private: bool, // helper
     pub span: Span,
 }
 
@@ -424,7 +424,7 @@ impl Printer {
     }
 
     fn fn_def(&mut self, f: &FnDef) {
-        let keyword = if f.private { "fnp" } else { "fn" };
+        let keyword = if f.private { "helper" } else { "function" };
         let head = format!("{keyword} {}({})", f.name, f.params.join(", "));
         if f.body.is_empty() {
             self.line(Style::Keyword, &format!("{head} [declaration]"));

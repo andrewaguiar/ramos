@@ -3,7 +3,7 @@
 # `Struct`'s introspection functions. Run with `ramos run examples/structs/main.rmo`.
 
 module Main
-  fn main()
+  function main()
     account = Account{owner: "Andrew", balance: 100}
     println(account.summary())
 
@@ -18,7 +18,7 @@ module Main
     println("as a map: #{Struct.to_map(account)}")
     println("is an Account: #{Struct.is_a(account, Account)}")
 
-  fnp attempt_withdrawal(account, amount)
+  helper attempt_withdrawal(account, amount)
     case account.withdraw(amount)
       (:ok, updated) ->
         println("withdrew #{amount}, new balance #{updated.balance}")

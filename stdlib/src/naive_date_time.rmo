@@ -34,7 +34,7 @@ struct NaiveDateTime
     second: 0
     millisecond: 0
 
-  fn new(year, month, day, hour, minute, second)
+  function new(year, month, day, hour, minute, second)
     # @doc
     #
     # Builds a `NaiveDateTime` with `millisecond: 0`. Every field past `year`
@@ -56,7 +56,7 @@ struct NaiveDateTime
     assert(month >= 1 and month <= 12, "NaiveDateTime.new: month must be 1..12, got #{month}")
     from_epoch_millis(raw_millis(year, month, day, hour, minute, second, 0))
 
-  fn now()
+  function now()
     # @doc
     #
     # The current date and time, read from the wall clock as UTC.
@@ -66,7 +66,7 @@ struct NaiveDateTime
     #   NaiveDateTime.now().year > 2000   # == true
     from_epoch_millis(Kernel.now())
 
-  fn from_epoch_millis(ms)
+  function from_epoch_millis(ms)
     # @doc
     #
     # The `NaiveDateTime` that is `ms` milliseconds after 1970-01-01T00:00:00.000
@@ -79,6 +79,13 @@ struct NaiveDateTime
     #   # == NaiveDateTime{year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, millisecond: 0}
     #   NaiveDateTime.from_epoch_millis(-1)
     #   # == NaiveDateTime{year: 1969, month: 12, day: 31, hour: 23, minute: 59, second: 59, millisecond: 999}
+    from_epoch_millis_raw(ms)
+
+  helper from_epoch_millis_raw(ms)
+    # @doc
+    #
+    # (private) `from_epoch_millis`'s own body, so `shift` can reach it
+    # without calling the public function.
     epoch_day = floor_div(ms, 86400000)
     millis_of_day = ms % 86400000
     (year, month, day) = native("date_from_epoch_day", [epoch_day])
@@ -92,7 +99,7 @@ struct NaiveDateTime
       millisecond: millis_of_day % 1000
     }
 
-  fn parse(text)
+  function parse(text)
     # @doc
     #
     # Parses `"YYYY-MM-DDTHH:MM:SS"` or `"YYYY-MM-DD HH:MM:SS"` — either a `T`
@@ -124,7 +131,7 @@ struct NaiveDateTime
     [h, mi, s] = String.split(clock, ":")
     from_epoch_millis(raw_millis(d.year, d.month, d.day, to_integer(h), to_integer(mi), to_integer(s), millis_from_fraction(fraction)))
 
-  fn date(self)
+  function date(self)
     # @doc
     #
     # The `Date` half of `self`, dropping the time of day.
@@ -136,7 +143,7 @@ struct NaiveDateTime
     #   # == Date{year: 2024, month: 2, day: 9}
     Date{year: self.year, month: self.month, day: self.day}
 
-  fn to_epoch_millis(self)
+  function to_epoch_millis(self)
     # @doc
     #
     # `self` as milliseconds since 1970-01-01T00:00:00.000.
@@ -147,7 +154,7 @@ struct NaiveDateTime
     #   NaiveDateTime.to_epoch_millis(NaiveDateTime{year: 1970, month: 1, day: 1})   # == 0
     raw_millis(self.year, self.month, self.day, self.hour, self.minute, self.second, self.millisecond)
 
-  fn to_iso(self)
+  function to_iso(self)
     # @doc
     #
     # `self` rendered as `"YYYY-MM-DDTHH:MM:SS.mmm"`, zero-padded.
@@ -159,7 +166,7 @@ struct NaiveDateTime
     #   # == "2024-02-09T03:05:09.007"
     "#{Date.to_iso(date(self))}T#{pad(self.hour, 2)}:#{pad(self.minute, 2)}:#{pad(self.second, 2)}.#{pad(self.millisecond, 3)}"
 
-  fn add_days(self, n)
+  function add_days(self, n)
     # @doc
     #
     # `self` shifted by `n` days, keeping the time of day.
@@ -172,7 +179,7 @@ struct NaiveDateTime
     #   # == NaiveDateTime{year: 2024, month: 2, day: 29, hour: 12}
     shift(self, n * 86400000)
 
-  fn add_weeks(self, n)
+  function add_weeks(self, n)
     # @doc
     #
     # `self` shifted by `n` weeks (`n * 7` days), keeping the time of day.
@@ -185,7 +192,7 @@ struct NaiveDateTime
     #   # == NaiveDateTime{year: 2024, month: 1, day: 8, hour: 12}
     shift(self, n * 604800000)
 
-  fn add_months(self, n)
+  function add_months(self, n)
     # @doc
     #
     # `self` shifted by `n` months, keeping the time of day — `Date.add_months`
@@ -209,7 +216,7 @@ struct NaiveDateTime
       millisecond: self.millisecond
     }
 
-  fn add_hours(self, n)
+  function add_hours(self, n)
     # @doc
     #
     # `self` shifted by `n` hours.
@@ -222,7 +229,7 @@ struct NaiveDateTime
     #   # == NaiveDateTime{year: 2024, month: 2, day: 10, hour: 1}
     shift(self, n * 3600000)
 
-  fn add_minutes(self, n)
+  function add_minutes(self, n)
     # @doc
     #
     # `self` shifted by `n` minutes.
@@ -235,7 +242,7 @@ struct NaiveDateTime
     #   # == NaiveDateTime{year: 2024, month: 2, day: 9, hour: 1, minute: 15}
     shift(self, n * 60000)
 
-  fn add_seconds(self, n)
+  function add_seconds(self, n)
     # @doc
     #
     # `self` shifted by `n` seconds.
@@ -248,7 +255,7 @@ struct NaiveDateTime
     #   # == NaiveDateTime{year: 2024, month: 2, day: 9, minute: 1, second: 15}
     shift(self, n * 1000)
 
-  fn compare(self, other)
+  function compare(self, other)
     # @doc
     #
     # Orders two date-times as `-1`, `0` or `1` — the shape `Integer.compare`
@@ -266,7 +273,7 @@ struct NaiveDateTime
       to_epoch_millis(self) > to_epoch_millis(other) -> 1
       true -> 0
 
-  fn diff_millis(self, other)
+  function diff_millis(self, other)
     # @doc
     #
     # The number of milliseconds from `other` to `self` — positive when
@@ -279,7 +286,7 @@ struct NaiveDateTime
     #   NaiveDateTime.diff_millis(NaiveDateTime{second: 10}, NaiveDateTime{second: 1})   # == 9000
     to_epoch_millis(self) - to_epoch_millis(other)
 
-  fn day_of_week(self)
+  function day_of_week(self)
     # @doc
     #
     # The day of the week `self` falls on. Delegates to `Date.day_of_week`.
@@ -291,7 +298,7 @@ struct NaiveDateTime
     #   NaiveDateTime.day_of_week(NaiveDateTime{year: 1970, month: 1, day: 1})   # == :thursday
     Date.day_of_week(date(self))
 
-  fnp raw_millis(year, month, day, hour, minute, second, millisecond)
+  helper raw_millis(year, month, day, hour, minute, second, millisecond)
     # @doc
     #
     # (private) Milliseconds since the epoch for the given fields, computed
@@ -299,14 +306,14 @@ struct NaiveDateTime
     # arithmetic behind `new`, `parse` and `to_epoch_millis`.
     native("date_to_epoch_day", [year, month, day]) * 86400000 + hour * 3600000 + minute * 60000 + second * 1000 + millisecond
 
-  fnp shift(self, millis)
+  helper shift(self, millis)
     # @doc
     #
     # (private) `self` moved by `millis` milliseconds. Backs the `add_*`
     # family.
-    from_epoch_millis(to_epoch_millis(self) + millis)
+    from_epoch_millis_raw(raw_millis(self.year, self.month, self.day, self.hour, self.minute, self.second, self.millisecond) + millis)
 
-  fnp floor_div(a, b)
+  helper floor_div(a, b)
     # @doc
     #
     # (private) `a` divided by `b`, rounding toward negative infinity — unlike
@@ -316,7 +323,7 @@ struct NaiveDateTime
     # own, but `/` alone would round a negative count the wrong way.
     (a - a % b) / b
 
-  fnp millis_from_fraction(digits)
+  helper millis_from_fraction(digits)
     # @doc
     #
     # (private) A fractional-second string of any length as milliseconds:
@@ -326,7 +333,7 @@ struct NaiveDateTime
     else
       to_integer(String.slice(String.pad_right(digits, 3, "0"), 0, 3))
 
-  fnp pad(n, width)
+  helper pad(n, width)
     # @doc
     #
     # (private) `n` rendered as decimal digits, left-padded with zeros to at

@@ -50,8 +50,8 @@ fn example_fixture_uses_every_token_kind() {
     has("Trait", &|k| *k == T::Trait);
     has("Implements", &|k| *k == T::Implements);
     has("Attributes", &|k| *k == T::Attributes);
-    has("Fn", &|k| *k == T::Fn);
-    has("Fnp", &|k| *k == T::Fnp);
+    has("Function", &|k| *k == T::Function);
+    has("Helper", &|k| *k == T::Helper);
     has("Case", &|k| *k == T::Case);
     has("Cond", &|k| *k == T::Cond);
     has("Run", &|k| *k == T::Run);

@@ -1,7 +1,7 @@
 # guards.rmo — a `when` guard sits between a pattern and its `->`, narrowing a
 # match beyond the pattern's shape.
 
-fn classify(list)
+function classify(list)
   case list
     [head | _] when head > 100 -> :big
     [head | _] when head > 0 -> :small
@@ -9,7 +9,7 @@ fn classify(list)
     [] -> :empty
 
 # Guards are plain expressions, so they combine with `and` / `or` / `not`.
-fn admits(user)
+function admits(user)
   case user
     ({name: n, age: a}, :admin) when a > 18 and not (n == "") -> "Admin #{n}"
     ({name: n}, :guest) -> "Guest #{n}"

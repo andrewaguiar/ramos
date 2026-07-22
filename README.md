@@ -43,7 +43,7 @@ looks the same, everywhere.
 
 - **2 space indentation** — exactly 2 spaces per indentation level, never tabs
 - **Whitespace around operators** — `x = 1` is correct, `x=1` is an error
-- **Whitespace after commas** — `fn test(n, x)` is correct, `fn test(n,x)` is
+- **Whitespace after commas** — `function test(n, x)` is correct, `function test(n,x)` is
   an error (applies to arguments, lists, tuples and maps)
 - **Parentheses on calls** — `foo()`, never bare `foo`; a bare name is always a
   variable or a field access
@@ -148,13 +148,13 @@ provides.
 ### Entrypoints
 
 A runnable Ramos program starts from an **entrypoint**: a `.rmo` file whose
-module exposes a public `fn main()`. `ramos run` loads the file and calls that
+module exposes a public `function main()`. `ramos run` loads the file and calls that
 module's `main()` with no arguments:
 
 ```
 # app.rmo
 module App
-  fn main()
+  function main()
     print("Ola world")
 ```
 
@@ -164,18 +164,18 @@ ramos run app.rmo        # calls App.main()
 
 `main()` is only the way in, not the whole module: an entrypoint may define
 whatever other functions it needs, public or private. Keeping it thin is still
-the habit worth having — `fnp` helpers break `main()` up without widening what
+the habit worth having — `helper` functions break `main()` up without widening what
 the module exposes:
 
 ```
 # app.rmo
 module App
-  fn main()
+  function main()
     ["Andrew", "Ana"]
     | List.map(do name -> greeting(name))
     | List.each(do line -> print(line))
 
-  fnp greeting(name)          # private helper, fine
+  helper greeting(name)          # private helper, fine
     "Ola #{name}"
 ```
 
@@ -188,7 +188,7 @@ its short name:
 module Cli
   alias MyApp.Business.Greeter
 
-  fn main()
+  function main()
     Greeter.greet_all(["Andrew", "Ana"])
 ```
 
@@ -200,7 +200,7 @@ module Cli
   alias MyApp.Business.Greeter
   alias MyApp.Reporting.Summary
 
-  fn main()
+  function main()
     ["Andrew", "Ana"]
     | Greeter.greet_all()
     | Summary.print_report()
@@ -227,8 +227,8 @@ are no redundant constructs.
 | `trait`      | Define a contract of functions for structs to implement |
 | `implements` | Declare that a struct implements a trait |
 | `attributes` | Declare struct fields with default values |
-| `fn`         | Define a public function |
-| `fnp`        | Define a private function (module-scoped) |
+| `function`        | Define a public function |
+| `helper`        | Define a private function (module-scoped) |
 | `case`       | Pattern match a value against patterns |
 | `if`         | Branch two ways on a condition (no `else if` — use `cond`) |
 | `else`       | The other branch of an `if` |
@@ -285,10 +285,10 @@ itself a value, so it can be passed around and inspected.
 
 ```
 module PersonUtils
-  fn hello(person)
+  function hello(person)
     print("Ola #{person.name}, eu tenho #{person.age}")
 
-  fnp secret()          # fnp = private, only callable from inside the module
+  helper secret()          # helper = private, only callable from inside the module
     42
 
 PersonUtils.hello(andrew)
@@ -297,16 +297,33 @@ andrew
 ```
 
 A name resolves to exactly one function: Ramos does not overload on arity, and
-`fn` and `fnp` share the one namespace. Defining a name twice in the same body
+`function` and `helper` share the one namespace. Defining a name twice in the same body
 is an error rather than a second definition that could never be reached:
 
 ```
 module Dup
-  fn twice(x)
+  function twice(x)
     x * 2
 
-  fn twice(x, y)     # error: `Dup` defines `twice` more than once
+  function twice(x, y)     # error: `Dup` defines `twice` more than once
     x + y
+```
+
+A `helper` may call another `helper`, and a `function` may call a `helper` —
+that is the whole point of one. What it may not do is call back into its own
+module's `function`s: the direction only runs one way, so a helper cannot
+widen its own reach by reaching for the public surface it exists to support.
+This is checked the same way a duplicate name is, at parse time:
+
+```
+module Payments
+  function charge(amount)
+    log(amount)
+    amount
+
+  helper log(amount)
+    charge(amount)     # error: `Payments.log` is a `helper` and calls
+                        # `Payments.charge`, a `function` in the same module
 ```
 
 There is no `const`: a constant is a function that takes no arguments, so it is
@@ -315,10 +332,10 @@ call parentheses say plainly that a name is being resolved in a module.
 
 ```
 module SystemUser
-  fn default_email()
+  function default_email()
     "system@ramos.com.br"
 
-  fn max_retries()
+  function max_retries()
     3
 
 print(SystemUser.default_email())
@@ -327,7 +344,7 @@ print(SystemUser.max_retries())
 
 ```
 module Greet
-  fn hi_all(people)
+  function hi_all(people)
     people
     | List.map(do p -> "hi #{p.name}")
     | List.join(", ")
@@ -378,7 +395,7 @@ struct Person
     name: nil
     age: 0
 
-  fn hello(self)
+  function hello(self)
     print("Ola #{self.name}, eu tenho #{self.age}")
 
 andrew = Person{name: "Andrew", age: 40}
@@ -418,10 +435,10 @@ must define it. A struct declares its traits with the `implements` keyword.
 
 ```
 trait Helloable
-  fn hello(self)
+  function hello(self)
     print("Ola #{self.name}, eu tenho #{self.age}")
 
-  fn is_over_eighteen(self)         # required, no body
+  function is_over_eighteen(self)         # required, no body
 
 struct Person
   implements Helloable
@@ -430,7 +447,7 @@ struct Person
     name: nil
     age: 0
 
-  fn is_over_eighteen(self)
+  function is_over_eighteen(self)
     self.age > 18
 
 andrew = Person{name: "Andrew", age: 40}
@@ -450,7 +467,7 @@ struct DeclineReason
     code: 0
     message: nil
 
-fn charge(amount)
+function charge(amount)
   cond
     amount <= 0 -> (:error, DeclineReason{code: 555, message: "must be positive"})
     amount > 10000 -> (:error, DeclineReason{code: 556, message: "too large"})
@@ -562,7 +579,7 @@ module List
   #
   #   [1, 2, 3] | List.map(do x -> x * 2)   # == [2, 4, 6]
 
-  fn map(list, f)
+  function map(list, f)
     # @doc
     #
     # Applies `f` to every element of `list`, returning a new list of the
@@ -709,11 +726,11 @@ to a lower level. Two rules:
 
 ```
 module Geometry
-  fn area(r)
+  function area(r)
     r * r * 3.14
 ```
 
-Blocks are introduced by `module`, `struct`, `trait`, `fn`, `if`, `case`,
+Blocks are introduced by `module`, `struct`, `trait`, `function`, `if`, `case`,
 `cond` and `do`.
 
 Indentation is what actually closes a block — `end` is never required. It
@@ -725,7 +742,7 @@ marking the end of:
 
 ```
 module Geometry
-  fn area(r)
+  function area(r)
     r * r * 3.14
   end
 end
@@ -850,7 +867,7 @@ str =
 
 print(str)
 
-fn usage(name)
+function usage(name)
   """
     Usage: #{name} <file>
       -h  show this help
@@ -1020,7 +1037,7 @@ in what it **returns**: a tagged tuple, `(:ok, value)` on success and
 `(:error, (:type, message))` on failure.
 
 ```
-fn withdraw(balance, amount)
+function withdraw(balance, amount)
   cond
     amount <= 0 -> (:error, (:invalid_amount, "amount must be positive"))
     amount > balance -> (:error, (:insufficient_funds, "balance is too low"))
@@ -1051,10 +1068,10 @@ whether some caller installed a handler:
 
 ```
 module FileHandler
-  fn default_content()
+  function default_content()
     "Default content"
 
-  fn read_safely(path)
+  function read_safely(path)
     case File.read(path)
       (:ok, text) -> text
       (:error, reason) ->
@@ -1148,7 +1165,7 @@ lb(2)   # == 3
 
 A lambda may not refer to the name it is being bound to
 (`f = do x -> f(x)`): lambdas are anonymous and non-recursive, and a named
-`fn` is how you recurse.
+`function` is how you recurse.
 
 ## Standard library
 
@@ -1262,7 +1279,7 @@ module Cache
   implements Actor
 
   # server
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     case f
       :get ->
         [key] = args
@@ -1272,13 +1289,13 @@ module Cache
         (:ok, Map.put(state, key, value))
 
   # client
-  fn start()
+  function start()
     start_actor(:cache, Cache, {}, {})
 
-  fn get(key)
+  function get(key)
     call_actor(:cache, Cache, :get, [key])
 
-  fn set(key, value)
+  function set(key, value)
     call_actor(:cache, Cache, :set, [key, value])
 ```
 
@@ -1353,7 +1370,7 @@ The second callback returns only the new state, because a cast has no reply to
 send anywhere:
 
 ```
-fn cast(f, args, state, config)
+function cast(f, args, state, config)
   [key] = args
   Map.delete(state, key)
 ```
@@ -1531,13 +1548,13 @@ module MyApp.UserTest
 
   alias MyApp.User
 
-  fn test_user_hello()
+  function test_user_hello()
     # @doc
     # A user greets by name.
     user = User{name: "Andrew"}
     assert(user.hello() == "Ola Andrew")
 
-  fn test_default_age()
+  function test_default_age()
     # @doc
     # A user built with no age is 18, not 0.
     assert(User{}.age == 0)
@@ -1579,7 +1596,7 @@ something its name causes. A test reaches the code it exercises through the
 ordinary `alias`, resolved against `src/`.
 
 Only public `test_` functions run, each with no arguments, so a module can keep
-`fnp` helpers beside them. A test stops at its first failed `assert` and the run
+`helper` functions beside them. A test stops at its first failed `assert` and the run
 continues with the next test.
 
 #### assert
@@ -1702,7 +1719,7 @@ ramos repl
 ```
 
 An interactive session: type an expression, see its value. The prompt is
-indentation-aware, so multi-line `case`, `cond`, `fn` and `do` blocks carry
+indentation-aware, so multi-line `case`, `cond`, `function` and `do` blocks carry
 across lines.
 
 ## Project layout

@@ -9,10 +9,10 @@ trait Describable
   #
   # A contract: one default implementation, one required function.
 
-  fn describe(self)
+  function describe(self)
     "#{self.name} (#{self.age})"
 
-  fn is_adult(self)  # required, no body
+  function is_adult(self)  # required, no body
 
 struct Person
   implements Describable
@@ -22,10 +22,10 @@ struct Person
     age: 0
     tags: []
 
-  fn is_adult(self)
+  function is_adult(self)
     self.age >= 18
 
-  fn greet(self)
+  function greet(self)
     print("Ola #{self.name}, eu tenho #{self.age}")
 
 module Examples
@@ -33,13 +33,13 @@ module Examples
   #
   # Examples — one function per language area.
 
-  fn pi()
+  function pi()
     3.14
 
-  fn default_name()
+  function default_name()
     "anonymous"
 
-  fn literals()
+  function literals()
     int = 42
     float = 3.14
     neg = -7
@@ -60,14 +60,14 @@ module Examples
     map = {name: "andrew", age: 40}
     (int, float, neg, string, escaped, multiline, sym, flag, nothing, list, tuple, map)
 
-  fn sigils()
+  function sigils()
     date = D"2024-02-29"
     time = T"13:45:30"
     naive = N"2024-02-09T13:45:30.500"
     zoned = U"2024-02-09T13:45:30.500Z"
     (date, time, naive, zoned)
 
-  fn operators(a, b)
+  function operators(a, b)
     sum = a + b
     diff = a - b
     prod = a * b
@@ -81,7 +81,7 @@ module Examples
     checks = a == b or a != b and not (a < b) or a <= b and a > b or a >= b
     (sum, diff, prod, quot, rem, pow, mixed, joined, appended, merged, checks)
 
-  fn branching(x)
+  function branching(x)
     case x
       1 -> :one
       (:ok, value) -> value
@@ -95,7 +95,7 @@ module Examples
           x == nil -> :nothing
           true -> :other
 
-  fn validating(data)
+  function validating(data)
     # `run` halts on the first match that fails, yielding that value; the
     # trailing `case` takes the block's result as its subject.
     summary =
@@ -111,14 +111,14 @@ module Examples
       :ok -> (:ok, summary)
       err -> err
 
-  fn destructuring()
+  function destructuring()
     [first, second | rest] = [1, 2, 3, 4]
     (name, age) = ("Andrew", 40)
     ((a, _), [head | _]) = ((1, 2), [3, 4, 5])
     {name: mapped_name, age: mapped_age} = {name: "Andrew", age: 40}
     (first, second, rest, name, age, a, head, mapped_name, mapped_age)
 
-  fn lambdas()
+  function lambdas()
     add = do x, y -> x + y
     double_then_add =
       do x, y
@@ -126,24 +126,24 @@ module Examples
         z * 2
     add(1, double_then_add(2, 3))
 
-  fn pipes(people)
+  function pipes(people)
     people
     | List.filter(do p -> p.is_adult())
     | List.map(do p -> p.describe())
     | List.join(", ")
 
-  fn fluent()
+  function fluent()
     {}
     | Map.put(:a, 100)
     | Map.put(:b, 50)
 
-  fn checked(amount)
+  function checked(amount)
     cond
       amount <= 0 -> (:error, (:not_positive, "must be positive"))
       amount > 10000 -> (:error, (:too_large, "too large"))
       true -> (:ok, amount)
 
-  fn report(amount)
+  function report(amount)
     case checked(amount)
       (:ok, value) -> value
       (:error, (:not_positive, message)) ->
@@ -151,7 +151,7 @@ module Examples
         :invalid
       (:error, _) -> :unknown
 
-  fnp sum_all(list)
+  helper sum_all(list)
     List.reduce(list, 0, do acc, x -> acc + x)
 
 alias Examples as Ex

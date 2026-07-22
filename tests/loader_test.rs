@@ -69,7 +69,7 @@ fn an_entrypoint_runs_against_the_embedded_stdlib() {
         "app.rmo",
         "\
 module App
-  fn main()
+  function main()
     println(List.map([1, 2, 3], do x -> x * 2))
     println(String.upcase(\"andrew\"))
 ",
@@ -93,7 +93,7 @@ fn a_namespaced_module_is_found_by_its_path() {
 module Cli
   alias MyApp.Business.Greeter
 
-  fn main()
+  function main()
     Greeter.greet_all([\"Andrew\", \"Ana\"])
 ",
     );
@@ -101,7 +101,7 @@ module Cli
         "src/my_app/business/greeter.rmo",
         "\
 module MyApp.Business.Greeter
-  fn greet_all(names)
+  function greet_all(names)
     List.map(names, do n -> \"Ola #{n}\")
 ",
     );
@@ -118,7 +118,7 @@ fn a_module_beside_the_entry_file_is_found_too() {
         "app.rmo",
         "\
 module App
-  fn main()
+  function main()
     Greeter.hi()
 ",
     );
@@ -126,7 +126,7 @@ module App
         "greeter.rmo",
         "\
 module Greeter
-  fn hi()
+  function hi()
     \"hi\"
 ",
     );
@@ -142,7 +142,7 @@ fn loading_is_transitive() {
 module App
   alias My.One
 
-  fn main()
+  function main()
     One.go()
 ",
     );
@@ -152,7 +152,7 @@ module App
 module My.One
   alias My.Two
 
-  fn go()
+  function go()
     Two.value()
 ",
     );
@@ -160,7 +160,7 @@ module My.One
         "src/my/two.rmo",
         "\
 module My.Two
-  fn value()
+  function value()
     42
 ",
     );
@@ -176,7 +176,7 @@ fn a_file_holds_exactly_one_definition() {
 module App
   alias My.Pair
 
-  fn main()
+  function main()
     Pair.f()
 ",
     );
@@ -184,11 +184,11 @@ module App
         "src/my/pair.rmo",
         "\
 module My.Pair
-  fn f()
+  function f()
     1
 
 module My.Other
-  fn g()
+  function g()
     2
 ",
     );
@@ -206,7 +206,7 @@ fn the_file_name_must_match_the_definition() {
 module App
   alias My.Greeter
 
-  fn main()
+  function main()
     Greeter.hi()
 ",
     );
@@ -214,7 +214,7 @@ module App
         "src/my/greeter.rmo",
         "\
 module My.Salutation
-  fn hi()
+  function hi()
     \"hi\"
 ",
     );
@@ -232,7 +232,7 @@ fn the_entry_file_is_not_held_to_the_name_rule() {
         "scratch.rmo",
         "\
 module App
-  fn main()
+  function main()
     41 + 1
 ",
     );
@@ -248,7 +248,7 @@ fn a_namespaced_module_that_names_no_file_is_a_load_error() {
 module App
   alias My.Absent.Thing
 
-  fn main()
+  function main()
     Thing.f()
 ",
     );
@@ -270,7 +270,7 @@ fn a_bare_name_that_names_no_file_is_left_to_the_interpreter() {
         "app.rmo",
         "\
 module App
-  fn main()
+  function main()
     Absent.f()
 ",
     );
@@ -559,7 +559,7 @@ fn the_cli_runs_and_checks_a_real_project() {
 module App
   alias My.Business.Greeter
 
-  fn main()
+  function main()
     println(Greeter.greet(\"Andrew\"))
 ",
     );
@@ -567,7 +567,7 @@ module App
         "src/my/business/greeter.rmo",
         "\
 module My.Business.Greeter
-  fn greet(name)
+  function greet(name)
     String.upcase(\"ola #{name}\")
 ",
     );
@@ -598,7 +598,7 @@ fn the_cli_reports_a_load_failure_and_exits_nonzero() {
 module App
   alias My.Absent.Thing
 
-  fn main()
+  function main()
     Thing.f()
 ",
     );

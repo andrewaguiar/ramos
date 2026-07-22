@@ -54,13 +54,13 @@
 <p>A module implements <code><a href="Actor.html">Actor</a></code> by defining one function, <code>call</code>, which takes the operation, its arguments, the actor&#39;s current state and its config, and returns a <code>(reply, new_state)</code> tuple. The actor&#39;s state is whatever the last <code>call</code> returned; nothing mutates, the actor simply holds the newest value.</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">Counter</span>
   <span class="tok-kw">implements</span> <span class="tok-type">Actor</span></code></pre>
-<pre><code><span class="tok-kw">fn</span> call(f, args, state, config)
+<pre><code><span class="tok-kw">function</span> call(f, args, state, config)
   <span class="tok-kw">case</span> f
     <span class="tok-lit">:bump</span> -&gt; (state + <span class="tok-lit">1</span>, state + <span class="tok-lit">1</span>)
     <span class="tok-lit">:read</span> -&gt; (state, state)</code></pre>
-<pre><code><span class="tok-kw">fn</span> start()
+<pre><code><span class="tok-kw">function</span> start()
   start_actor(<span class="tok-lit">:counter</span>, <span class="tok-type">Counter</span>, <span class="tok-lit">0</span>, {})</code></pre>
-<pre><code><span class="tok-kw">fn</span> bump()
+<pre><code><span class="tok-kw">function</span> bump()
   call_actor(<span class="tok-lit">:counter</span>, <span class="tok-type">Counter</span>, <span class="tok-lit">:bump</span>, [])</code></pre>
 <p>The convention is to keep <code>call</code> as the server half and wrap each operation in a plain function — the client half — so callers never write <code>call_actor</code> themselves.</p>
 <p>Each actor runs on <em></em>its own thread<em></em>, with its own memory: a fresh scope that cannot see the caller&#39;s bindings, and state reachable only by sending a message. One actor handles its own messages one at a time, in order, but different actors run in parallel.</p>
@@ -69,17 +69,17 @@
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#cast/4" class="fn-sig"><code>fn cast(f, args, state, config)</code></a>
+    <a href="#cast/4" class="fn-sig"><code>function cast(f, args, state, config)</code></a>
     <span class="fn-summary">Handle one message sent with <code>cast_actor</code>, returning only the new state — a cast has no reply to send anywhere, which is the whole difference from <code>call</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#call/4" class="fn-sig"><code>fn call(f, args, state, config)</code></a>
+    <a href="#call/4" class="fn-sig"><code>function call(f, args, state, config)</code></a>
     <span class="fn-summary">Handle one message. Required — every implementer defines it.</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="cast/4">
-  <h3 class="fn-title"><code>fn cast(f, args, state, config)</code> <a class="anchor" href="#cast/4">¶</a></h3>
+  <h3 class="fn-title"><code>function cast(f, args, state, config)</code> <a class="anchor" href="#cast/4">¶</a></h3>
 <p>Handle one message sent with <code>cast_actor</code>, returning only the new state — a cast has no reply to send anywhere, which is the whole difference from <code>call</code>.</p>
 <p>The default runs the module&#39;s own <code>call</code> and discards the reply, so an actor that already handles an operation synchronously can be cast to without writing anything extra. Override it for work that only makes sense fire-and-forget.</p>
 <p><code>cast_actor</code> returns as soon as the message is sent, so the handler may still be running when the next statement starts.</p>
@@ -96,7 +96,7 @@
 <p class="returns"><strong>Returns:</strong> the actor&#39;s new state</p>
 </div>
 <div class="fn-detail" id="call/4">
-  <h3 class="fn-title"><code>fn call(f, args, state, config)</code> <a class="anchor" href="#call/4">¶</a></h3>
+  <h3 class="fn-title"><code>function call(f, args, state, config)</code> <a class="anchor" href="#call/4">¶</a></h3>
 <p>Handle one message. Required — every implementer defines it.</p>
 <pre><code>actor&#39;s lifetime
 and `new_state` becomes the actor&#39;s state</code></pre>

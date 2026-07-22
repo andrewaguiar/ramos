@@ -345,7 +345,7 @@ double_then_add(2, 3)";
 
 #[test]
 fn a_lambda_cannot_refer_to_itself() {
-    // Recursion is for named `fn`s; a self-referential lambda is rejected
+    // Recursion is for named `function`s; a self-referential lambda is rejected
     // (which also prevents the Rc cycle it would form with its scope).
     assert!(try_eval("f = do x -> f(x)\nf(1)").is_err());
     assert!(try_eval("g = do n -> g(n - 1)\ng(3)").is_err());
@@ -384,9 +384,9 @@ z";
 fn lambdas_may_reference_other_names_and_shadow_freely() {
     // Referencing a *different* name is fine.
     assert_eq!(eval("id = do x -> x\nuse = do x -> id(x)\nuse(5)"), "5");
-    // As is calling a top-level `fn` or a Kernel native.
+    // As is calling a top-level `function` or a Kernel native.
     let calls_a_fn = "\
-fn double(x)
+function double(x)
   x * 2
 lb = do x -> double(x)
 lb(21)";
@@ -399,7 +399,7 @@ lb(21)";
 #[test]
 fn top_level_functions_and_recursion() {
     let src = "\
-fn fact(n)
+function fact(n)
   cond
     n <= 1 -> 1
     true -> n * fact(n - 1)
@@ -419,7 +419,7 @@ fn self_recursive_tail_calls_run_in_constant_stack() {
     // Far deeper than the native stack could recurse — only TCO makes this
     // return instead of overflowing.
     let via_cond = "\
-fn count_down(n)
+function count_down(n)
   cond
     n <= 0 -> :done
     true -> count_down(n - 1)
@@ -428,7 +428,7 @@ count_down(2000000)";
 
     // Tail recursion through a case arm, threading an accumulator.
     let via_case = "\
-fn sum_to(n, acc)
+function sum_to(n, acc)
   case n
     0 -> acc
     _ -> sum_to(n - 1, acc + n)
@@ -440,10 +440,10 @@ sum_to(1000000, 0)";
 fn module_functions_are_also_tail_optimized() {
     let src = "\
 module Main
-  fn main()
+  function main()
     loop_down(2000000)
 
-  fnp loop_down(n)
+  helper loop_down(n)
     cond
       n <= 0 -> :done
       true -> loop_down(n - 1)";
@@ -455,7 +455,7 @@ fn non_tail_recursion_still_computes_correctly() {
     // The recursive call is *not* in tail position (it's under `*`), so it uses
     // the native stack — still correct at reasonable depth.
     let src = "\
-fn fact(n)
+function fact(n)
   cond
     n <= 1 -> 1
     true -> n * fact(n - 1)
@@ -481,13 +481,13 @@ fn print_and_println_write_to_stdout() {
 fn a_module_entrypoint_runs_main_and_resolves_private_helpers() {
     let src = "\
 module Main
-  fn main()
+  function main()
     total = (2 + 3) * 4 - 6 / 2
     doubled = double_all([1, 2, 3, 4])
     println(\"total is #{total}\")
     println(\"doubled is #{doubled}\")
 
-  fnp double_all(list)
+  helper double_all(list)
     case list
       [] -> []
       [head | tail] -> [head * 2] ++ double_all(tail)";
@@ -498,7 +498,7 @@ module Main
 fn main_returns_its_last_value() {
     let src = "\
 module Main
-  fn main()
+  function main()
     21 * 2";
     assert_eq!(eval(src), "42");
 }
@@ -513,11 +513,11 @@ fn a_file_without_an_entrypoint_runs_top_level_statements() {
 fn two_entrypoints_are_ambiguous() {
     let src = "\
 module A
-  fn main()
+  function main()
     1
 
 module B
-  fn main()
+  function main()
     2";
     assert!(try_eval(src).is_err());
 }
@@ -526,17 +526,17 @@ module B
 
 /// The README's `run` example: three validations, the second one failing.
 const VALIDATORS: &str = "\
-fn validate_number(v)
+function validate_number(v)
   case v
     (:num, _) -> :ok
     _ -> (:error, (:invalid_number, \"not a valid number\"))
 
-fn validate_string(v)
+function validate_string(v)
   case v
     (:str, _) -> :ok
     _ -> (:error, (:invalid_string, \"1 is not a valid string\"))
 
-fn validate_symbol(v)
+function validate_symbol(v)
   :ok
 ";
 
@@ -625,12 +625,12 @@ result";
 fn a_run_case_arm_is_still_a_tail_call() {
     // 1,000,000 frames: this only completes if the arm keeps tail position.
     let src = "\
-fn more(n)
+function more(n)
   cond
     n > 0 -> :ok
     true -> :done
 
-fn count_down(n, acc)
+function count_down(n, acc)
   run
     :ok = more(n)
   case

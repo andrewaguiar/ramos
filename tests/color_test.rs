@@ -91,7 +91,7 @@ fn highlighting_preserves_the_source_exactly() {
 fn plain_output_carries_no_escapes() {
     let src = "\
 module Payments
-  fn max()
+  function max()
     10
 ";
     let tokens = lex(src).unwrap();
@@ -130,7 +130,7 @@ fn paint_wraps_text_and_plain_is_a_no_op() {
 fn source_is_painted_by_token_category() {
     let src = "\
 module Payments   # a note
-  fn max()
+  function max()
     \"ten\"
 ";
     let tokens = lex(src).unwrap();

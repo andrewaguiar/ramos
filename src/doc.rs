@@ -16,7 +16,7 @@
 //!   # Second paragraph is the body. `code spans` work, and indented
 //!   #   blocks become <pre> examples.
 //!
-//!   fn bar(x)
+//!   function bar(x)
 //!     # @doc
 //!     #
 //!     # Summary line.
@@ -177,7 +177,7 @@ pub struct FunctionDoc {
     pub name: String,
     pub params: Vec<String>,
     pub private: bool,
-    /// `fn name(a, b)` / `fnp name(a, b)`.
+    /// `function name(a, b)` / `helper name(a, b)`.
     pub signature: String,
     pub summary: String,
     pub description: Vec<Block>,
@@ -299,7 +299,7 @@ fn collect_programs(dir: &Path) -> Result<Vec<ExampleDoc>, String> {
 }
 
 /// A multi-file program: every `.rmo` file directly inside `dir`, ordered so
-/// the one whose module defines `fn main()` — the entrypoint `ramos run`
+/// the one whose module defines `function main()` — the entrypoint `ramos run`
 /// calls — reads last, since it is what puts the other files' definitions to
 /// use. Falls back to file order if none defines one. The program's summary
 /// comes from that entry file's own header comment; every other file's header
@@ -370,7 +370,7 @@ fn build_program_dir(dir: &Path) -> Result<Option<ExampleDoc>, String> {
 }
 
 /// Whether `source` parses to a program whose module defines a runnable,
-/// public `fn main()` — the entrypoint convention `ramos run` uses to decide
+/// public `function main()` — the entrypoint convention `ramos run` uses to decide
 /// which file of a multi-file program under `examples/` is the front door.
 fn defines_main(source: &str) -> bool {
     let Ok(tokens) = crate::lexer::lex(source) else {
@@ -552,7 +552,7 @@ fn make_function_doc(
     params_docs: Vec<(String, String)>,
     returns: Option<String>,
 ) -> FunctionDoc {
-    let keyword = if f.private { "fnp" } else { "fn" };
+    let keyword = if f.private { "helper" } else { "function" };
     let signature = format!("{} {}({})", keyword, f.name, f.params.join(", "));
     FunctionDoc {
         name: f.name.clone(),
@@ -614,7 +614,7 @@ struct Extracted {
 /// The rule mirrors how the comments are written: a comment block marked
 /// `@module_doc` that appears *before the first function head* is the module
 /// doc; a comment block marked `@doc` attaches to the most recently seen
-/// `fn`/`fnp` head. Comments not marked with either tag are ignored, which
+/// `function`/`helper` head. Comments not marked with either tag are ignored, which
 /// keeps incidental comments (the ones explaining a tricky `case` arm) out of
 /// the reference.
 fn extract_docs(source: &str) -> Extracted {
@@ -675,7 +675,7 @@ fn extract_docs(source: &str) -> Extracted {
         }
         // Any other code line leaves `current_fn` as-is, so a `@doc` block
         // still attaches to the right function even with code between the
-        // `fn` head and its doc (rare, but tolerated).
+        // `function` head and its doc (rare, but tolerated).
     }
 
     // Flush a trailing block at EOF.
@@ -777,13 +777,13 @@ fn after_keyword<'a>(line: &'a str, keyword: &str) -> Option<&'a str> {
     Some(line)
 }
 
-/// Parse a `fn`/`fnp name(params)` head. Returns `(name, is_private)`.
-/// Requires a word boundary after the keyword, so `fnord` isn't mistaken for
-/// `fn`.
+/// Parse a `function`/`helper name(params)` head. Returns `(name, is_private)`.
+/// Requires a word boundary after the keyword, so `functionality` isn't
+/// mistaken for `function`.
 fn fn_head(line: &str) -> Option<(String, bool)> {
-    let (rest, private) = if let Some(r) = line.strip_prefix("fnp") {
+    let (rest, private) = if let Some(r) = line.strip_prefix("helper") {
         (r, true)
-    } else if let Some(r) = line.strip_prefix("fn") {
+    } else if let Some(r) = line.strip_prefix("function") {
         (r, false)
     } else {
         return None;

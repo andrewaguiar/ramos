@@ -4,8 +4,8 @@ Syntax highlighting, indentation and filetype detection for [Ramos](../../README
 (`*.rmo`), matching the current language spec:
 
 - indentation driven, **2 spaces, never tabs**
-- keywords: `module` `struct` `trait` `implements` `attributes` `fn` `fnp`
-  `const` `do` `alias` `as` `begin` `rescue` `raise` `self` `case` `cond`
+- keywords: `module` `struct` `trait` `implements` `attributes` `function` `helper`
+  `do` `end` `alias` `as` `self` `case` `cond`
   `run` `when` `and` `or` `not`
 - literals: int, float, string with `#{...}` interpolation, symbol (`:foo`,
   `:"..."`), `true`/`false`/`nil`, list, tuple, map

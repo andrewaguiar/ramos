@@ -65,53 +65,53 @@
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#read/1" class="fn-sig"><code>fn read(path)</code></a>
+    <a href="#read/1" class="fn-sig"><code>function read(path)</code></a>
     <span class="fn-summary">Reads the entire file at <code>path</code> into a string.</span>
   </div>
   <div class="fn-row">
-    <a href="#write/2" class="fn-sig"><code>fn write(path, contents)</code></a>
+    <a href="#write/2" class="fn-sig"><code>function write(path, contents)</code></a>
     <span class="fn-summary">Writes <code>contents</code> to <code>path</code>, replacing any existing content and creating the file if it does not exist.</span>
   </div>
   <div class="fn-row">
-    <a href="#append/2" class="fn-sig"><code>fn append(path, contents)</code></a>
+    <a href="#append/2" class="fn-sig"><code>function append(path, contents)</code></a>
     <span class="fn-summary">Appends <code>contents</code> to the end of <code>path</code>, creating the file if it does not exist. Unlike <code>write</code>, existing content is preserved.</span>
   </div>
   <div class="fn-row">
-    <a href="#size/1" class="fn-sig"><code>fn size(path)</code></a>
+    <a href="#size/1" class="fn-sig"><code>function size(path)</code></a>
     <span class="fn-summary">Returns the size of <code>path</code> in bytes.</span>
   </div>
   <div class="fn-row">
-    <a href="#rm/1" class="fn-sig"><code>fn rm(path)</code></a>
+    <a href="#rm/1" class="fn-sig"><code>function rm(path)</code></a>
     <span class="fn-summary">Deletes the file at <code>path</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#cp/2" class="fn-sig"><code>fn cp(source, dest)</code></a>
+    <a href="#cp/2" class="fn-sig"><code>function cp(source, dest)</code></a>
     <span class="fn-summary">Copies the file at <code>source</code> to <code>dest</code>, overwriting <code>dest</code> if it exists.</span>
   </div>
   <div class="fn-row">
-    <a href="#mv/2" class="fn-sig"><code>fn mv(source, dest)</code></a>
+    <a href="#mv/2" class="fn-sig"><code>function mv(source, dest)</code></a>
     <span class="fn-summary">Moves the file at <code>source</code> to <code>dest</code>. Works across filesystems: it tries a rename first, then falls back to a copy followed by deleting <code>source</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#exists/1" class="fn-sig"><code>fn exists(path)</code></a>
+    <a href="#exists/1" class="fn-sig"><code>function exists(path)</code></a>
     <span class="fn-summary">Returns <code>true</code> if something exists at <code>path</code> (a file or a directory), else <code>false</code>. Use <code>is_file</code> to require that it is a regular file.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_file/1" class="fn-sig"><code>fn is_file(path)</code></a>
+    <a href="#is_file/1" class="fn-sig"><code>function is_file(path)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>path</code> exists and is a regular file, else <code>false</code> (including when <code>path</code> is a directory or does not exist).</span>
   </div>
   <div class="fn-row">
-    <a href="#touch/1" class="fn-sig"><code>fn touch(path)</code></a>
+    <a href="#touch/1" class="fn-sig"><code>function touch(path)</code></a>
     <span class="fn-summary">Creates <code>path</code> if it does not exist, and updates its modified time to now. Existing content is preserved — the file-manager equivalent of <code>touch(1)</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#chmod/2" class="fn-sig"><code>fn chmod(path, mode)</code></a>
+    <a href="#chmod/2" class="fn-sig"><code>function chmod(path, mode)</code></a>
     <span class="fn-summary">Sets the permission bits of <code>path</code>. <code>mode</code> is the numeric permission — for example <code>493</code> is <code>rwxr-xr-x</code> and <code>420</code> is <code>rw-r--r--</code>.</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="read/1">
-  <h3 class="fn-title"><code>fn read(path)</code> <a class="anchor" href="#read/1">¶</a></h3>
+  <h3 class="fn-title"><code>function read(path)</code> <a class="anchor" href="#read/1">¶</a></h3>
 <p>Reads the entire file at <code>path</code> into a string.</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;greeting.txt&quot;</span>, <span class="tok-str">&quot;hello\n&quot;</span>)
 <span class="tok-type">File</span>.read(<span class="tok-str">&quot;greeting.txt&quot;</span>)   <span class="tok-com"># == (:ok, &quot;hello\n&quot;)</span>
@@ -123,7 +123,7 @@
 <p class="returns"><strong>Returns:</strong> <code>(:ok, contents)</code>, or <code>(:error, reason)</code> if it cannot be read</p>
 </div>
 <div class="fn-detail" id="write/2">
-  <h3 class="fn-title"><code>fn write(path, contents)</code> <a class="anchor" href="#write/2">¶</a></h3>
+  <h3 class="fn-title"><code>function write(path, contents)</code> <a class="anchor" href="#write/2">¶</a></h3>
 <p>Writes <code>contents</code> to <code>path</code>, replacing any existing content and creating the file if it does not exist.</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;out.txt&quot;</span>, <span class="tok-str">&quot;hello\n&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
 <dl class="params">
@@ -135,7 +135,7 @@
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> on failure</p>
 </div>
 <div class="fn-detail" id="append/2">
-  <h3 class="fn-title"><code>fn append(path, contents)</code> <a class="anchor" href="#append/2">¶</a></h3>
+  <h3 class="fn-title"><code>function append(path, contents)</code> <a class="anchor" href="#append/2">¶</a></h3>
 <p>Appends <code>contents</code> to the end of <code>path</code>, creating the file if it does not exist. Unlike <code>write</code>, existing content is preserved.</p>
 <pre><code><span class="tok-type">File</span>.append(<span class="tok-str">&quot;log.txt&quot;</span>, <span class="tok-str">&quot;another line\n&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
 <dl class="params">
@@ -147,7 +147,7 @@
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> on failure</p>
 </div>
 <div class="fn-detail" id="size/1">
-  <h3 class="fn-title"><code>fn size(path)</code> <a class="anchor" href="#size/1">¶</a></h3>
+  <h3 class="fn-title"><code>function size(path)</code> <a class="anchor" href="#size/1">¶</a></h3>
 <p>Returns the size of <code>path</code> in bytes.</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;greeting.txt&quot;</span>, <span class="tok-str">&quot;hello\n&quot;</span>)
 <span class="tok-type">File</span>.size(<span class="tok-str">&quot;greeting.txt&quot;</span>)   <span class="tok-com"># == (:ok, 6)</span></code></pre>
@@ -158,7 +158,7 @@
 <p class="returns"><strong>Returns:</strong> <code>(:ok, bytes)</code>, or <code>(:error, reason)</code> if it cannot be read</p>
 </div>
 <div class="fn-detail" id="rm/1">
-  <h3 class="fn-title"><code>fn rm(path)</code> <a class="anchor" href="#rm/1">¶</a></h3>
+  <h3 class="fn-title"><code>function rm(path)</code> <a class="anchor" href="#rm/1">¶</a></h3>
 <p>Deletes the file at <code>path</code>.</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;out.txt&quot;</span>, <span class="tok-str">&quot;bye\n&quot;</span>)
 <span class="tok-type">File</span>.rm(<span class="tok-str">&quot;out.txt&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
@@ -169,7 +169,7 @@
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> (e.g. <code>:enoent</code> if it is not there)</p>
 </div>
 <div class="fn-detail" id="cp/2">
-  <h3 class="fn-title"><code>fn cp(source, dest)</code> <a class="anchor" href="#cp/2">¶</a></h3>
+  <h3 class="fn-title"><code>function cp(source, dest)</code> <a class="anchor" href="#cp/2">¶</a></h3>
 <p>Copies the file at <code>source</code> to <code>dest</code>, overwriting <code>dest</code> if it exists.</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;a.txt&quot;</span>, <span class="tok-str">&quot;hello\n&quot;</span>)
 <span class="tok-type">File</span>.cp(<span class="tok-str">&quot;a.txt&quot;</span>, <span class="tok-str">&quot;b.txt&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
@@ -182,7 +182,7 @@
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> on failure</p>
 </div>
 <div class="fn-detail" id="mv/2">
-  <h3 class="fn-title"><code>fn mv(source, dest)</code> <a class="anchor" href="#mv/2">¶</a></h3>
+  <h3 class="fn-title"><code>function mv(source, dest)</code> <a class="anchor" href="#mv/2">¶</a></h3>
 <p>Moves the file at <code>source</code> to <code>dest</code>. Works across filesystems: it tries a rename first, then falls back to a copy followed by deleting <code>source</code>.</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;draft.txt&quot;</span>, <span class="tok-str">&quot;hello\n&quot;</span>)
 <span class="tok-type">File</span>.mv(<span class="tok-str">&quot;draft.txt&quot;</span>, <span class="tok-str">&quot;final.txt&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
@@ -195,7 +195,7 @@
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> on failure</p>
 </div>
 <div class="fn-detail" id="exists/1">
-  <h3 class="fn-title"><code>fn exists(path)</code> <a class="anchor" href="#exists/1">¶</a></h3>
+  <h3 class="fn-title"><code>function exists(path)</code> <a class="anchor" href="#exists/1">¶</a></h3>
 <p>Returns <code>true</code> if something exists at <code>path</code> (a file or a directory), else <code>false</code>. Use <code>is_file</code> to require that it is a regular file.</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;out.txt&quot;</span>, <span class="tok-str">&quot;hello\n&quot;</span>)
 <span class="tok-type">File</span>.exists(<span class="tok-str">&quot;out.txt&quot;</span>)   <span class="tok-com"># == true</span>
@@ -207,7 +207,7 @@
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>path</code> exists, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_file/1">
-  <h3 class="fn-title"><code>fn is_file(path)</code> <a class="anchor" href="#is_file/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_file(path)</code> <a class="anchor" href="#is_file/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>path</code> exists and is a regular file, else <code>false</code> (including when <code>path</code> is a directory or does not exist).</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;out.txt&quot;</span>, <span class="tok-str">&quot;hello\n&quot;</span>)
 <span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;src&quot;</span>)
@@ -220,7 +220,7 @@
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>path</code> is a regular file, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="touch/1">
-  <h3 class="fn-title"><code>fn touch(path)</code> <a class="anchor" href="#touch/1">¶</a></h3>
+  <h3 class="fn-title"><code>function touch(path)</code> <a class="anchor" href="#touch/1">¶</a></h3>
 <p>Creates <code>path</code> if it does not exist, and updates its modified time to now. Existing content is preserved — the file-manager equivalent of <code>touch(1)</code>.</p>
 <pre><code><span class="tok-type">File</span>.touch(<span class="tok-str">&quot;build.stamp&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
 <dl class="params">
@@ -230,7 +230,7 @@
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> on failure</p>
 </div>
 <div class="fn-detail" id="chmod/2">
-  <h3 class="fn-title"><code>fn chmod(path, mode)</code> <a class="anchor" href="#chmod/2">¶</a></h3>
+  <h3 class="fn-title"><code>function chmod(path, mode)</code> <a class="anchor" href="#chmod/2">¶</a></h3>
 <p>Sets the permission bits of <code>path</code>. <code>mode</code> is the numeric permission — for example <code>493</code> is <code>rwxr-xr-x</code> and <code>420</code> is <code>rw-r--r--</code>.</p>
 <pre><code><span class="tok-type">File</span>.write(<span class="tok-str">&quot;run.sh&quot;</span>, <span class="tok-str">&quot;echo hi\n&quot;</span>)
 <span class="tok-type">File</span>.chmod(<span class="tok-str">&quot;run.sh&quot;</span>, <span class="tok-lit">493</span>)   <span class="tok-com"># == :ok</span></code></pre>

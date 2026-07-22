@@ -30,7 +30,7 @@ module List
   #     `drop`, and the other functions whose own recursive call already *is*
   #     the last thing they do need no such helper.
 
-  fn range(from, to)
+  function range(from, to)
     # @doc
     #
     # The integers from `from` to `to`, inclusive at both ends, moving in
@@ -50,7 +50,7 @@ module List
       from > to -> reverse(range_loop(from, to, -1, []))
       true -> [from]
 
-  fnp range_loop(current, stop, step, acc)
+  helper range_loop(current, stop, step, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `range`, counting from `current` to
@@ -60,7 +60,7 @@ module List
       current == stop -> [current] ++ acc
       true -> range_loop(current + step, stop, step, [current] ++ acc)
 
-  fn map(list, f)
+  function map(list, f)
     # @doc
     #
     # Applies `f` to every element of `list`, returning a new list of the
@@ -73,7 +73,7 @@ module List
     #   List.map([1, 2, 3], do x -> x * 2)   # == [2, 4, 6]
     reverse(map_loop(list, f, []))
 
-  fnp map_loop(list, f, acc)
+  helper map_loop(list, f, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `map`, building the mapped results
@@ -82,7 +82,7 @@ module List
       [] -> acc
       [head | tail] -> map_loop(tail, f, [f(head)] ++ acc)
 
-  fn each(list, f)
+  function each(list, f)
     # @doc
     #
     # Calls `f` once per element, discarding the results. Intended for side
@@ -99,7 +99,7 @@ module List
         f(head)
         each(tail, f)
 
-  fn with_index(list)
+  function with_index(list)
     # @doc
     #
     # Pairs every element of `list` with its zero-based index.
@@ -110,7 +110,7 @@ module List
     #   List.with_index(["a", "b", "c"])   # == [("a", 0), ("b", 1), ("c", 2)]
     reverse(with_index_loop(list, 0, []))
 
-  fnp with_index_loop(list, index, acc)
+  helper with_index_loop(list, index, acc)
     # @doc
     #
     # (private) Tail-recursive helper carrying the current `index` and a
@@ -119,7 +119,7 @@ module List
       [] -> acc
       [head | tail] -> with_index_loop(tail, index + 1, [(head, index)] ++ acc)
 
-  fn map_with_index(list, f)
+  function map_with_index(list, f)
     # @doc
     #
     # Like `map`, but `f` also receives the zero-based index of the element it
@@ -132,7 +132,7 @@ module List
     #   List.map_with_index(["a", "b"], do x, i -> "#{i}:#{x}")   # == ["0:a", "1:b"]
     reverse(map_with_index_loop(list, f, 0, []))
 
-  fnp map_with_index_loop(list, f, index, acc)
+  helper map_with_index_loop(list, f, index, acc)
     # @doc
     #
     # (private) Tail-recursive helper carrying the current `index` and a
@@ -142,7 +142,7 @@ module List
       [head | tail] ->
         map_with_index_loop(tail, f, index + 1, [f(head, index)] ++ acc)
 
-  fn each_with_index(list, f)
+  function each_with_index(list, f)
     # @doc
     #
     # Like `each`, but `f` also receives the zero-based index of the element
@@ -155,7 +155,7 @@ module List
     #   List.each_with_index(["a", "b"], do x, i -> print("#{i}:#{x}"))
     each_with_index_loop(list, f, 0)
 
-  fnp each_with_index_loop(list, f, index)
+  helper each_with_index_loop(list, f, index)
     # @doc
     #
     # (private) Tail-recursive helper carrying the current `index` for
@@ -166,7 +166,7 @@ module List
         f(head, index)
         each_with_index_loop(tail, f, index + 1)
 
-  fn reduce(list, acc, f)
+  function reduce(list, acc, f)
     # @doc
     #
     # Folds `list` left-to-right, threading an accumulator. `f` receives the
@@ -183,7 +183,7 @@ module List
       [] -> acc
       [head | tail] -> reduce(tail, f(acc, head), f)
 
-  fn sum(list)
+  function sum(list)
     # @doc
     #
     # Returns the sum of the elements of `list` (numeric). The sum of `[]` is 0.
@@ -194,7 +194,7 @@ module List
     #   List.sum([1, 2, 3])   # == 6
     reduce(list, 0, do acc, x -> acc + x)
 
-  fn product(list)
+  function product(list)
     # @doc
     #
     # Returns the product of the elements of `list` (numeric). The product of
@@ -206,7 +206,7 @@ module List
     #   List.product([2, 3, 4])   # == 24
     reduce(list, 1, do acc, x -> acc * x)
 
-  fn count(list, f)
+  function count(list, f)
     # @doc
     #
     # Returns the number of elements for which `f` is truthy.
@@ -218,7 +218,7 @@ module List
     #   List.count([1, 2, 3, 4], do x -> Integer.is_even(x))   # == 2
     size(filter(list, f))
 
-  fn min(list)
+  function min(list)
     # @doc
     #
     # Returns the smallest element of `list`, or `nil` if empty.
@@ -229,7 +229,7 @@ module List
     #   List.min([3, 1, 2])   # == 1
     reduce(list, nil, do a, b -> min_of(a, b))
 
-  fn max(list)
+  function max(list)
     # @doc
     #
     # Returns the largest element of `list`, or `nil` if empty.
@@ -240,7 +240,7 @@ module List
     #   List.max([3, 1, 2])   # == 3
     reduce(list, nil, do a, b -> max_of(a, b))
 
-  fnp min_of(a, b)
+  helper min_of(a, b)
     # @doc
     #
     # (private) Two-argument minimum that tolerates a `nil` operand, used as the
@@ -255,7 +255,7 @@ module List
       a < b    -> a
       true     -> b
 
-  fnp max_of(a, b)
+  helper max_of(a, b)
     # @doc
     #
     # (private) Two-argument maximum that tolerates a `nil` operand, used as the
@@ -270,7 +270,7 @@ module List
       a > b    -> a
       true     -> b
 
-  fn filter(list, f)
+  function filter(list, f)
     # @doc
     #
     # Returns a new list containing only the elements of `list` for which `f` is
@@ -283,7 +283,7 @@ module List
     #   List.filter([1, 2, 3, 4], do x -> Integer.is_even(x))   # == [2, 4]
     reverse(filter_loop(list, f, []))
 
-  fnp filter_loop(list, f, acc)
+  helper filter_loop(list, f, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `filter`, building the kept
@@ -295,7 +295,7 @@ module List
           f(head) -> filter_loop(tail, f, [head] ++ acc)
           true -> filter_loop(tail, f, acc)
 
-  fn reject(list, f)
+  function reject(list, f)
     # @doc
     #
     # Inverse of `filter`: returns the elements for which `f` is falsy.
@@ -307,7 +307,7 @@ module List
     #   List.reject([1, 2, 3, 4], do x -> Integer.is_even(x))   # == [1, 3]
     filter(list, do x -> not f(x))
 
-  fn partition(list, f)
+  function partition(list, f)
     # @doc
     #
     # Splits `list` into a tuple of two lists: those for which `f` is truthy and
@@ -321,7 +321,7 @@ module List
     #   # == ([2, 4], [1, 3])
     (filter(list, f), reject(list, f))
 
-  fn uniq(list)
+  function uniq(list)
     # @doc
     #
     # Returns a new list with duplicate values removed, keeping the first
@@ -333,16 +333,33 @@ module List
     #   List.uniq([1, 2, 1, 3, 2])   # == [1, 2, 3]
     reverse(uniq_loop(list, []))
 
-  fnp uniq_loop(list, acc)
+  helper uniq_loop(list, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `uniq`, building the kept
-    # first-occurrences in reverse.
+    # first-occurrences in reverse. Order in `acc` does not matter for the
+    # membership check, only for the caller's final `reverse`, so a value is
+    # kept the first time it is seen and skipped every time after.
     case list
       [] -> acc
-      [head | tail] -> uniq_loop(filter(tail, do x -> x != head), [head] ++ acc)
+      [head | tail] ->
+        cond
+          already_kept(acc, head) -> uniq_loop(tail, acc)
+          true -> uniq_loop(tail, [head] ++ acc)
 
-  fn dedup(list)
+  helper already_kept(acc, value)
+    # @doc
+    #
+    # (private) Whether `value` is already in `acc`, by `==` — `uniq_loop`'s
+    # own membership check, since it cannot reach the public `contains`.
+    case acc
+      [] -> false
+      [head | tail] ->
+        cond
+          head == value -> true
+          true -> already_kept(tail, value)
+
+  function dedup(list)
     # @doc
     #
     # Returns a new list with *consecutive* duplicate values collapsed to
@@ -358,7 +375,7 @@ module List
       [] -> []
       [head | tail] -> reverse(dedup_from(tail, head, [head]))
 
-  fnp dedup_from(list, last, acc)
+  helper dedup_from(list, last, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `dedup`, carrying the last element
@@ -371,7 +388,7 @@ module List
           head == last -> dedup_from(tail, last, acc)
           true -> dedup_from(tail, head, [head] ++ acc)
 
-  fn dedup_by(list, f)
+  function dedup_by(list, f)
     # @doc
     #
     # Like `dedup`, but two elements collapse when `f` returns the same key
@@ -388,7 +405,7 @@ module List
       [] -> []
       [head | tail] -> reverse(dedup_by_from(tail, f(head), f, [head]))
 
-  fnp dedup_by_from(list, key, f, acc)
+  helper dedup_by_from(list, key, f, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `dedup_by`, carrying the key of the
@@ -400,7 +417,7 @@ module List
           f(head) == key -> dedup_by_from(tail, key, f, acc)
           true -> dedup_by_from(tail, f(head), f, [head] ++ acc)
 
-  fn concat(list)
+  function concat(list)
     # @doc
     #
     # Flattens one level: given a list of lists, concatenates them in order.
@@ -411,7 +428,7 @@ module List
     #   List.concat([[1, 2], [3], [4, 5]])   # == [1, 2, 3, 4, 5]
     reduce(list, [], do acc, x -> acc ++ x)
 
-  fn flatten(list)
+  function flatten(list)
     # @doc
     #
     # Flattens `list` all the way down, however deeply its elements are
@@ -424,21 +441,24 @@ module List
     #   List.flatten([1, [2, [3, 4]], [5]])   # == [1, 2, 3, 4, 5]
     reverse(flatten_loop(list, []))
 
-  fnp flatten_loop(list, acc)
+  helper flatten_loop(list, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `flatten`: walks `list` one element
     # at a time, so stack use is bounded by `list`'s own length rather than
     # its total (flattened) element count — a nested list still recurses into
-    # `flatten` itself, bounded instead by its nesting depth.
+    # `flatten_loop` itself, bounded instead by its nesting depth.
+    # `flatten_loop(head, [])` is already `reverse(flatten(head))` — the
+    # public round trip through `flatten` would reverse it twice — so a
+    # nested list's own reversed accumulator prepends directly onto `acc`.
     case list
       [] -> acc
       [head | tail] ->
         cond
-          is_list(head) -> flatten_loop(tail, reverse(flatten(head)) ++ acc)
+          is_list(head) -> flatten_loop(tail, flatten_loop(head, []) ++ acc)
           true -> flatten_loop(tail, [head] ++ acc)
 
-  fn flat_map(list, f)
+  function flat_map(list, f)
     # @doc
     #
     # Maps `f` over `list` and flattens the result one level. Equivalent to
@@ -451,7 +471,7 @@ module List
     #   List.flat_map([1, 2], do x -> [x, x])   # == [1, 1, 2, 2]
     concat(map(list, f))
 
-  fn zip(a, b)
+  function zip(a, b)
     # @doc
     #
     # Pairs up `a` and `b` element-wise. Stops at the shorter list — a
@@ -465,7 +485,7 @@ module List
     #   List.zip([1, 2, 3], [:a, :b])   # == [(1, :a), (2, :b)]
     reverse(zip_loop(a, b, []))
 
-  fnp zip_loop(a, b, acc)
+  helper zip_loop(a, b, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `zip`, building pairs in reverse.
@@ -476,7 +496,7 @@ module List
           [] -> acc
           [hb | tb] -> zip_loop(ta, tb, [(ha, hb)] ++ acc)
 
-  fn zip_with(a, b, f)
+  function zip_with(a, b, f)
     # @doc
     #
     # Combines `a` and `b` element-wise through `f` instead of pairing them
@@ -490,7 +510,7 @@ module List
     #   List.zip_with([1, 2, 3], [10, 20], do x, y -> x + y)   # == [11, 22]
     reverse(zip_with_loop(a, b, f, []))
 
-  fnp zip_with_loop(a, b, f, acc)
+  helper zip_with_loop(a, b, f, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `zip_with`, building results in
@@ -502,7 +522,7 @@ module List
           [] -> acc
           [hb | tb] -> zip_with_loop(ta, tb, f, [f(ha, hb)] ++ acc)
 
-  fn unzip(pairs)
+  function unzip(pairs)
     # @doc
     #
     # Splits a list of `(x, y)` tuples into a tuple of two lists — the
@@ -514,7 +534,7 @@ module List
     #   List.unzip([(1, :a), (2, :b)])   # == ([1, 2], [:a, :b])
     (map(pairs, do pair -> at(pair, 0)), map(pairs, do pair -> at(pair, 1)))
 
-  fn reverse(list)
+  function reverse(list)
     # @doc
     #
     # Returns a new list with the elements of `list` in reverse order.
@@ -523,9 +543,20 @@ module List
     # @return a new list with the elements in reverse order
     #
     #   List.reverse([1, 2, 3])   # == [3, 2, 1]
-    reduce(list, [], do acc, x -> [x] ++ acc)
+    reverse_loop(list, [])
 
-  fn sort(list)
+  helper reverse_loop(list, acc)
+    # @doc
+    #
+    # (private) Tail-recursive helper for `reverse`. Also the reversal other
+    # helpers reach for when they need to flip an accumulator of their own —
+    # they cannot call the public `reverse` — so this stays a plain, two-arg
+    # loop rather than folding into `reverse` itself.
+    case list
+      [] -> acc
+      [head | tail] -> reverse_loop(tail, [head] ++ acc)
+
+  function sort(list)
     # @doc
     #
     # Returns a new list with the elements of `list` sorted in ascending order
@@ -537,7 +568,7 @@ module List
     #   List.sort([3, 1, 2])   # == [1, 2, 3]
     reduce(list, [], do acc, x -> sorted_insert(acc, x))
 
-  fnp sorted_insert(list, x)
+  helper sorted_insert(list, x)
     # @doc
     #
     # (private) Inserts `x` into the already-sorted `list` at the first position
@@ -549,17 +580,17 @@ module List
     # @return `list` with `x` inserted so the result stays sorted
     sorted_insert_loop(list, x, [])
 
-  fnp sorted_insert_loop(list, x, acc)
+  helper sorted_insert_loop(list, x, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `sorted_insert`, carrying the
     # already-passed prefix in reverse until it finds where `x` belongs.
     case list
-      [] -> reverse([x] ++ acc)
-      [head | tail] when x <= head -> reverse(acc) ++ [x] ++ list
+      [] -> reverse_loop([x] ++ acc, [])
+      [head | tail] when x <= head -> reverse_loop(acc, []) ++ [x] ++ list
       [head | tail] -> sorted_insert_loop(tail, x, [head] ++ acc)
 
-  fn sort_by(list, f)
+  function sort_by(list, f)
     # @doc
     #
     # Returns a new list sorted in ascending order of `f(element)`, rather
@@ -574,24 +605,24 @@ module List
     #   # == ["a", "bb", "ccc"]
     reduce(list, [], do acc, x -> sorted_insert_by(acc, x, f))
 
-  fnp sorted_insert_by(list, x, f)
+  helper sorted_insert_by(list, x, f)
     # @doc
     #
     # (private) Inserts `x` into the already-`sort_by`-sorted `list` at the
     # first position where `f(x)` is `<=` the current head's key.
     sorted_insert_by_loop(list, x, f, [])
 
-  fnp sorted_insert_by_loop(list, x, f, acc)
+  helper sorted_insert_by_loop(list, x, f, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `sorted_insert_by`, carrying the
     # already-passed prefix in reverse until it finds where `x` belongs.
     case list
-      [] -> reverse([x] ++ acc)
-      [head | tail] when f(x) <= f(head) -> reverse(acc) ++ [x] ++ list
+      [] -> reverse_loop([x] ++ acc, [])
+      [head | tail] when f(x) <= f(head) -> reverse_loop(acc, []) ++ [x] ++ list
       [head | tail] -> sorted_insert_by_loop(tail, x, f, [head] ++ acc)
 
-  fn max_by(list, f)
+  function max_by(list, f)
     # @doc
     #
     # Returns the element of `list` for which `f` is largest, or `nil` if
@@ -605,7 +636,7 @@ module List
     #   List.max_by(["a", "ccc", "bb"], do s -> String.length(s))   # == "ccc"
     reduce(list, nil, do a, b -> max_of_by(a, b, f))
 
-  fn min_by(list, f)
+  function min_by(list, f)
     # @doc
     #
     # Returns the element of `list` for which `f` is smallest, or `nil` if
@@ -618,7 +649,7 @@ module List
     #   List.min_by(["ccc", "a", "bb"], do s -> String.length(s))   # == "a"
     reduce(list, nil, do a, b -> min_of_by(a, b, f))
 
-  fnp max_of_by(a, b, f)
+  helper max_of_by(a, b, f)
     # @doc
     #
     # (private) Two-argument, key-based maximum tolerating a `nil` operand —
@@ -629,7 +660,7 @@ module List
       f(a) > f(b) -> a
       true -> b
 
-  fnp min_of_by(a, b, f)
+  helper min_of_by(a, b, f)
     # @doc
     #
     # (private) Two-argument, key-based minimum tolerating a `nil` operand —
@@ -640,7 +671,7 @@ module List
       f(a) < f(b) -> a
       true -> b
 
-  fn find(list, f)
+  function find(list, f)
     # @doc
     #
     # Returns the first element for which `f` is truthy, or `nil` if none match.
@@ -657,7 +688,7 @@ module List
           f(head) -> head
           true -> find(tail, f)
 
-  fn find_index(list, f)
+  function find_index(list, f)
     # @doc
     #
     # Returns the zero-based index of the first element for which `f` is truthy,
@@ -670,7 +701,7 @@ module List
     #   List.find_index([1, 2, 3, 4], do x -> x > 2)   # == 2
     find_index_loop(list, f, 0)
 
-  fnp find_index_loop(list, f, index)
+  helper find_index_loop(list, f, index)
     # @doc
     #
     # (private) Tail-recursive helper carrying the current `index` for
@@ -687,7 +718,7 @@ module List
           f(head) -> index
           true -> find_index_loop(tail, f, index + 1)
 
-  fn index_of(list, value)
+  function index_of(list, value)
     # @doc
     #
     # Returns the zero-based index of the first element equal to `value`
@@ -703,7 +734,7 @@ module List
     #   List.index_of([1, 2, 3, 4], 9)   # == nil
     find_index(list, do x -> x == value)
 
-  fn contains(list, value)
+  function contains(list, value)
     # @doc
     #
     # Returns `true` if `value` is present in `list` (using `==`), else `false`.
@@ -720,7 +751,7 @@ module List
           head == value -> true
           true -> contains(tail, value)
 
-  fn all(list, f)
+  function all(list, f)
     # @doc
     #
     # Returns `true` if `f` is truthy for every element (trivially `true` for an
@@ -738,7 +769,7 @@ module List
           not f(head) -> false
           true -> all(tail, f)
 
-  fn any(list, f)
+  function any(list, f)
     # @doc
     #
     # Returns `true` if `f` is truthy for at least one element (`false` for an
@@ -756,7 +787,7 @@ module List
           f(head) -> true
           true -> any(tail, f)
 
-  fn first(list)
+  function first(list)
     # @doc
     #
     # Returns the first element of `list`, or `nil` if empty.
@@ -769,7 +800,7 @@ module List
       [] -> nil
       [head | _] -> head
 
-  fn last(list)
+  function last(list)
     # @doc
     #
     # Returns the last element of `list`, or `nil` if empty. Walks the whole
@@ -784,7 +815,7 @@ module List
       [x] -> x
       [head | tail] -> last(tail)
 
-  fn insert(list, index, value)
+  function insert(list, index, value)
     # @doc
     #
     # Returns a new list with `value` placed at zero-based `index`, moving the
@@ -804,7 +835,7 @@ module List
     #   List.insert([1, 2, 3], 99, :x)   # == [1, 2, 3, :x]
     take(list, index) ++ [value] ++ drop(list, index)
 
-  fn delete(list, value)
+  function delete(list, value)
     # @doc
     #
     # Returns a new list with the first element equal to `value` (using `==`)
@@ -819,19 +850,19 @@ module List
     #   List.delete([1, 2, 3], 9)      # == [1, 2, 3]
     delete_loop(list, value, [])
 
-  fnp delete_loop(list, value, acc)
+  helper delete_loop(list, value, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `delete`, carrying the
     # already-passed prefix in reverse until it finds `value`.
     case list
-      [] -> reverse(acc)
+      [] -> reverse_loop(acc, [])
       [head | tail] ->
         cond
-          head == value -> reverse(acc) ++ tail
+          head == value -> reverse_loop(acc, []) ++ tail
           true -> delete_loop(tail, value, [head] ++ acc)
 
-  fn delete_at(list, index)
+  function delete_at(list, index)
     # @doc
     #
     # Returns a new list with the element at zero-based `index` removed — the
@@ -846,7 +877,7 @@ module List
     #   List.delete_at([1, 2, 3], 99)   # == [1, 2, 3]
     take(list, index) ++ drop(list, index + 1)
 
-  fn update_at(list, index, f)
+  function update_at(list, index, f)
     # @doc
     #
     # Returns a new list with the element at zero-based `index` replaced by
@@ -862,20 +893,20 @@ module List
     #   List.update_at([1, 2, 3], 99, do x -> x * 10)  # == [1, 2, 3]
     update_at_loop(list, index, f, [])
 
-  fnp update_at_loop(list, index, f, acc)
+  helper update_at_loop(list, index, f, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `update_at`, carrying the
     # already-passed prefix in reverse.
     case list
-      [] -> reverse(acc)
+      [] -> reverse_loop(acc, [])
       [head | tail] ->
         cond
-          index < 0 -> reverse(acc) ++ list
-          index == 0 -> reverse(acc) ++ [f(head)] ++ tail
+          index < 0 -> reverse_loop(acc, []) ++ list
+          index == 0 -> reverse_loop(acc, []) ++ [f(head)] ++ tail
           true -> update_at_loop(tail, index - 1, f, [head] ++ acc)
 
-  fn take(list, n)
+  function take(list, n)
     # @doc
     #
     # Returns the first `n` elements of `list`. Returns `[]` when `n` is zero or
@@ -888,7 +919,7 @@ module List
     #   List.take([1, 2, 3, 4], 2)   # == [1, 2]
     reverse(take_loop(list, n, []))
 
-  fnp take_loop(list, n, acc)
+  helper take_loop(list, n, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `take`, building the kept prefix in
@@ -898,7 +929,7 @@ module List
       [head | tail] when n > 0 -> take_loop(tail, n - 1, [head] ++ acc)
       [head | tail] -> acc
 
-  fn drop(list, n)
+  function drop(list, n)
     # @doc
     #
     # Returns `list` without its first `n` elements. When `n` is zero or
@@ -915,7 +946,7 @@ module List
       [head | tail] when n > 0 -> drop(tail, n - 1)
       [head | tail] -> list
 
-  fn take_while(list, f)
+  function take_while(list, f)
     # @doc
     #
     # Returns the longest prefix of `list` for which `f` is truthy — a
@@ -929,7 +960,7 @@ module List
     #   List.take_while([2, 4, 5, 6], do x -> Integer.is_even(x))   # == [2, 4]
     reverse(take_while_loop(list, f, []))
 
-  fnp take_while_loop(list, f, acc)
+  helper take_while_loop(list, f, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `take_while`, building the kept
@@ -941,7 +972,7 @@ module List
           f(head) -> take_while_loop(tail, f, [head] ++ acc)
           true -> acc
 
-  fn drop_while(list, f)
+  function drop_while(list, f)
     # @doc
     #
     # Returns `list` with its longest prefix for which `f` is truthy removed —
@@ -960,7 +991,7 @@ module List
           f(head) -> drop_while(tail, f)
           true -> list
 
-  fn slice(list, start, count)
+  function slice(list, start, count)
     # @doc
     #
     # Returns `count` elements of `list` starting at zero-based `start`.
@@ -974,7 +1005,7 @@ module List
     #   List.slice([1, 2, 3, 4, 5], 1, 3)   # == [2, 3, 4]
     take(drop(list, start), count)
 
-  fn group_by(list, f)
+  function group_by(list, f)
     # @doc
     #
     # Groups the elements of `list` by the key returned by `f`, returning a map
@@ -998,7 +1029,7 @@ module List
     #   # == {odd: [1, 3], even: [2, 4]}
     Map.map_values(group_by_loop(list, f, {}), do group -> reverse(group))
 
-  fnp group_by_loop(list, f, acc)
+  helper group_by_loop(list, f, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `group_by`. Builds each key's group
@@ -1011,7 +1042,7 @@ module List
         group = Map.get(acc, key, [])
         group_by_loop(tail, f, Map.put(acc, key, [head] ++ group))
 
-  fn chunk_every(list, n)
+  function chunk_every(list, n)
     # @doc
     #
     # Splits `list` into consecutive chunks of `n` elements each; the final
@@ -1024,7 +1055,7 @@ module List
     #   List.chunk_every([1, 2, 3, 4, 5], 2)   # == [[1, 2], [3, 4], [5]]
     reverse(chunk_every_loop(list, n, []))
 
-  fnp chunk_every_loop(list, n, acc)
+  helper chunk_every_loop(list, n, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `chunk_every`, building the chunks
@@ -1032,11 +1063,23 @@ module List
     cond
       list == [] -> acc
       true ->
-        chunk = take(list, n)
-        rest = drop(list, n)
+        (chunk, rest) = split_chunk(list, n, [])
         chunk_every_loop(rest, n, [chunk] ++ acc)
 
-  fn join(list, sep)
+  helper split_chunk(list, n, acc)
+    # @doc
+    #
+    # (private) Splits `list` into its first `n` elements and the rest, as
+    # `(chunk, rest)` — `chunk_every_loop`'s own take/drop in one pass, since
+    # it cannot call the public `take` or `drop`.
+    cond
+      n <= 0 -> (reverse_loop(acc, []), list)
+      true ->
+        case list
+          [] -> (reverse_loop(acc, []), [])
+          [head | tail] -> split_chunk(tail, n - 1, [head] ++ acc)
+
+  function join(list, sep)
     # @doc
     #
     # Joins the elements of `list` into a single string separated by `sep`.
@@ -1051,7 +1094,7 @@ module List
       [] -> ""
       [head | tail] -> join_loop(tail, sep, head)
 
-  fnp join_loop(list, sep, acc)
+  helper join_loop(list, sep, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `join`, threading the string built
@@ -1060,7 +1103,7 @@ module List
       [] -> acc
       [head | tail] -> join_loop(tail, sep, acc <> sep <> head)
 
-  fn intersperse(list, sep)
+  function intersperse(list, sep)
     # @doc
     #
     # Returns a new list with `sep` inserted between every pair of adjacent
@@ -1076,7 +1119,7 @@ module List
     #   List.intersperse([], 0)          # == []
     reverse(intersperse_loop(list, sep, []))
 
-  fnp intersperse_loop(list, sep, acc)
+  helper intersperse_loop(list, sep, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `intersperse`, building the result
@@ -1086,7 +1129,7 @@ module List
       [x] -> [x] ++ acc
       [head | tail] -> intersperse_loop(tail, sep, [sep, head] ++ acc)
 
-  fn sample(list)
+  function sample(list)
     # @doc
     #
     # Returns one element of `list`, chosen uniformly at random, or `nil` when
@@ -1099,7 +1142,7 @@ module List
     #   List.sample([])        # == nil
     at(list, random_int(0, size(list) - 1))
 
-  fn shuffle(list)
+  function shuffle(list)
     # @doc
     #
     # Returns a new list with the elements of `list` in random order. Every
@@ -1112,7 +1155,7 @@ module List
     #   | List.sort()   # == [1, 2, 3]
     reverse(shuffle_loop(list, []))
 
-  fnp shuffle_loop(list, acc)
+  helper shuffle_loop(list, acc)
     # @doc
     #
     # (private) Tail-recursive helper for `shuffle`, building the shuffled
@@ -1122,5 +1165,16 @@ module List
       true ->
         index = random_int(0, size(list) - 1)
         picked = at(list, index)
-        rest = delete_at(list, index)
+        rest = remove_at(list, index)
         shuffle_loop(rest, [picked] ++ acc)
+
+  helper remove_at(list, index)
+    # @doc
+    #
+    # (private) `delete_at`, for `shuffle_loop` since it cannot call the
+    # public `delete_at`. Built on the same `split_chunk` `chunk_every_loop`
+    # uses, dropping the one element right after the split.
+    (prefix, rest) = split_chunk(list, index, [])
+    case rest
+      [] -> prefix
+      [_ | after] -> prefix ++ after

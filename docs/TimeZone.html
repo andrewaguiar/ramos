@@ -63,47 +63,47 @@ ist.offset_minutes   <span class="tok-com"># == 330</span>
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#utc/0" class="fn-sig"><code>fn utc()</code></a>
+    <a href="#utc/0" class="fn-sig"><code>function utc()</code></a>
     <span class="fn-summary">The UTC zone: <code>offset_minutes: 0</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#fixed/2" class="fn-sig"><code>fn fixed(name, offset_minutes)</code></a>
+    <a href="#fixed/2" class="fn-sig"><code>function fixed(name, offset_minutes)</code></a>
     <span class="fn-summary">A zone called <code>name</code>, at a fixed <code>offset_minutes</code> from UTC.</span>
   </div>
   <div class="fn-row">
-    <a href="#from_offset_minutes/1" class="fn-sig"><code>fn from_offset_minutes(offset_minutes)</code></a>
+    <a href="#from_offset_minutes/1" class="fn-sig"><code>function from_offset_minutes(offset_minutes)</code></a>
     <span class="fn-summary">A zone named after its own offset — <code>&quot;UTC&quot;</code> at <code>0</code>, otherwise the <code>±HH:MM</code> text <code>offset_text</code> renders. For when a zone has no friendlier name to give it.</span>
   </div>
   <div class="fn-row">
-    <a href="#parse/1" class="fn-sig"><code>fn parse(text)</code></a>
+    <a href="#parse/1" class="fn-sig"><code>function parse(text)</code></a>
     <span class="fn-summary">A zone parsed from <code>offset_text</code>&#39;s shape: <code>&quot;Z&quot;</code> for UTC, or a signed <code>&quot;±HH:MM&quot;</code>. The zone is named after the offset — this is the inverse of <code>from_offset_minutes</code>, not of <code>fixed</code> (a parsed zone has no way to recover a friendlier name).</span>
   </div>
   <div class="fn-row">
-    <a href="#offset_text/1" class="fn-sig"><code>fn offset_text(offset_minutes)</code></a>
+    <a href="#offset_text/1" class="fn-sig"><code>function offset_text(offset_minutes)</code></a>
     <span class="fn-summary"><code>offset_minutes</code> rendered as <code>&quot;Z&quot;</code> (when zero) or a signed <code>&quot;±HH:MM&quot;</code> — the suffix <code><a href="DateTime.html#to_iso">DateTime.to_iso</a></code> appends.</span>
   </div>
   <div class="fn-row">
-    <a href="#parse_offset_text/1" class="fn-sig"><code>fn parse_offset_text(text)</code></a>
+    <a href="#parse_offset_text/1" class="fn-sig"><code>function parse_offset_text(text)</code></a>
     <span class="fn-summary">The inverse of <code>offset_text</code>: <code>&quot;Z&quot;</code> or a signed <code>&quot;±HH:MM&quot;</code> parsed back to a minute count.</span>
   </div>
   <div class="fn-row">
-    <a href="#compare/2" class="fn-sig"><code>fn compare(self, other)</code></a>
+    <a href="#compare/2" class="fn-sig"><code>function compare(self, other)</code></a>
     <span class="fn-summary">Orders two zones by <code>offset_minutes</code>, west to east, as <code>-1</code>, <code>0</code> or <code>1</code> — the shape <code><a href="Integer.html#compare">Integer.compare</a></code> uses. Two zones at the same offset compare equal regardless of name.</span>
   </div>
   <div class="fn-row private">
-    <a href="#pad/2" class="fn-sig"><code>fnp pad(n, width)</code></a>
+    <a href="#pad/2" class="fn-sig"><code>helper pad(n, width)</code></a>
     <span class="fn-summary">(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>offset_text</code>.</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="utc/0">
-  <h3 class="fn-title"><code>fn utc()</code> <a class="anchor" href="#utc/0">¶</a></h3>
+  <h3 class="fn-title"><code>function utc()</code> <a class="anchor" href="#utc/0">¶</a></h3>
 <p>The UTC zone: <code>offset_minutes: 0</code>.</p>
 <pre><code><span class="tok-type">TimeZone</span>.utc()   <span class="tok-com"># == TimeZone{name: &quot;UTC&quot;, offset_minutes: 0}</span></code></pre>
 <p class="returns"><strong>Returns:</strong> <code>TimeZone{name: &quot;UTC&quot;, offset_minutes: 0}</code></p>
 </div>
 <div class="fn-detail" id="fixed/2">
-  <h3 class="fn-title"><code>fn fixed(name, offset_minutes)</code> <a class="anchor" href="#fixed/2">¶</a></h3>
+  <h3 class="fn-title"><code>function fixed(name, offset_minutes)</code> <a class="anchor" href="#fixed/2">¶</a></h3>
 <p>A zone called <code>name</code>, at a fixed <code>offset_minutes</code> from UTC.</p>
 <pre><code><span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;IST&quot;</span>, <span class="tok-lit">330</span>)   <span class="tok-com"># == TimeZone{name: &quot;IST&quot;, offset_minutes: 330}</span></code></pre>
 <dl class="params">
@@ -115,7 +115,7 @@ ist.offset_minutes   <span class="tok-com"># == 330</span>
 <p class="returns"><strong>Returns:</strong> a new <code><a href="TimeZone.html">TimeZone</a></code></p>
 </div>
 <div class="fn-detail" id="from_offset_minutes/1">
-  <h3 class="fn-title"><code>fn from_offset_minutes(offset_minutes)</code> <a class="anchor" href="#from_offset_minutes/1">¶</a></h3>
+  <h3 class="fn-title"><code>function from_offset_minutes(offset_minutes)</code> <a class="anchor" href="#from_offset_minutes/1">¶</a></h3>
 <p>A zone named after its own offset — <code>&quot;UTC&quot;</code> at <code>0</code>, otherwise the <code>±HH:MM</code> text <code>offset_text</code> renders. For when a zone has no friendlier name to give it.</p>
 <pre><code><span class="tok-type">TimeZone</span>.from_offset_minutes(<span class="tok-lit">0</span>)      <span class="tok-com"># == TimeZone{name: &quot;UTC&quot;, offset_minutes: 0}</span>
 <span class="tok-type">TimeZone</span>.from_offset_minutes(-<span class="tok-lit">300</span>)   <span class="tok-com"># == TimeZone{name: &quot;-05:00&quot;, offset_minutes: -300}</span></code></pre>
@@ -126,7 +126,7 @@ ist.offset_minutes   <span class="tok-com"># == 330</span>
 <p class="returns"><strong>Returns:</strong> a new <code><a href="TimeZone.html">TimeZone</a></code>, named by its offset</p>
 </div>
 <div class="fn-detail" id="parse/1">
-  <h3 class="fn-title"><code>fn parse(text)</code> <a class="anchor" href="#parse/1">¶</a></h3>
+  <h3 class="fn-title"><code>function parse(text)</code> <a class="anchor" href="#parse/1">¶</a></h3>
 <p>A zone parsed from <code>offset_text</code>&#39;s shape: <code>&quot;Z&quot;</code> for UTC, or a signed <code>&quot;±HH:MM&quot;</code>. The zone is named after the offset — this is the inverse of <code>from_offset_minutes</code>, not of <code>fixed</code> (a parsed zone has no way to recover a friendlier name).</p>
 <pre><code><span class="tok-type">TimeZone</span>.parse(<span class="tok-str">&quot;Z&quot;</span>)        <span class="tok-com"># == TimeZone{name: &quot;UTC&quot;, offset_minutes: 0}</span>
 <span class="tok-type">TimeZone</span>.parse(<span class="tok-str">&quot;-05:00&quot;</span>)   <span class="tok-com"># == TimeZone{name: &quot;-05:00&quot;, offset_minutes: -300}</span></code></pre>
@@ -137,7 +137,7 @@ ist.offset_minutes   <span class="tok-com"># == 330</span>
 <p class="returns"><strong>Returns:</strong> the corresponding <code><a href="TimeZone.html">TimeZone</a></code></p>
 </div>
 <div class="fn-detail" id="offset_text/1">
-  <h3 class="fn-title"><code>fn offset_text(offset_minutes)</code> <a class="anchor" href="#offset_text/1">¶</a></h3>
+  <h3 class="fn-title"><code>function offset_text(offset_minutes)</code> <a class="anchor" href="#offset_text/1">¶</a></h3>
 <p><code>offset_minutes</code> rendered as <code>&quot;Z&quot;</code> (when zero) or a signed <code>&quot;±HH:MM&quot;</code> — the suffix <code><a href="DateTime.html#to_iso">DateTime.to_iso</a></code> appends.</p>
 <pre><code><span class="tok-type">TimeZone</span>.offset_text(<span class="tok-lit">0</span>)      <span class="tok-com"># == &quot;Z&quot;</span>
 <span class="tok-type">TimeZone</span>.offset_text(<span class="tok-lit">330</span>)    <span class="tok-com"># == &quot;+05:30&quot;</span>
@@ -149,7 +149,7 @@ ist.offset_minutes   <span class="tok-com"># == 330</span>
 <p class="returns"><strong>Returns:</strong> <code>&quot;Z&quot;</code> or a signed <code>&quot;±HH:MM&quot;</code> string</p>
 </div>
 <div class="fn-detail" id="parse_offset_text/1">
-  <h3 class="fn-title"><code>fn parse_offset_text(text)</code> <a class="anchor" href="#parse_offset_text/1">¶</a></h3>
+  <h3 class="fn-title"><code>function parse_offset_text(text)</code> <a class="anchor" href="#parse_offset_text/1">¶</a></h3>
 <p>The inverse of <code>offset_text</code>: <code>&quot;Z&quot;</code> or a signed <code>&quot;±HH:MM&quot;</code> parsed back to a minute count.</p>
 <pre><code><span class="tok-type">TimeZone</span>.parse_offset_text(<span class="tok-str">&quot;Z&quot;</span>)        <span class="tok-com"># == 0</span>
 <span class="tok-type">TimeZone</span>.parse_offset_text(<span class="tok-str">&quot;+05:30&quot;</span>)   <span class="tok-com"># == 330</span>
@@ -161,7 +161,7 @@ ist.offset_minutes   <span class="tok-com"># == 330</span>
 <p class="returns"><strong>Returns:</strong> the offset from UTC, in minutes</p>
 </div>
 <div class="fn-detail" id="compare/2">
-  <h3 class="fn-title"><code>fn compare(self, other)</code> <a class="anchor" href="#compare/2">¶</a></h3>
+  <h3 class="fn-title"><code>function compare(self, other)</code> <a class="anchor" href="#compare/2">¶</a></h3>
 <p>Orders two zones by <code>offset_minutes</code>, west to east, as <code>-1</code>, <code>0</code> or <code>1</code> — the shape <code><a href="Integer.html#compare">Integer.compare</a></code> uses. Two zones at the same offset compare equal regardless of name.</p>
 <pre><code><span class="tok-type">TimeZone</span>.compare(<span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;A&quot;</span>, -<span class="tok-lit">300</span>), <span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;B&quot;</span>, <span class="tok-lit">0</span>))   <span class="tok-com"># == -1</span>
 <span class="tok-type">TimeZone</span>.compare(<span class="tok-type">TimeZone</span>.utc(), <span class="tok-type">TimeZone</span>.fixed(<span class="tok-str">&quot;Also UTC&quot;</span>, <span class="tok-lit">0</span>))       <span class="tok-com"># == 0</span></code></pre>
@@ -174,7 +174,7 @@ ist.offset_minutes   <span class="tok-com"># == 330</span>
 <p class="returns"><strong>Returns:</strong> <code>-1</code> when <code>self</code> is west of <code>other</code>, <code>1</code> when east, <code>0</code> when level</p>
 </div>
 <div class="fn-detail" id="pad/2">
-  <h3 class="fn-title"><code>fnp pad(n, width)</code> <span class="badge private">private</span> <a class="anchor" href="#pad/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper pad(n, width)</code> <span class="badge private">private</span> <a class="anchor" href="#pad/2">¶</a></h3>
 <p>(private) <code>n</code> rendered as decimal digits, left-padded with zeros to at least <code>width</code> characters. Backs <code>offset_text</code>.</p>
 </div>
 </section>

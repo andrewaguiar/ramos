@@ -68,7 +68,7 @@
   <li><a href="#multiline_strings">Multiline strings</a> <span class="example-summary"><code>&quot;&quot;&quot;</code> opens a multiline string. The opening quotes are followed straight by a newline, content sits one level (2 spaces) past the opening line, and the closing quotes stand alone at the opening line&#39;s indentation. Every content line keeps its trailing newline.</span></li>
   <li><a href="#namespaced_module">Namespaced module</a> <span class="example-summary">module names are CamelCase and may be namespaced with <code>.</code>. The namespace maps to the file path: <code>MyApp.Business.SystemUser</code> lives at <code>src/my_app/business/system_user.rmo</code>.</span></li>
   <li><a href="#pipe">Pipe</a> <span class="example-summary"><code>|</code> passes the value on its left as the <em>first argument</em> to the module function on its right, so data flows top to bottom. It always starts its own line, at the same indentation as what comes before it.</span></li>
-  <li><a href="#private_functions">Private functions</a> <span class="example-summary"><code>fnp</code> defines a private function, callable only from inside its own module. <code>fn</code> is public.</span></li>
+  <li><a href="#private_functions">Private functions</a> <span class="example-summary"><code>helper</code> defines a private function, callable only from inside its own module. <code>function</code> is public.</span></li>
   <li><a href="#run">Run</a> <span class="example-summary"><code>run</code> is a block of matches. Statements run in order; the first <code>pattern = value</code> that does not match ends the block and <em>is</em> its result, so a chain of validations reads flat instead of as nested cases.</span></li>
   <li><a href="#sigils">Sigils</a> <span class="example-summary">a letter hugging a string desugars to a <code>.parse</code> call.</span></li>
   <li><a href="#string_concat">String concat</a> <span class="example-summary"><code>&lt;&gt;</code> concatenates two strings.</span></li>
@@ -84,7 +84,7 @@
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">Cache</span>
   <span class="tok-kw">implements</span> <span class="tok-type">Actor</span>
 
-  <span class="tok-kw">fn</span> call(f, args, state, config)
+  <span class="tok-kw">function</span> call(f, args, state, config)
     <span class="tok-kw">case</span> f
       <span class="tok-lit">:get</span> -&gt;
         [key] = args
@@ -93,19 +93,19 @@
         [key, value] = args
         (<span class="tok-lit">:ok</span>, <span class="tok-type">Map</span>.put(state, key, value))
 
-  <span class="tok-kw">fn</span> cast(f, args, state, config)
+  <span class="tok-kw">function</span> cast(f, args, state, config)
     [key] = args
     <span class="tok-type">Map</span>.delete(state, key)</code></pre>
 <p>client half — callers never write <code>call_actor</code> / <code>cast_actor</code></p>
-<pre><code>  <span class="tok-kw">fn</span> start()
+<pre><code>  <span class="tok-kw">function</span> start()
     start_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, {}, {})
 
-  <span class="tok-kw">fn</span> get(key)
+  <span class="tok-kw">function</span> get(key)
     call_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:get</span>, [key])
 
-  <span class="tok-kw">fn</span> set(key, value)
+  <span class="tok-kw">function</span> set(key, value)
     call_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:set</span>, [key, value])
-  <span class="tok-kw">fn</span> clear(key)
+  <span class="tok-kw">function</span> clear(key)
     cast_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:clear</span>, [key])</code></pre>
 </section>
 <section class="example" id="alias">
@@ -127,7 +127,7 @@ ellipse = <span class="tok-type">Ellipse</span>.area(<span class="tok-lit">10</s
   <span class="tok-kw">alias</span> <span class="tok-type">Geometry</span>.<span class="tok-type">Circle</span>
   <span class="tok-kw">alias</span> <span class="tok-type">Drawing</span>.<span class="tok-type">Shapes</span>.<span class="tok-type">Ellipse</span> <span class="tok-kw">as</span> <span class="tok-type">Oval</span>
 
-  <span class="tok-kw">fn</span> areas(r)
+  <span class="tok-kw">function</span> areas(r)
     (<span class="tok-type">Circle</span>.area(r), <span class="tok-type">Oval</span>.area(r, r))</code></pre>
 </section>
 <section class="example" id="arithmetic">
@@ -227,7 +227,7 @@ greater_or_equal = <span class="tok-lit">1</span> &gt;= <span class="tok-lit">2<
 <p>@module_doc</p>
 <p>Greeter — builds greetings.</p>
 <pre><code><span class="tok-type">Greeter</span>.greet(<span class="tok-str">&quot;Andrew&quot;</span>)   <span class="tok-com"># == &quot;Ola Andrew&quot;</span></code></pre>
-<pre><code>  <span class="tok-kw">fn</span> greet(name)</code></pre>
+<pre><code>  <span class="tok-kw">function</span> greet(name)</code></pre>
 <p>@doc</p>
 <p>Returns the greeting for <code>name</code>.</p>
 <pre><code><span class="tok-type">Greeter</span>.greet(<span class="tok-str">&quot;Andrew&quot;</span>)   <span class="tok-com"># == &quot;Ola Andrew&quot;</span></code></pre>
@@ -236,7 +236,7 @@ greater_or_equal = <span class="tok-lit">1</span> &gt;= <span class="tok-lit">2<
 <section class="example" id="error_tuples">
   <h2>Error tuples <a class="anchor" href="#error_tuples">¶</a></h2>
   <p class="example-summary">Ramos has no exceptions. A function that can fail returns a tagged tuple instead: <code>(:ok, value)</code> on success, <code>(:error, (:type, msg))</code> on failure. The error is an ordinary value, so it is matched like any other.</p>
-<pre><code><span class="tok-kw">fn</span> withdraw(balance, amount)
+<pre><code><span class="tok-kw">function</span> withdraw(balance, amount)
   <span class="tok-kw">cond</span>
     amount &lt;= <span class="tok-lit">0</span> -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:invalid_amount</span>, <span class="tok-str">&quot;amount must be positive&quot;</span>))
     amount &gt; balance -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:insufficient_funds</span>, <span class="tok-str">&quot;balance is too low&quot;</span>))
@@ -262,14 +262,14 @@ print(total)</code></pre>
 <section class="example" id="guards">
   <h2>Guards <a class="anchor" href="#guards">¶</a></h2>
   <p class="example-summary">a <code>when</code> guard sits between a pattern and its <code>-&gt;</code>, narrowing a match beyond the pattern&#39;s shape.</p>
-<pre><code><span class="tok-kw">fn</span> classify(list)
+<pre><code><span class="tok-kw">function</span> classify(list)
   <span class="tok-kw">case</span> list
     [head | _] <span class="tok-kw">when</span> head &gt; <span class="tok-lit">100</span> -&gt; <span class="tok-lit">:big</span>
     [head | _] <span class="tok-kw">when</span> head &gt; <span class="tok-lit">0</span> -&gt; <span class="tok-lit">:small</span>
     [_ | _] -&gt; <span class="tok-lit">:non_positive</span>
     [] -&gt; <span class="tok-lit">:empty</span></code></pre>
 <p>Guards are plain expressions, so they combine with <code>and</code> / <code>or</code> / <code>not</code>.</p>
-<pre><code><span class="tok-kw">fn</span> admits(user)
+<pre><code><span class="tok-kw">function</span> admits(user)
   <span class="tok-kw">case</span> user
     ({name: n, age: a}, <span class="tok-lit">:admin</span>) <span class="tok-kw">when</span> a &gt; <span class="tok-lit">18</span> <span class="tok-kw">and</span> <span class="tok-kw">not</span> (n == <span class="tok-str">&quot;&quot;</span>) -&gt; <span class="tok-str">&quot;Admin #{n}&quot;</span>
     ({name: n}, <span class="tok-lit">:guest</span>) -&gt; <span class="tok-str">&quot;Guest #{n}&quot;</span>
@@ -310,7 +310,7 @@ print(total)</code></pre>
     name: <span class="tok-lit">nil</span>
     age: <span class="tok-lit">0</span>
 
-  <span class="tok-kw">fn</span> is_over_eighteen(<span class="tok-kw">self</span>)   <span class="tok-com"># required by Helloable</span>
+  <span class="tok-kw">function</span> is_over_eighteen(<span class="tok-kw">self</span>)   <span class="tok-com"># required by Helloable</span>
     <span class="tok-kw">self</span>.age &gt; <span class="tok-lit">18</span></code></pre>
 </section>
 <section class="example" id="lambdas">
@@ -379,10 +379,10 @@ defaults = {} ++ merged</code></pre>
   <h2>Module <a class="anchor" href="#module">¶</a></h2>
   <p class="example-summary">a pure module is a namespace of functions with no per-instance state. It is itself a value, so it can be passed around and inspected.</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">PersonUtils</span>
-  <span class="tok-kw">fn</span> hello(person)
+  <span class="tok-kw">function</span> hello(person)
     print(<span class="tok-str">&quot;Ola #{person.name}, eu tenho #{person.age}&quot;</span>)
 
-  <span class="tok-kw">fn</span> hi_all(people)
+  <span class="tok-kw">function</span> hi_all(people)
     people
     | <span class="tok-type">List</span>.map(<span class="tok-kw">do</span> p -&gt; <span class="tok-str">&quot;hi #{p.name}&quot;</span>)
     | <span class="tok-type">List</span>.join(<span class="tok-str">&quot;, &quot;</span>)</code></pre>
@@ -400,7 +400,7 @@ defaults = {} ++ merged</code></pre>
 
 print(str)</code></pre>
 <p>Here the string opens at the function-body level, so &quot;Usage: ...&quot; is flush left in the value while &quot;  -h ...&quot; keeps its two extra spaces. Interpolation works exactly as in single-line strings.</p>
-<pre><code><span class="tok-kw">fn</span> usage(name)
+<pre><code><span class="tok-kw">function</span> usage(name)
   <span class="tok-str">&quot;&quot;&quot;
     Usage: #{name} &lt;file&gt;
       -h  show this help
@@ -410,10 +410,10 @@ print(str)</code></pre>
   <h2>Namespaced module <a class="anchor" href="#namespaced_module">¶</a></h2>
   <p class="example-summary">module names are CamelCase and may be namespaced with <code>.</code>. The namespace maps to the file path: <code>MyApp.Business.SystemUser</code> lives at <code>src/my_app/business/system_user.rmo</code>.</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">MyApp</span>.<span class="tok-type">Business</span>.<span class="tok-type">SystemUser</span>
-  <span class="tok-kw">fn</span> create(name)
+  <span class="tok-kw">function</span> create(name)
     (<span class="tok-lit">:ok</span>, name)
 
-  <span class="tok-kw">fn</span> describe()
+  <span class="tok-kw">function</span> describe()
     <span class="tok-str">&quot;a namespaced module&quot;</span></code></pre>
 </section>
 <section class="example" id="pipe">
@@ -432,12 +432,12 @@ plain = <span class="tok-type">List</span>.filter([<span class="tok-lit">1</span
 </section>
 <section class="example" id="private_functions">
   <h2>Private functions <a class="anchor" href="#private_functions">¶</a></h2>
-  <p class="example-summary"><code>fnp</code> defines a private function, callable only from inside its own module. <code>fn</code> is public.</p>
+  <p class="example-summary"><code>helper</code> defines a private function, callable only from inside its own module. <code>function</code> is public.</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">Accounts</span>
-  <span class="tok-kw">fn</span> create(name)
+  <span class="tok-kw">function</span> create(name)
     (<span class="tok-lit">:ok</span>, normalize(name))   <span class="tok-com"># a public function may call a private one</span>
 
-  <span class="tok-kw">fnp</span> normalize(name)
+  <span class="tok-kw">helper</span> normalize(name)
     <span class="tok-type">String</span>.downcase(name)</code></pre>
 </section>
 <section class="example" id="run">
@@ -497,7 +497,7 @@ greeting = <span class="tok-str">&quot;Ola #{name}, you have #{1 + 1} new messag
     name: <span class="tok-lit">nil</span>
     age: <span class="tok-lit">0</span>
 
-  <span class="tok-kw">fn</span> hello(<span class="tok-kw">self</span>)
+  <span class="tok-kw">function</span> hello(<span class="tok-kw">self</span>)
     print(<span class="tok-str">&quot;Ola #{self.name}, eu tenho #{self.age}&quot;</span>)</code></pre>
 <p>Construction is the map-literal syntax prefixed by the struct name; omitted fields take their declared defaults, and field access is dot syntax.</p>
 <pre><code>andrew = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;Andrew&quot;</span>, age: <span class="tok-lit">40</span>}
@@ -523,7 +523,7 @@ is_person = <span class="tok-type">Struct</span>.is_a(andrew, <span class="tok-t
     code: <span class="tok-lit">0</span>
     message: <span class="tok-lit">nil</span>
 
-<span class="tok-kw">fn</span> charge(amount)
+<span class="tok-kw">function</span> charge(amount)
   <span class="tok-kw">cond</span>
     amount &lt;= <span class="tok-lit">0</span> -&gt; (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">555</span>, message: <span class="tok-str">&quot;must be positive&quot;</span>})
     amount &gt; <span class="tok-lit">10000</span> -&gt; (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">556</span>, message: <span class="tok-str">&quot;too large&quot;</span>})
@@ -541,13 +541,13 @@ print(result)</code></pre>
   <h2>Trait <a class="anchor" href="#trait">¶</a></h2>
   <p class="example-summary">a trait declares a contract of functions. A function <em>with</em> a body is a default implementation; a function <em>without</em> one is required, and every implementer must define it.</p>
 <pre><code><span class="tok-kw">trait</span> <span class="tok-type">Helloable</span>
-  <span class="tok-kw">fn</span> hello(<span class="tok-kw">self</span>)
+  <span class="tok-kw">function</span> hello(<span class="tok-kw">self</span>)
     print(<span class="tok-str">&quot;Ola #{self.name}, eu tenho #{self.age}&quot;</span>)
 
-  <span class="tok-kw">fn</span> describe(<span class="tok-kw">self</span>)
+  <span class="tok-kw">function</span> describe(<span class="tok-kw">self</span>)
     <span class="tok-str">&quot;#{self.name} (#{self.age})&quot;</span>
 
-  <span class="tok-kw">fn</span> is_over_eighteen(<span class="tok-kw">self</span>)   <span class="tok-com"># required, no body</span></code></pre>
+  <span class="tok-kw">function</span> is_over_eighteen(<span class="tok-kw">self</span>)   <span class="tok-com"># required, no body</span></code></pre>
 </section>
 <section class="example" id="variables">
   <h2>Variables <a class="anchor" href="#variables">¶</a></h2>

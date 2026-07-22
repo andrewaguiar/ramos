@@ -4,8 +4,8 @@ struct Geometry.Square
   attributes
     side: 0
 
-  fn area(self)
+  function area(self)
     self.side * self.side
 
-  fn name(self)
+  function name(self)
     "square"

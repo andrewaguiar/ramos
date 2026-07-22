@@ -2,4 +2,4 @@
 # `summary` has no body: it is required, and every implementer must define it.
 
 trait Reportable
-  fn summary(self)
+  function summary(self)

@@ -1,4 +1,4 @@
-//! Phase 4 acceptance: modules as values, `fn`/`fnp` visibility, `const`,
+//! Phase 4 acceptance: modules as values, `function`/`helper` visibility, `const`,
 //! `alias`, `self`, `Module.function()` resolution, `|.` runtime dispatch, and
 //! the `native(str, args)` seam the stdlib's Ramos bodies call through.
 
@@ -46,19 +46,19 @@ fn output(src: &str) -> String {
 
 const CIRCLE: &str = "\
 module Geometry.Shapes.Circle
-  fn pi()
+  function pi()
     3.14
 
-  fn twice_pi()
+  function twice_pi()
     pi() * 2
 
-  fn area(r)
+  function area(r)
     pi() * r * r
 
-  fn described(r)
+  function described(r)
     \"area #{area(r)} (#{tag()})\"
 
-  fnp tag()
+  helper tag()
     \"shape\"
 ";
 
@@ -96,12 +96,12 @@ fn a_module_resolves_its_own_functions_by_bare_name() {
 #[test]
 fn private_functions_are_only_callable_from_inside_the_module() {
     let err = eval_err(&format!("{CIRCLE}\nGeometry.Shapes.Circle.tag()"));
-    assert!(err.contains("is private (`fnp`)"), "{err}");
+    assert!(err.contains("is private (`helper`)"), "{err}");
 }
 
 #[test]
-fn module_functions_lists_public_names_in_declaration_order_and_hides_fnp() {
-    // Backs `Module.functions`; `tag` is `fnp` and must not appear.
+fn module_functions_lists_public_names_in_declaration_order_and_hides_helper() {
+    // Backs `Module.functions`; `tag` is `helper` and must not appear.
     assert_eq!(
         eval(&format!(
             "{CIRCLE}\nnative(\"module_functions\", [Geometry.Shapes.Circle])"
@@ -128,11 +128,11 @@ fn module_apply_resolves_a_function_by_name_and_calls_it() {
 }
 
 #[test]
-fn module_apply_enforces_fnp_visibility_from_outside() {
+fn module_apply_enforces_helper_visibility_from_outside() {
     let err = eval_err(&format!(
         "{CIRCLE}\nmodule_apply(Geometry.Shapes.Circle, \"tag\", [])"
     ));
-    assert!(err.contains("is private (`fnp`)"), "{err}");
+    assert!(err.contains("is private (`helper`)"), "{err}");
 }
 
 #[test]
@@ -164,13 +164,13 @@ fn alias_as_renames_to_break_a_collision() {
 fn a_module_aliases_others_inside_its_own_body() {
     let src = "\
 module Helper
-  fn shout(s)
+  function shout(s)
     string_upcase(s)
 
 module Cli
   alias Helper as H
 
-  fn main()
+  function main()
     H.shout(\"hi\")
 ";
     assert_eq!(eval(src), "\"HI\"");
@@ -180,10 +180,10 @@ module Cli
 fn self_refers_to_the_current_module() {
     let src = "\
 module Helper
-  fn shout(s)
+  function shout(s)
     string_upcase(s)
 
-  fn twice(s)
+  function twice(s)
     self.shout(s) <> self.shout(s)
 
 Helper.twice(\"hi\")";
@@ -199,7 +199,7 @@ Helper.twice(\"hi\")";
 fn a_module_is_itself_a_value() {
     let src = "\
 module Helper
-  fn shout(s)
+  function shout(s)
     string_upcase(s)
 
 m = Helper
@@ -208,7 +208,7 @@ m.shout(\"passed around\")";
 
     let types = "\
 module Helper
-  fn f()
+  function f()
     1
 
 (is_module(Helper), to_string(Helper))";
@@ -219,7 +219,7 @@ module Helper
 fn pipes_thread_the_left_side_as_the_first_argument() {
     let src = "\
 module Helper
-  fn join(a, b)
+  function join(a, b)
     a <> b
 
 \"x\"
@@ -233,10 +233,10 @@ fn kernel_is_in_implicit_scope_and_needs_no_alias() {
     // calls, and reaches its host handler through `native`.
     let src = "\
 module Kernel
-  fn print(value)
+  function print(value)
     native(\"print\", [value])
 
-  fn shout(s)
+  function shout(s)
     native(\"string_upcase\", [s])
 
 print(shout(\"hi\"))";
@@ -255,13 +255,13 @@ fn the_native_seam_reports_a_bad_shape_or_unknown_handler() {
 fn a_declaration_with_no_body_is_not_callable() {
     let src = "\
 module Kernel
-  fn native(str, args)
+  function native(str, args)
     # @doc
     #
     # Declared here, answered by the interpreter.
 
 module M
-  fn f()
+  function f()
     1
 
 M.g()";
@@ -330,7 +330,7 @@ struct Person
     name: nil
     age: 0
 
-  fn label(self)
+  function label(self)
     \"#{self.name}/#{self.age}\"
 
 andrew = Person{name: \"Andrew\", age: 40}";
@@ -357,9 +357,9 @@ andrew = Person{name: \"Andrew\", age: 40}";
 /// plus a struct that satisfies the requirement.
 const GREETABLE: &str = "\
 trait Greetable
-  fn greet(self)
+  function greet(self)
 
-  fn loud(self)
+  function loud(self)
     \"#{greet(self)}!\"
 
 struct Dog
@@ -368,7 +368,7 @@ struct Dog
   attributes
     name: nil
 
-  fn greet(self)
+  function greet(self)
     \"Woof from #{self.name}\"
 ";
 
@@ -390,7 +390,7 @@ fn a_struct_inherits_a_traits_default_methods() {
 fn a_structs_own_function_wins_over_the_traits_default() {
     let src = format!(
         "{GREETABLE}
-  fn loud(self)
+  function loud(self)
     \"OWN\"
 "
     );
@@ -404,7 +404,7 @@ fn a_structs_own_function_wins_over_the_traits_default() {
 fn implementing_a_trait_requires_its_bodyless_functions() {
     let src = "\
 trait Greetable
-  fn greet(self)
+  function greet(self)
 
 struct Cat
   implements Greetable
@@ -422,10 +422,10 @@ struct Cat
 fn a_required_function_may_be_satisfied_by_another_traits_default() {
     let src = "\
 trait NeedsLabel
-  fn label(self)
+  function label(self)
 
 trait HasLabel
-  fn label(self)
+  function label(self)
     \"default\"
 
 struct Tag
@@ -442,11 +442,11 @@ struct Tag
 fn two_traits_offering_the_same_default_is_ambiguous() {
     let src = "\
 trait LoudA
-  fn shout(self)
+  function shout(self)
     \"A\"
 
 trait LoudB
-  fn shout(self)
+  function shout(self)
     \"B\"
 
 struct Ox
@@ -462,7 +462,7 @@ struct Ox
     // Opens with a newline rather than `"\`, which would eat the indentation
     // of the line that follows it.
     let own = "
-  fn shout(self)
+  function shout(self)
     \"MINE\"
 
 Ox{}.shout()";
@@ -636,12 +636,12 @@ case 42
 /// around it the client half.
 const COUNTER: &str = "\
 trait Actor
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
 
 module Counter
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     case f
       :bump -> (state + 1, state + 1)
       :read -> (state, state)
@@ -649,7 +649,7 @@ module Counter
         [n] = args
         (state + n, state + n)
 
-  fn start(id)
+  function start(id)
     start_actor(id, Counter, 0, {})
 ";
 
@@ -684,12 +684,12 @@ fn config_is_passed_to_every_call_and_never_changes() {
     // state advances.
     let src = "\
 trait Actor
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
 
 module Stepper
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     (state + config, state + config)
 
 start_actor(:s, Stepper, 0, 7)
@@ -702,7 +702,7 @@ call_actor(:s, Stepper, :go, [])";
 fn starting_requires_a_module_that_implements_actor() {
     let src = "\
 module Plain
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     (:ok, state)
 
 start_actor(:p, Plain, 0, {})";
@@ -724,7 +724,7 @@ fn actor_lifecycle_errors_are_named() {
 module Other
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     (:ok, state)
 
 Counter.start(:c)
@@ -738,12 +738,12 @@ call_actor(:c, Other, :read, [])"
 fn a_handler_must_return_a_reply_and_state_pair() {
     let src = "\
 trait Actor
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
 
 module Bad
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     :not_a_tuple
 
 start_actor(:b, Bad, 0, {})
@@ -760,12 +760,12 @@ fn an_actor_cannot_reach_other_actors() {
     // actor waiting on a reply only it could produce.
     let src = "\
 trait Actor
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
 
 module Loop
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     call_actor(:l, Loop, :again, [])
 
 start_actor(:l, Loop, 0, {})
@@ -778,12 +778,12 @@ call_actor(:l, Loop, :go, [])";
 fn a_module_is_held_to_its_trait_contract_like_a_struct() {
     let src = "\
 trait Actor
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
 
 module Forgot
   implements Actor
 
-  fn other()
+  function other()
     1
 
 Forgot.other()";
@@ -796,16 +796,16 @@ Forgot.other()";
 /// discarded), plus a logger that overrides `cast` with its own handler.
 const CASTABLE: &str = "\
 trait Actor
-  fn cast(f, args, state, config)
+  function cast(f, args, state, config)
     (reply, new_state) = call(f, args, state, config)
     new_state
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
 
 module Counter
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     case f
       :bump -> (state + 1, state + 1)
       :read -> (state, state)
@@ -844,10 +844,10 @@ fn a_trailing_cast_still_runs_when_the_program_ends() {
 module Probe
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     (state, state)
 
-  fn cast(f, args, state, config)
+  function cast(f, args, state, config)
     print(\"handled\")
     state
 
@@ -878,10 +878,10 @@ fn an_overridden_cast_returns_only_the_new_state() {
 module Doubler
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     (state, state)
 
-  fn cast(f, args, state, config)
+  function cast(f, args, state, config)
     state * 2
 
 start_actor(:d, Doubler, 3, {{}})
@@ -903,7 +903,7 @@ fn cast_lifecycle_errors_match_call() {
 module Other
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     (state, state)
 
 start_actor(:c, Counter, 0, {{}})
@@ -1019,7 +1019,7 @@ trait Marker
 module Tagged
   implements Marker
 
-  fn go()
+  function go()
     42
 
 Tagged.go()";
@@ -1034,16 +1034,16 @@ trait Test
 module MyApp.TestThing
   implements Test
 
-  fn test_passes()
+  function test_passes()
     assert(1 == 1)
 
-  fn test_fails()
+  function test_fails()
     assert(1 == 2)
 
-  fn helper()
+  function extra()
     :not_a_test
 
-  fnp hidden()
+  helper hidden()
     :also_not
 ";
 
@@ -1079,7 +1079,7 @@ fn a_module_without_the_test_trait_is_not_run() {
 trait Test
 
 module Plain
-  fn test_looks_like_one()
+  function test_looks_like_one()
     assert(false)
 ";
     assert!(run_tests(src).is_empty());
@@ -1093,7 +1093,7 @@ trait Test
 module T
   implements Test
 
-  fn test_needs_args(x)
+  function test_needs_args(x)
     x
 ";
     let outcomes = run_tests(src);

@@ -3,8 +3,8 @@
 # `src/my_app/business/system_user.rmo`.
 
 module MyApp.Business.SystemUser
-  fn create(name)
+  function create(name)
     (:ok, name)
 
-  fn describe()
+  function describe()
     "a namespaced module"

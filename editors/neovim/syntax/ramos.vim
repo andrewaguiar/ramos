@@ -1,8 +1,8 @@
 " syntax/ramos.vim — syntax highlighting for Ramos
 "
 " Language spec: README.md (indentation driven, 2 spaces, no tabs).
-"   keywords:  module struct trait implements attributes fn fnp const do
-"              alias as begin rescue raise self case cond if else run when
+"   keywords:  module struct trait implements attributes function helper do end
+"              alias as self case cond if else run when
 "              and or not   true false nil   _
 "   literals:  int float string "..." with #{...} interpolation
 "              symbol :foo / :"..."   list [..] tuple (..) map {..}
@@ -22,14 +22,11 @@ syntax keyword ramosModule     module
 syntax keyword ramosStruct     struct
 syntax keyword ramosTrait      trait
 syntax keyword ramosImplements implements
-syntax keyword ramosDefine     fn fnp
+syntax keyword ramosDefine     function helper
 syntax keyword ramosAttr       attributes
-syntax keyword ramosConst      const
 syntax keyword ramosLambda     do
+syntax keyword ramosEnd        end
 syntax keyword ramosAlias      alias as
-
-" ── Keywords: error handling ────────────────────────────────────────────────
-syntax keyword ramosException begin rescue raise
 
 " ── Keywords: control flow (no `if` in Ramos) ─────────────────────────────────
 syntax keyword ramosConditional case cond if else run when
@@ -80,7 +77,7 @@ syntax match   ramosMethodCall "\C\.\zs[A-Za-z_][A-Za-z0-9_?!]*"
 " Highlight the name being defined after a definition keyword. Module/struct/
 " trait names may be namespaced, e.g. `MyApp.Business.SystemUser`.
 syntax match   ramosDefName   "\C\<\(module\|struct\|trait\)\s\+\zs[A-Z][A-Za-z0-9_.]*"
-syntax match   ramosFnName    "\C\<\(fnp\|fn\)\>\s\+\zs[A-Za-z_][A-Za-z0-9_?!]*"
+syntax match   ramosFnName    "\C\<\(helper\|function\)\>\s\+\zs[A-Za-z_][A-Za-z0-9_?!]*"
 " The short name introduced by `alias Foo.Bar as Bar`.
 syntax match   ramosAliasName "\C\<as\s\+\zs[A-Z][A-Za-z0-9_.]*"
 
@@ -112,10 +109,9 @@ highlight def link ramosTrait        Keyword
 highlight def link ramosImplements   Keyword
 highlight def link ramosDefine       Keyword
 highlight def link ramosAttr         Keyword
-highlight def link ramosConst        Keyword
 highlight def link ramosLambda       Keyword
+highlight def link ramosEnd          Keyword
 highlight def link ramosAlias        Keyword
-highlight def link ramosException    Keyword
 
 highlight def link ramosConditional  Conditional
 

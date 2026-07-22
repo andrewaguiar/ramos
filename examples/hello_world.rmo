@@ -2,13 +2,13 @@
 # arithmetic, maps a list through a private helper, and prints the results.
 
 module Main
-  fn main()
+  function main()
     total = (2 + 3) * 4 - 6 / 2
     doubled = double_all([1, 2, 3, 4])
     println("total is #{total}")
     println("doubled is #{doubled}")
 
-  fnp double_all(list)
+  helper double_all(list)
     case list
       [] -> []
       [head | tail] -> [head * 2] ++ double_all(tail)

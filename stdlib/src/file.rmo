@@ -31,7 +31,7 @@ module File
   #   - `mv` is the one way to move a file: it tries a rename first and falls
   #     back to copy + delete, so it works across filesystems.
 
-  fn read(path)
+  function read(path)
     # @doc
     #
     # Reads the entire file at `path` into a string.
@@ -44,7 +44,7 @@ module File
     #   File.read("missing.txt")    # == (:error, :enoent)
     native("file_read", [path])
 
-  fn write(path, contents)
+  function write(path, contents)
     # @doc
     #
     # Writes `contents` to `path`, replacing any existing content and creating
@@ -57,7 +57,7 @@ module File
     #   File.write("out.txt", "hello\n")   # == :ok
     native("file_write", [path, contents])
 
-  fn append(path, contents)
+  function append(path, contents)
     # @doc
     #
     # Appends `contents` to the end of `path`, creating the file if it does not
@@ -70,7 +70,7 @@ module File
     #   File.append("log.txt", "another line\n")   # == :ok
     native("file_append", [path, contents])
 
-  fn size(path)
+  function size(path)
     # @doc
     #
     # Returns the size of `path` in bytes.
@@ -82,7 +82,7 @@ module File
     #   File.size("greeting.txt")   # == (:ok, 6)
     native("file_size", [path])
 
-  fn rm(path)
+  function rm(path)
     # @doc
     #
     # Deletes the file at `path`.
@@ -94,7 +94,7 @@ module File
     #   File.rm("out.txt")   # == :ok
     native("file_remove", [path])
 
-  fn cp(source, dest)
+  function cp(source, dest)
     # @doc
     #
     # Copies the file at `source` to `dest`, overwriting `dest` if it exists.
@@ -107,7 +107,7 @@ module File
     #   File.cp("a.txt", "b.txt")   # == :ok
     native("file_copy", [source, dest])
 
-  fn mv(source, dest)
+  function mv(source, dest)
     # @doc
     #
     # Moves the file at `source` to `dest`. Works across filesystems: it tries a
@@ -121,7 +121,7 @@ module File
     #   File.mv("draft.txt", "final.txt")   # == :ok
     native("file_move", [source, dest])
 
-  fn exists(path)
+  function exists(path)
     # @doc
     #
     # Returns `true` if something exists at `path` (a file or a directory), else
@@ -135,7 +135,7 @@ module File
     #   File.exists("missing")   # == false
     native("path_exists", [path])
 
-  fn is_file(path)
+  function is_file(path)
     # @doc
     #
     # Returns `true` if `path` exists and is a regular file, else `false`
@@ -150,7 +150,7 @@ module File
     #   File.is_file("src")       # == false
     native("path_is_file", [path])
 
-  fn touch(path)
+  function touch(path)
     # @doc
     #
     # Creates `path` if it does not exist, and updates its modified time to now.
@@ -162,7 +162,7 @@ module File
     #   File.touch("build.stamp")   # == :ok
     native("file_touch", [path])
 
-  fn chmod(path, mode)
+  function chmod(path, mode)
     # @doc
     #
     # Sets the permission bits of `path`. `mode` is the numeric permission — for

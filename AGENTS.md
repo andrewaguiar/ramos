@@ -91,7 +91,7 @@ its own errors and never reaches into the next stage's internals.
 - `ramos::interp::run` / `run_with_args` / `run_with_streams` — execute a loaded
   `Program`. `run_with_streams` is the one tests use, so they can assert on
   stderr.
-- `ramos::interp::run_tests` — runs every `fn test_*` in modules `implements Test`.
+- `ramos::interp::run_tests` — runs every `function test_*` in modules `implements Test`.
 - `ramos::interp::Session` — REPL-style incremental evaluation.
 - `ramos::ast::Program` — the whole compiled program; pass it to the interp.
 
@@ -173,7 +173,7 @@ examples of correct style.
   `--quietly` suppresses them. A new Ramos test is expected to carry a `@doc`.
 - Ramos-level tests live under `src/test/` (the `TEST_ROOT` constant in
   `main.rs`): a module whose name ends in `Test` and `implements Test`, with
-  `fn test_*` functions. Run them with `ramos test`.
+  `function test_*` functions. Run them with `ramos test`.
 
 - **A stdlib `@doc` example is a test.** Every `#   expr   # == value` line is
   run by `ramos doctest` (and by `tests/doctest_test.rs`), in an empty directory

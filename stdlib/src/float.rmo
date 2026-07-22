@@ -29,7 +29,7 @@ module Float
   #   - `floor`, `ceil` and `round` all return an `Integer`.
   #   - `round` goes half *away from zero*: `2.5` rounds to `3`, `-2.5` to `-3`.
 
-  fn pi()
+  function pi()
     # @doc
     #
     # The ratio of a circle's circumference to its diameter.
@@ -39,7 +39,7 @@ module Float
     #   Float.pi()   # == 3.141592653589793
     3.141592653589793
 
-  fn e()
+  function e()
     # @doc
     #
     # Euler's number, the base of the natural logarithm.
@@ -49,7 +49,7 @@ module Float
     #   Float.e()   # == 2.718281828459045
     2.718281828459045
 
-  fn infinity()
+  function infinity()
     # @doc
     #
     # Positive infinity. Negate it for the other end: `-Float.infinity()`.
@@ -59,7 +59,7 @@ module Float
     #   Float.is_infinite(Float.infinity())   # == true
     1.0 / 0.0
 
-  fn nan()
+  function nan()
     # @doc
     #
     # Not-a-number, the result of an undefined operation. It equals nothing,
@@ -70,7 +70,7 @@ module Float
     #   Float.is_nan(Float.nan())   # == true
     0.0 / 0.0
 
-  fn floor(x)
+  function floor(x)
     # @doc
     #
     # The largest integer not greater than `x`.
@@ -87,7 +87,7 @@ module Float
     else
       dropped
 
-  fn ceil(x)
+  function ceil(x)
     # @doc
     #
     # The smallest integer not less than `x`.
@@ -104,7 +104,7 @@ module Float
     else
       dropped
 
-  fn round(x)
+  function round(x)
     # @doc
     #
     # `x` rounded to the nearest integer, halves going away from zero.
@@ -121,7 +121,7 @@ module Float
     else
       floor(x + 0.5)
 
-  fn abs(x)
+  function abs(x)
     # @doc
     #
     # The magnitude of `x`, without its sign.
@@ -136,7 +136,7 @@ module Float
     else
       x
 
-  fn sqrt(x)
+  function sqrt(x)
     # @doc
     #
     # The square root of `x`, via `x ** 0.5`. A negative `x` yields `nan`.
@@ -148,7 +148,7 @@ module Float
     #   Float.sqrt(2.25)   # == 1.5
     x ** 0.5
 
-  fn min(a, b)
+  function min(a, b)
     # @doc
     #
     # The smaller of two floats.
@@ -163,7 +163,7 @@ module Float
     else
       b
 
-  fn max(a, b)
+  function max(a, b)
     # @doc
     #
     # The larger of two floats.
@@ -178,7 +178,7 @@ module Float
     else
       b
 
-  fn clamp(x, low, high)
+  function clamp(x, low, high)
     # @doc
     #
     # `x` held inside the range `low`..`high`.
@@ -193,7 +193,7 @@ module Float
     #   Float.clamp(2.0, 1.0, 3.0)   # == 2.0
     min(max(x, low), high)
 
-  fn compare(a, b)
+  function compare(a, b)
     # @doc
     #
     # Orders two floats as `-1`, `0` or `1` — the shape sorting wants.
@@ -210,7 +210,7 @@ module Float
       a > b -> 1
       true -> 0
 
-  fn is_nan(x)
+  function is_nan(x)
     # @doc
     #
     # Whether `x` is the not-a-number value. `nan` is the one value not equal
@@ -223,7 +223,7 @@ module Float
     #   Float.is_nan(1.0)         # == false
     x != x
 
-  fn is_infinite(x)
+  function is_infinite(x)
     # @doc
     #
     # Whether `x` is positive or negative infinity.
@@ -236,7 +236,7 @@ module Float
     #   Float.is_infinite(1.0)               # == false
     x == infinity() or x == -infinity()
 
-  fn is_finite(x)
+  function is_finite(x)
     # @doc
     #
     # Whether `x` is an ordinary number — neither infinite nor `nan`.
@@ -249,7 +249,7 @@ module Float
     #   Float.is_finite(Float.nan())         # == false
     not (is_nan(x) or is_infinite(x))
 
-  fn sign(x)
+  function sign(x)
     # @doc
     #
     # `-1.0`, `0.0` or `1.0` according to the sign of `x`. Neither infinity nor
@@ -269,7 +269,7 @@ module Float
       x > 0.0 -> 1.0
       true -> 0.0
 
-  fn is_positive(x)
+  function is_positive(x)
     # @doc
     #
     # Whether `x` is strictly greater than zero.
@@ -282,7 +282,7 @@ module Float
     #   Float.is_positive(-7.5)   # == false
     x > 0.0
 
-  fn is_negative(x)
+  function is_negative(x)
     # @doc
     #
     # Whether `x` is strictly less than zero.
@@ -295,7 +295,7 @@ module Float
     #   Float.is_negative(7.5)    # == false
     x < 0.0
 
-  fn exp(x)
+  function exp(x)
     # @doc
     #
     # Euler's number `e` raised to the power `x`. The one direction `**`
@@ -307,7 +307,7 @@ module Float
     #   Float.exp(0.0)   # == 1.0
     native("float_exp", [x])
 
-  fn log(x)
+  function log(x)
     # @doc
     #
     # The natural logarithm of `x` (base `e`) — the inverse of `exp`. Negative
@@ -319,7 +319,7 @@ module Float
     #   Float.log(1.0)   # == 0.0
     native("float_log", [x])
 
-  fn log_two(x)
+  function log_two(x)
     # @doc
     #
     # The base-2 logarithm of `x`. Same domain as `log`.
@@ -330,7 +330,7 @@ module Float
     #   Float.log_two(8.0)   # == 3.0
     native("float_log_two", [x])
 
-  fn log_ten(x)
+  function log_ten(x)
     # @doc
     #
     # The base-10 logarithm of `x`. Same domain as `log`.
@@ -341,7 +341,7 @@ module Float
     #   Float.log_ten(100.0)   # == 2.0
     native("float_log_ten", [x])
 
-  fn sin(x)
+  function sin(x)
     # @doc
     #
     # The sine of `x`, in radians.
@@ -352,7 +352,7 @@ module Float
     #   Float.sin(0.0)   # == 0.0
     native("float_sin", [x])
 
-  fn cos(x)
+  function cos(x)
     # @doc
     #
     # The cosine of `x`, in radians.
@@ -363,7 +363,7 @@ module Float
     #   Float.cos(0.0)   # == 1.0
     native("float_cos", [x])
 
-  fn tan(x)
+  function tan(x)
     # @doc
     #
     # The tangent of `x`, in radians.

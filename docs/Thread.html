@@ -68,29 +68,29 @@ total = <span class="tok-type">Thread</span>.await(t)             <span class="t
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#start/1" class="fn-sig"><code>fn start(f)</code></a>
+    <a href="#start/1" class="fn-sig"><code>function start(f)</code></a>
     <span class="fn-summary">Starts <code>f</code>, a lambda of no arguments, on its own thread and returns a handle at once — the caller does not wait. Pass the handle to <code>await</code> for the result.</span>
   </div>
   <div class="fn-row">
-    <a href="#await/1" class="fn-sig"><code>fn await(t)</code></a>
+    <a href="#await/1" class="fn-sig"><code>function await(t)</code></a>
     <span class="fn-summary">Waits for the thread <code>t</code> to finish and returns what its lambda produced. A failure inside the lambda comes back here as a runtime error. The thread&#39;s output is written now, once; awaiting the same handle again returns the same value without printing twice.</span>
   </div>
   <div class="fn-row">
-    <a href="#await_all/1" class="fn-sig"><code>fn await_all(threads)</code></a>
+    <a href="#await_all/1" class="fn-sig"><code>function await_all(threads)</code></a>
     <span class="fn-summary">Waits for every thread in <code>threads</code> and returns their results as a list, in the same order as the handles — however the threads happened to finish. Since each was already running, this waits for the slowest, not the sum.</span>
   </div>
   <div class="fn-row">
-    <a href="#map/2" class="fn-sig"><code>fn map(list, f)</code></a>
+    <a href="#map/2" class="fn-sig"><code>function map(list, f)</code></a>
     <span class="fn-summary">A parallel <code><a href="List.html#map">List.map</a></code>: <code>f</code> is applied to every element on its own thread, and the results are gathered in order. Every element&#39;s work overlaps, so a list of slow, independent computations finishes in about the time of the slowest rather than their sum.</span>
   </div>
   <div class="fn-row">
-    <a href="#each/2" class="fn-sig"><code>fn each(list, f)</code></a>
+    <a href="#each/2" class="fn-sig"><code>function each(list, f)</code></a>
     <span class="fn-summary">Like <code>map</code>, but for side effects: <code>f</code> runs on its own thread for every element, all of them are waited for, and <code>nil</code> comes back. Use it to run a batch of independent effects at once and be sure they have all finished.</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="start/1">
-  <h3 class="fn-title"><code>fn start(f)</code> <a class="anchor" href="#start/1">¶</a></h3>
+  <h3 class="fn-title"><code>function start(f)</code> <a class="anchor" href="#start/1">¶</a></h3>
 <p>Starts <code>f</code>, a lambda of no arguments, on its own thread and returns a handle at once — the caller does not wait. Pass the handle to <code>await</code> for the result.</p>
 <p>Has no Ramos body beyond the native call: starting a thread runs a lambda, which an ordinary native handler cannot do — reaching back into the evaluator to run it — so the interpreter intercepts this particular <code>native</code> call rather than dispatching it through the plain native table.</p>
 <pre><code>t = <span class="tok-type">Thread</span>.start(<span class="tok-kw">do</span> -&gt; <span class="tok-lit">6</span> * <span class="tok-lit">7</span>)
@@ -102,7 +102,7 @@ total = <span class="tok-type">Thread</span>.await(t)             <span class="t
 <p class="returns"><strong>Returns:</strong> a <code><a href="Thread.html">Thread</a></code> handle</p>
 </div>
 <div class="fn-detail" id="await/1">
-  <h3 class="fn-title"><code>fn await(t)</code> <a class="anchor" href="#await/1">¶</a></h3>
+  <h3 class="fn-title"><code>function await(t)</code> <a class="anchor" href="#await/1">¶</a></h3>
 <p>Waits for the thread <code>t</code> to finish and returns what its lambda produced. A failure inside the lambda comes back here as a runtime error. The thread&#39;s output is written now, once; awaiting the same handle again returns the same value without printing twice.</p>
 <p>Has no Ramos body beyond the native call, for the reason given on <code>start</code>.</p>
 <pre><code><span class="tok-type">Thread</span>.await(<span class="tok-type">Thread</span>.start(<span class="tok-kw">do</span> -&gt; <span class="tok-str">&quot;done&quot;</span>))   <span class="tok-com"># == &quot;done&quot;</span></code></pre>
@@ -113,7 +113,7 @@ total = <span class="tok-type">Thread</span>.await(t)             <span class="t
 <p class="returns"><strong>Returns:</strong> whatever the started lambda returned</p>
 </div>
 <div class="fn-detail" id="await_all/1">
-  <h3 class="fn-title"><code>fn await_all(threads)</code> <a class="anchor" href="#await_all/1">¶</a></h3>
+  <h3 class="fn-title"><code>function await_all(threads)</code> <a class="anchor" href="#await_all/1">¶</a></h3>
 <p>Waits for every thread in <code>threads</code> and returns their results as a list, in the same order as the handles — however the threads happened to finish. Since each was already running, this waits for the slowest, not the sum.</p>
 <p>A failure in any of them surfaces as a runtime error, from the first handle whose thread failed. Pair it with <code>start</code> to run a batch at once:</p>
 <pre><code>[<span class="tok-kw">do</span> -&gt; <span class="tok-lit">1</span> + <span class="tok-lit">1</span>, <span class="tok-kw">do</span> -&gt; <span class="tok-lit">2</span> + <span class="tok-lit">2</span>]
@@ -127,7 +127,7 @@ total = <span class="tok-type">Thread</span>.await(t)             <span class="t
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of their results, in the order of the handles</p>
 </div>
 <div class="fn-detail" id="map/2">
-  <h3 class="fn-title"><code>fn map(list, f)</code> <a class="anchor" href="#map/2">¶</a></h3>
+  <h3 class="fn-title"><code>function map(list, f)</code> <a class="anchor" href="#map/2">¶</a></h3>
 <p>A parallel <code><a href="List.html#map">List.map</a></code>: <code>f</code> is applied to every element on its own thread, and the results are gathered in order. Every element&#39;s work overlaps, so a list of slow, independent computations finishes in about the time of the slowest rather than their sum.</p>
 <p><code>f</code> runs on another thread, so it cannot reach the caller&#39;s actors — the same rule as <code>start</code>. Order is preserved: the result lines up with <code>list</code> however the threads happen to finish.</p>
 <pre><code><span class="tok-type">Thread</span>.map([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-kw">do</span> n -&gt; n * n)   <span class="tok-com"># == [1, 4, 9]</span></code></pre>
@@ -140,7 +140,7 @@ total = <span class="tok-type">Thread</span>.await(t)             <span class="t
 <p class="returns"><strong>Returns:</strong> a new list of <code>f</code> applied to each element, in the original order</p>
 </div>
 <div class="fn-detail" id="each/2">
-  <h3 class="fn-title"><code>fn each(list, f)</code> <a class="anchor" href="#each/2">¶</a></h3>
+  <h3 class="fn-title"><code>function each(list, f)</code> <a class="anchor" href="#each/2">¶</a></h3>
 <p>Like <code>map</code>, but for side effects: <code>f</code> runs on its own thread for every element, all of them are waited for, and <code>nil</code> comes back. Use it to run a batch of independent effects at once and be sure they have all finished.</p>
 <pre><code><span class="tok-type">Thread</span>.each([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-kw">do</span> n -&gt; n)   <span class="tok-com"># == nil</span></code></pre>
 <dl class="params">

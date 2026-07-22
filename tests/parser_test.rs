@@ -595,13 +595,13 @@ fn module_with_public_and_private_fns() {
     let p = program(
         "\
 module Payments
-  fn max_amount()
+  function max_amount()
     10000
 
-  fn validate(amount)
+  function validate(amount)
     amount <= Payments.max_amount()
 
-  fnp helper(x)
+  helper assist(x)
     x
 ",
     );
@@ -612,7 +612,7 @@ module Payments
     assert_eq!(m.functions.len(), 3);
     assert!(!m.functions[0].private);
     assert!(m.functions[2].private);
-    assert_eq!(m.functions[2].name, "helper");
+    assert_eq!(m.functions[2].name, "assist");
 }
 
 #[test]
@@ -626,7 +626,7 @@ struct Person
     name: nil
     age: 0
 
-  fn hello(self)
+  function hello(self)
     self.name
 ",
     );
@@ -647,7 +647,7 @@ struct Person
     // strict: implements below fns is rejected
     let below = "\
 struct Bad
-  fn x()
+  function x()
     1
   implements Foo
 ";
@@ -659,10 +659,10 @@ fn trait_with_required_function() {
     let p = program(
         "\
 trait Helloable
-  fn hello(self)
+  function hello(self)
     print(self.name)
 
-  fn is_ok(self)
+  function is_ok(self)
 ",
     );
     let Item::Trait(t) = &p.items[0] else {
@@ -687,15 +687,15 @@ fn alias_and_top_level_statements() {
 }
 
 #[test]
-fn top_level_fn_allowed_fnp_rejected() {
-    let p = program("fn greet(name)\n  print(name)\n");
+fn top_level_function_allowed_helper_rejected() {
+    let p = program("function greet(name)\n  print(name)\n");
     assert!(matches!(&p.items[0], Item::Function(f) if f.name == "greet"));
-    assert!(parse_err("fnp secret()\n  42\n").contains("only allowed inside"));
+    assert!(parse_err("helper secret()\n  42\n").contains("only allowed inside"));
 }
 
 #[test]
-fn fn_without_body_is_a_declaration() {
-    let p = program("module Kernel\n  fn native(str, args)\n\n  fn print(value)\n    native(\"print\", [value])\n");
+fn function_without_body_is_a_declaration() {
+    let p = program("module Kernel\n  function native(str, args)\n\n  function print(value)\n    native(\"print\", [value])\n");
     let Item::Module(m) = &p.items[0] else {
         panic!("expected module")
     };
@@ -797,7 +797,7 @@ fn parses_the_all_features_fixture() {
             Item::Trait(_) => "trait",
             Item::Struct(_) => "struct",
             Item::Module(_) => "module",
-            Item::Function(_) => "fn",
+            Item::Function(_) => "function",
             Item::Statement(Stmt::Alias { .. }) => "alias",
             Item::Statement(_) => "stmt",
         })
@@ -848,12 +848,12 @@ fn repeated_wildcards_and_separate_arms_are_fine() {
 #[test]
 fn a_body_cannot_define_the_same_function_name_twice() {
     // Ramos has no arity overloading, so a second definition is unreachable
-    // rather than an alternative. `fn` and `fnp` share the one namespace.
+    // rather than an alternative. `function` and `helper` share the one namespace.
     for src in [
-        "module Dup\n  fn twice(x)\n    x\n\n  fn twice(x, y)\n    x\n",
-        "module Dup\n  fn helper()\n    1\n\n  fnp helper()\n    2\n",
-        "struct Dup\n  attributes\n    a: 1\n\n  fn go(self)\n    1\n\n  fn go(self)\n    2\n",
-        "trait Dup\n  fn go(self)\n\n  fn go(self)\n    2\n",
+        "module Dup\n  function twice(x)\n    x\n\n  function twice(x, y)\n    x\n",
+        "module Dup\n  function greet()\n    1\n\n  helper greet()\n    2\n",
+        "struct Dup\n  attributes\n    a: 1\n\n  function go(self)\n    1\n\n  function go(self)\n    2\n",
+        "trait Dup\n  function go(self)\n\n  function go(self)\n    2\n",
     ] {
         let err = parse_err(src);
         assert!(
@@ -864,8 +864,51 @@ fn a_body_cannot_define_the_same_function_name_twice() {
 }
 
 #[test]
+fn a_helper_cannot_call_a_function_in_its_own_module() {
+    // Direct, by bare name.
+    let err = parse_err(
+        "module Payments\n  function charge(amount)\n    1\n\n  helper log(amount)\n    charge(amount)\n",
+    );
+    assert!(
+        err.contains("`Payments.log` is a `helper` and calls `Payments.charge`"),
+        "{err}"
+    );
+    // Same rule through `self.name()`.
+    let err = parse_err(
+        "module Payments\n  function charge(amount)\n    1\n\n  helper log(amount)\n    self.charge(amount)\n",
+    );
+    assert!(err.contains("is a `helper` and calls `Payments.charge`"), "{err}");
+    // The same restriction applies inside a struct.
+    let err = parse_err(
+        "struct Account\n  attributes\n    balance: 0\n\n  function charge(self, amount)\n    1\n\n  helper log(self, amount)\n    charge(amount)\n",
+    );
+    assert!(err.contains("is a `helper` and calls `Account.charge`"), "{err}");
+}
+
+#[test]
+fn a_helper_may_call_other_helpers_and_functions_may_call_helpers() {
+    // A helper calling another helper is fine...
+    let p = program(
+        "module Payments\n  helper a(x)\n    b(x)\n\n  helper b(x)\n    x\n",
+    );
+    assert_eq!(p.items.len(), 1);
+    // ...and so is a function calling a helper, the usual direction.
+    let p = program(
+        "module Payments\n  function charge(amount)\n    log(amount)\n\n  helper log(amount)\n    amount\n",
+    );
+    assert_eq!(p.items.len(), 1);
+    // A local variable named the same as a sibling function shadows it rather
+    // than tripping the rule — the bare call reaches the binding, not the
+    // function.
+    let p = program(
+        "module Payments\n  function charge(amount)\n    1\n\n  helper log(charge)\n    charge\n",
+    );
+    assert_eq!(p.items.len(), 1);
+}
+
+#[test]
 fn the_same_name_in_different_modules_is_fine() {
-    let p = program("module A\n  fn go()\n    1\n\nmodule B\n  fn go()\n    2\n");
+    let p = program("module A\n  function go()\n    1\n\nmodule B\n  function go()\n    2\n");
     assert_eq!(p.items.len(), 2);
 }
 
@@ -875,9 +918,9 @@ fn the_same_name_in_different_modules_is_fine() {
 fn end_markers_produce_the_identical_ast() {
     // `end` is stripped by the lexer, so a program with one parses to exactly
     // the same tree as the same program without — one definition, matching.
-    let without_end = "module A\n  fn go(x)\n    x + 1\n";
-    let with_one_end = "module A\n  fn go(x)\n    x + 1\n  end\n";
-    let with_two_ends = "module A\n  fn go(x)\n    x + 1\n  end\nend\n";
+    let without_end = "module A\n  function go(x)\n    x + 1\n";
+    let with_one_end = "module A\n  function go(x)\n    x + 1\n  end\n";
+    let with_two_ends = "module A\n  function go(x)\n    x + 1\n  end\nend\n";
     assert_eq!(program(with_one_end), program(without_end));
     assert_eq!(program(with_two_ends), program(without_end));
 }
@@ -885,9 +928,9 @@ fn end_markers_produce_the_identical_ast() {
 #[test]
 fn end_markers_work_after_every_block_construct() {
     // `if`/`else`, `case`, `cond` and a multiline `do` all dedent the same
-    // way a `module`/`fn` does, so `end` is legal after every one of them.
+    // way a `module`/`function` does, so `end` is legal after every one of them.
     let without_end = "\
-fn f(n)
+function f(n)
   result =
     cond
       n > 0 -> :pos
@@ -897,7 +940,7 @@ fn f(n)
     _ -> :no
 ";
     let with_ends = "\
-fn f(n)
+function f(n)
   result =
     cond
       n > 0 -> :pos

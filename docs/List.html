@@ -62,337 +62,353 @@
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#range/2" class="fn-sig"><code>fn range(from, to)</code></a>
+    <a href="#range/2" class="fn-sig"><code>function range(from, to)</code></a>
     <span class="fn-summary">The integers from <code>from</code> to <code>to</code>, inclusive at both ends, moving in whichever direction gets there: ascending when <code>from &lt;= to</code>, descending when <code>from &gt; to</code> — the one function for both counting up and counting down.</span>
   </div>
   <div class="fn-row private">
-    <a href="#range_loop/4" class="fn-sig"><code>fnp range_loop(current, stop, step, acc)</code></a>
+    <a href="#range_loop/4" class="fn-sig"><code>helper range_loop(current, stop, step, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>range</code>, counting from <code>current</code> to <code>stop</code> by <code>step</code> and building the run in reverse for <code>range</code> to <code>reverse</code> back into order.</span>
   </div>
   <div class="fn-row">
-    <a href="#map/2" class="fn-sig"><code>fn map(list, f)</code></a>
+    <a href="#map/2" class="fn-sig"><code>function map(list, f)</code></a>
     <span class="fn-summary">Applies <code>f</code> to every element of <code>list</code>, returning a new list of the results. Preserves order and length.</span>
   </div>
   <div class="fn-row private">
-    <a href="#map_loop/3" class="fn-sig"><code>fnp map_loop(list, f, acc)</code></a>
+    <a href="#map_loop/3" class="fn-sig"><code>helper map_loop(list, f, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>map</code>, building the mapped results in reverse.</span>
   </div>
   <div class="fn-row">
-    <a href="#each/2" class="fn-sig"><code>fn each(list, f)</code></a>
+    <a href="#each/2" class="fn-sig"><code>function each(list, f)</code></a>
     <span class="fn-summary">Calls <code>f</code> once per element, discarding the results. Intended for side effects (printing, etc.); returns <code>nil</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#with_index/1" class="fn-sig"><code>fn with_index(list)</code></a>
+    <a href="#with_index/1" class="fn-sig"><code>function with_index(list)</code></a>
     <span class="fn-summary">Pairs every element of <code>list</code> with its zero-based index.</span>
   </div>
   <div class="fn-row private">
-    <a href="#with_index_loop/3" class="fn-sig"><code>fnp with_index_loop(list, index, acc)</code></a>
+    <a href="#with_index_loop/3" class="fn-sig"><code>helper with_index_loop(list, index, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper carrying the current <code>index</code> and a reverse-order accumulator for <code>with_index</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#map_with_index/2" class="fn-sig"><code>fn map_with_index(list, f)</code></a>
+    <a href="#map_with_index/2" class="fn-sig"><code>function map_with_index(list, f)</code></a>
     <span class="fn-summary">Like <code>map</code>, but <code>f</code> also receives the zero-based index of the element it is applied to.</span>
   </div>
   <div class="fn-row private">
-    <a href="#map_with_index_loop/4" class="fn-sig"><code>fnp map_with_index_loop(list, f, index, acc)</code></a>
+    <a href="#map_with_index_loop/4" class="fn-sig"><code>helper map_with_index_loop(list, f, index, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper carrying the current <code>index</code> and a reverse-order accumulator for <code>map_with_index</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#each_with_index/2" class="fn-sig"><code>fn each_with_index(list, f)</code></a>
+    <a href="#each_with_index/2" class="fn-sig"><code>function each_with_index(list, f)</code></a>
     <span class="fn-summary">Like <code>each</code>, but <code>f</code> also receives the zero-based index of the element it is called with. Intended for side effects; returns <code>nil</code>.</span>
   </div>
   <div class="fn-row private">
-    <a href="#each_with_index_loop/3" class="fn-sig"><code>fnp each_with_index_loop(list, f, index)</code></a>
+    <a href="#each_with_index_loop/3" class="fn-sig"><code>helper each_with_index_loop(list, f, index)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper carrying the current <code>index</code> for <code>each_with_index</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#reduce/3" class="fn-sig"><code>fn reduce(list, acc, f)</code></a>
+    <a href="#reduce/3" class="fn-sig"><code>function reduce(list, acc, f)</code></a>
     <span class="fn-summary">Folds <code>list</code> left-to-right, threading an accumulator. <code>f</code> receives the accumulator and the current element, and its return becomes the next accumulator. Returns the final accumulator.</span>
   </div>
   <div class="fn-row">
-    <a href="#sum/1" class="fn-sig"><code>fn sum(list)</code></a>
+    <a href="#sum/1" class="fn-sig"><code>function sum(list)</code></a>
     <span class="fn-summary">Returns the sum of the elements of <code>list</code> (numeric). The sum of <code>[]</code> is 0.</span>
   </div>
   <div class="fn-row">
-    <a href="#product/1" class="fn-sig"><code>fn product(list)</code></a>
+    <a href="#product/1" class="fn-sig"><code>function product(list)</code></a>
     <span class="fn-summary">Returns the product of the elements of <code>list</code> (numeric). The product of <code>[]</code> is 1.</span>
   </div>
   <div class="fn-row">
-    <a href="#count/2" class="fn-sig"><code>fn count(list, f)</code></a>
+    <a href="#count/2" class="fn-sig"><code>function count(list, f)</code></a>
     <span class="fn-summary">Returns the number of elements for which <code>f</code> is truthy.</span>
   </div>
   <div class="fn-row">
-    <a href="#min/1" class="fn-sig"><code>fn min(list)</code></a>
+    <a href="#min/1" class="fn-sig"><code>function min(list)</code></a>
     <span class="fn-summary">Returns the smallest element of <code>list</code>, or <code>nil</code> if empty.</span>
   </div>
   <div class="fn-row">
-    <a href="#max/1" class="fn-sig"><code>fn max(list)</code></a>
+    <a href="#max/1" class="fn-sig"><code>function max(list)</code></a>
     <span class="fn-summary">Returns the largest element of <code>list</code>, or <code>nil</code> if empty.</span>
   </div>
   <div class="fn-row private">
-    <a href="#min_of/2" class="fn-sig"><code>fnp min_of(a, b)</code></a>
+    <a href="#min_of/2" class="fn-sig"><code>helper min_of(a, b)</code></a>
     <span class="fn-summary">(private) Two-argument minimum that tolerates a <code>nil</code> operand, used as the reducing step for <code>min</code>.</span>
   </div>
   <div class="fn-row private">
-    <a href="#max_of/2" class="fn-sig"><code>fnp max_of(a, b)</code></a>
+    <a href="#max_of/2" class="fn-sig"><code>helper max_of(a, b)</code></a>
     <span class="fn-summary">(private) Two-argument maximum that tolerates a <code>nil</code> operand, used as the reducing step for <code>max</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#filter/2" class="fn-sig"><code>fn filter(list, f)</code></a>
+    <a href="#filter/2" class="fn-sig"><code>function filter(list, f)</code></a>
     <span class="fn-summary">Returns a new list containing only the elements of <code>list</code> for which <code>f</code> is truthy, in their original order.</span>
   </div>
   <div class="fn-row private">
-    <a href="#filter_loop/3" class="fn-sig"><code>fnp filter_loop(list, f, acc)</code></a>
+    <a href="#filter_loop/3" class="fn-sig"><code>helper filter_loop(list, f, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>filter</code>, building the kept elements in reverse.</span>
   </div>
   <div class="fn-row">
-    <a href="#reject/2" class="fn-sig"><code>fn reject(list, f)</code></a>
+    <a href="#reject/2" class="fn-sig"><code>function reject(list, f)</code></a>
     <span class="fn-summary">Inverse of <code>filter</code>: returns the elements for which <code>f</code> is falsy.</span>
   </div>
   <div class="fn-row">
-    <a href="#partition/2" class="fn-sig"><code>fn partition(list, f)</code></a>
+    <a href="#partition/2" class="fn-sig"><code>function partition(list, f)</code></a>
     <span class="fn-summary">Splits <code>list</code> into a tuple of two lists: those for which <code>f</code> is truthy and those for which it is falsy. Relative order is preserved in each half.</span>
   </div>
   <div class="fn-row">
-    <a href="#uniq/1" class="fn-sig"><code>fn uniq(list)</code></a>
+    <a href="#uniq/1" class="fn-sig"><code>function uniq(list)</code></a>
     <span class="fn-summary">Returns a new list with duplicate values removed, keeping the first occurrence of each. Equality uses <code>==</code>.</span>
   </div>
   <div class="fn-row private">
-    <a href="#uniq_loop/2" class="fn-sig"><code>fnp uniq_loop(list, acc)</code></a>
-    <span class="fn-summary">(private) Tail-recursive helper for <code>uniq</code>, building the kept first-occurrences in reverse.</span>
+    <a href="#uniq_loop/2" class="fn-sig"><code>helper uniq_loop(list, acc)</code></a>
+    <span class="fn-summary">(private) Tail-recursive helper for <code>uniq</code>, building the kept first-occurrences in reverse. Order in <code>acc</code> does not matter for the membership check, only for the caller&#39;s final <code>reverse</code>, so a value is kept the first time it is seen and skipped every time after.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#already_kept/2" class="fn-sig"><code>helper already_kept(acc, value)</code></a>
+    <span class="fn-summary">(private) Whether <code>value</code> is already in <code>acc</code>, by <code>==</code> — <code>uniq_loop</code>&#39;s own membership check, since it cannot reach the public <code>contains</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#dedup/1" class="fn-sig"><code>fn dedup(list)</code></a>
+    <a href="#dedup/1" class="fn-sig"><code>function dedup(list)</code></a>
     <span class="fn-summary">Returns a new list with <em>consecutive</em> duplicate values collapsed to one, using <code>==</code>. Unlike <code>uniq</code>, a repeat elsewhere in the list (not adjacent to its first occurrence) is left alone.</span>
   </div>
   <div class="fn-row private">
-    <a href="#dedup_from/3" class="fn-sig"><code>fnp dedup_from(list, last, acc)</code></a>
+    <a href="#dedup_from/3" class="fn-sig"><code>helper dedup_from(list, last, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>dedup</code>, carrying the last element kept — so an arbitrarily long run collapses to its first element rather than comparing only adjacent pairs — and a reverse-order accumulator.</span>
   </div>
   <div class="fn-row">
-    <a href="#dedup_by/2" class="fn-sig"><code>fn dedup_by(list, f)</code></a>
+    <a href="#dedup_by/2" class="fn-sig"><code>function dedup_by(list, f)</code></a>
     <span class="fn-summary">Like <code>dedup</code>, but two elements collapse when <code>f</code> returns the same key for both, rather than when they are themselves <code>==</code>. Keeps the first element of each run, like <code>dedup</code>.</span>
   </div>
   <div class="fn-row private">
-    <a href="#dedup_by_from/4" class="fn-sig"><code>fnp dedup_by_from(list, key, f, acc)</code></a>
+    <a href="#dedup_by_from/4" class="fn-sig"><code>helper dedup_by_from(list, key, f, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>dedup_by</code>, carrying the key of the last element kept and a reverse-order accumulator.</span>
   </div>
   <div class="fn-row">
-    <a href="#concat/1" class="fn-sig"><code>fn concat(list)</code></a>
+    <a href="#concat/1" class="fn-sig"><code>function concat(list)</code></a>
     <span class="fn-summary">Flattens one level: given a list of lists, concatenates them in order.</span>
   </div>
   <div class="fn-row">
-    <a href="#flatten/1" class="fn-sig"><code>fn flatten(list)</code></a>
+    <a href="#flatten/1" class="fn-sig"><code>function flatten(list)</code></a>
     <span class="fn-summary">Flattens <code>list</code> all the way down, however deeply its elements are themselves nested lists — unlike <code>concat</code>, which only drops one level. A non-list element is kept as-is.</span>
   </div>
   <div class="fn-row private">
-    <a href="#flatten_loop/2" class="fn-sig"><code>fnp flatten_loop(list, acc)</code></a>
-    <span class="fn-summary">(private) Tail-recursive helper for <code>flatten</code>: walks <code>list</code> one element at a time, so stack use is bounded by <code>list</code>&#39;s own length rather than its total (flattened) element count — a nested list still recurses into <code>flatten</code> itself, bounded instead by its nesting depth.</span>
+    <a href="#flatten_loop/2" class="fn-sig"><code>helper flatten_loop(list, acc)</code></a>
+    <span class="fn-summary">(private) Tail-recursive helper for <code>flatten</code>: walks <code>list</code> one element at a time, so stack use is bounded by <code>list</code>&#39;s own length rather than its total (flattened) element count — a nested list still recurses into <code>flatten_loop</code> itself, bounded instead by its nesting depth. <code>flatten_loop(head, [])</code> is already <code>reverse(flatten(head))</code> — the public round trip through <code>flatten</code> would reverse it twice — so a nested list&#39;s own reversed accumulator prepends directly onto <code>acc</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#flat_map/2" class="fn-sig"><code>fn flat_map(list, f)</code></a>
+    <a href="#flat_map/2" class="fn-sig"><code>function flat_map(list, f)</code></a>
     <span class="fn-summary">Maps <code>f</code> over <code>list</code> and flattens the result one level. Equivalent to <code>concat(map(list, f))</code> — handy when <code>f</code> returns a list per element.</span>
   </div>
   <div class="fn-row">
-    <a href="#zip/2" class="fn-sig"><code>fn zip(a, b)</code></a>
+    <a href="#zip/2" class="fn-sig"><code>function zip(a, b)</code></a>
     <span class="fn-summary">Pairs up <code>a</code> and <code>b</code> element-wise. Stops at the shorter list — a trailing tail on the longer one has nothing to pair with, so it is dropped.</span>
   </div>
   <div class="fn-row private">
-    <a href="#zip_loop/3" class="fn-sig"><code>fnp zip_loop(a, b, acc)</code></a>
+    <a href="#zip_loop/3" class="fn-sig"><code>helper zip_loop(a, b, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>zip</code>, building pairs in reverse.</span>
   </div>
   <div class="fn-row">
-    <a href="#zip_with/3" class="fn-sig"><code>fn zip_with(a, b, f)</code></a>
+    <a href="#zip_with/3" class="fn-sig"><code>function zip_with(a, b, f)</code></a>
     <span class="fn-summary">Combines <code>a</code> and <code>b</code> element-wise through <code>f</code> instead of pairing them into tuples. Stops at the shorter list, same as <code>zip</code>.</span>
   </div>
   <div class="fn-row private">
-    <a href="#zip_with_loop/4" class="fn-sig"><code>fnp zip_with_loop(a, b, f, acc)</code></a>
+    <a href="#zip_with_loop/4" class="fn-sig"><code>helper zip_with_loop(a, b, f, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>zip_with</code>, building results in reverse.</span>
   </div>
   <div class="fn-row">
-    <a href="#unzip/1" class="fn-sig"><code>fn unzip(pairs)</code></a>
+    <a href="#unzip/1" class="fn-sig"><code>function unzip(pairs)</code></a>
     <span class="fn-summary">Splits a list of <code>(x, y)</code> tuples into a tuple of two lists — the inverse of <code>zip</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#reverse/1" class="fn-sig"><code>fn reverse(list)</code></a>
+    <a href="#reverse/1" class="fn-sig"><code>function reverse(list)</code></a>
     <span class="fn-summary">Returns a new list with the elements of <code>list</code> in reverse order.</span>
   </div>
+  <div class="fn-row private">
+    <a href="#reverse_loop/2" class="fn-sig"><code>helper reverse_loop(list, acc)</code></a>
+    <span class="fn-summary">(private) Tail-recursive helper for <code>reverse</code>. Also the reversal other helpers reach for when they need to flip an accumulator of their own — they cannot call the public <code>reverse</code> — so this stays a plain, two-arg loop rather than folding into <code>reverse</code> itself.</span>
+  </div>
   <div class="fn-row">
-    <a href="#sort/1" class="fn-sig"><code>fn sort(list)</code></a>
+    <a href="#sort/1" class="fn-sig"><code>function sort(list)</code></a>
     <span class="fn-summary">Returns a new list with the elements of <code>list</code> sorted in ascending order using <code>&lt;</code>. Elements must be mutually comparable.</span>
   </div>
   <div class="fn-row private">
-    <a href="#sorted_insert/2" class="fn-sig"><code>fnp sorted_insert(list, x)</code></a>
+    <a href="#sorted_insert/2" class="fn-sig"><code>helper sorted_insert(list, x)</code></a>
     <span class="fn-summary">(private) Inserts <code>x</code> into the already-sorted <code>list</code> at the first position where it is <code>&lt;=</code> the current head, preserving order. Named apart from the public <code>insert</code>, which places a value at an index.</span>
   </div>
   <div class="fn-row private">
-    <a href="#sorted_insert_loop/3" class="fn-sig"><code>fnp sorted_insert_loop(list, x, acc)</code></a>
+    <a href="#sorted_insert_loop/3" class="fn-sig"><code>helper sorted_insert_loop(list, x, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>sorted_insert</code>, carrying the already-passed prefix in reverse until it finds where <code>x</code> belongs.</span>
   </div>
   <div class="fn-row">
-    <a href="#sort_by/2" class="fn-sig"><code>fn sort_by(list, f)</code></a>
+    <a href="#sort_by/2" class="fn-sig"><code>function sort_by(list, f)</code></a>
     <span class="fn-summary">Returns a new list sorted in ascending order of <code>f(element)</code>, rather than the elements themselves — the way to sort a list of structs or tuples by one field.</span>
   </div>
   <div class="fn-row private">
-    <a href="#sorted_insert_by/3" class="fn-sig"><code>fnp sorted_insert_by(list, x, f)</code></a>
+    <a href="#sorted_insert_by/3" class="fn-sig"><code>helper sorted_insert_by(list, x, f)</code></a>
     <span class="fn-summary">(private) Inserts <code>x</code> into the already-<code>sort_by</code>-sorted <code>list</code> at the first position where <code>f(x)</code> is <code>&lt;=</code> the current head&#39;s key.</span>
   </div>
   <div class="fn-row private">
-    <a href="#sorted_insert_by_loop/4" class="fn-sig"><code>fnp sorted_insert_by_loop(list, x, f, acc)</code></a>
+    <a href="#sorted_insert_by_loop/4" class="fn-sig"><code>helper sorted_insert_by_loop(list, x, f, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>sorted_insert_by</code>, carrying the already-passed prefix in reverse until it finds where <code>x</code> belongs.</span>
   </div>
   <div class="fn-row">
-    <a href="#max_by/2" class="fn-sig"><code>fn max_by(list, f)</code></a>
+    <a href="#max_by/2" class="fn-sig"><code>function max_by(list, f)</code></a>
     <span class="fn-summary">Returns the element of <code>list</code> for which <code>f</code> is largest, or <code>nil</code> if empty. The way to find the largest of a list of structs or tuples by one field.</span>
   </div>
   <div class="fn-row">
-    <a href="#min_by/2" class="fn-sig"><code>fn min_by(list, f)</code></a>
+    <a href="#min_by/2" class="fn-sig"><code>function min_by(list, f)</code></a>
     <span class="fn-summary">Returns the element of <code>list</code> for which <code>f</code> is smallest, or <code>nil</code> if empty.</span>
   </div>
   <div class="fn-row private">
-    <a href="#max_of_by/3" class="fn-sig"><code>fnp max_of_by(a, b, f)</code></a>
+    <a href="#max_of_by/3" class="fn-sig"><code>helper max_of_by(a, b, f)</code></a>
     <span class="fn-summary">(private) Two-argument, key-based maximum tolerating a <code>nil</code> operand — the reducing step for <code>max_by</code>.</span>
   </div>
   <div class="fn-row private">
-    <a href="#min_of_by/3" class="fn-sig"><code>fnp min_of_by(a, b, f)</code></a>
+    <a href="#min_of_by/3" class="fn-sig"><code>helper min_of_by(a, b, f)</code></a>
     <span class="fn-summary">(private) Two-argument, key-based minimum tolerating a <code>nil</code> operand — the reducing step for <code>min_by</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#find/2" class="fn-sig"><code>fn find(list, f)</code></a>
+    <a href="#find/2" class="fn-sig"><code>function find(list, f)</code></a>
     <span class="fn-summary">Returns the first element for which <code>f</code> is truthy, or <code>nil</code> if none match.</span>
   </div>
   <div class="fn-row">
-    <a href="#find_index/2" class="fn-sig"><code>fn find_index(list, f)</code></a>
+    <a href="#find_index/2" class="fn-sig"><code>function find_index(list, f)</code></a>
     <span class="fn-summary">Returns the zero-based index of the first element for which <code>f</code> is truthy, or <code>nil</code> if none match.</span>
   </div>
   <div class="fn-row private">
-    <a href="#find_index_loop/3" class="fn-sig"><code>fnp find_index_loop(list, f, index)</code></a>
+    <a href="#find_index_loop/3" class="fn-sig"><code>helper find_index_loop(list, f, index)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper carrying the current <code>index</code> for <code>find_index</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#index_of/2" class="fn-sig"><code>fn index_of(list, value)</code></a>
+    <a href="#index_of/2" class="fn-sig"><code>function index_of(list, value)</code></a>
     <span class="fn-summary">Returns the zero-based index of the first element equal to <code>value</code> (using <code>==</code>), or <code>nil</code> if it is not present. <code>find_index</code> takes a predicate; this is the by-value shorthand, matching <code>contains</code>&#39;s by-value search.</span>
   </div>
   <div class="fn-row">
-    <a href="#contains/2" class="fn-sig"><code>fn contains(list, value)</code></a>
+    <a href="#contains/2" class="fn-sig"><code>function contains(list, value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is present in <code>list</code> (using <code>==</code>), else <code>false</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#all/2" class="fn-sig"><code>fn all(list, f)</code></a>
+    <a href="#all/2" class="fn-sig"><code>function all(list, f)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>f</code> is truthy for every element (trivially <code>true</code> for an empty list). Short-circuits on the first falsy element.</span>
   </div>
   <div class="fn-row">
-    <a href="#any/2" class="fn-sig"><code>fn any(list, f)</code></a>
+    <a href="#any/2" class="fn-sig"><code>function any(list, f)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>f</code> is truthy for at least one element (<code>false</code> for an empty list). Short-circuits on the first truthy element.</span>
   </div>
   <div class="fn-row">
-    <a href="#first/1" class="fn-sig"><code>fn first(list)</code></a>
+    <a href="#first/1" class="fn-sig"><code>function first(list)</code></a>
     <span class="fn-summary">Returns the first element of <code>list</code>, or <code>nil</code> if empty.</span>
   </div>
   <div class="fn-row">
-    <a href="#last/1" class="fn-sig"><code>fn last(list)</code></a>
+    <a href="#last/1" class="fn-sig"><code>function last(list)</code></a>
     <span class="fn-summary">Returns the last element of <code>list</code>, or <code>nil</code> if empty. Walks the whole list.</span>
   </div>
   <div class="fn-row">
-    <a href="#insert/3" class="fn-sig"><code>fn insert(list, index, value)</code></a>
+    <a href="#insert/3" class="fn-sig"><code>function insert(list, index, value)</code></a>
     <span class="fn-summary">Returns a new list with <code>value</code> placed at zero-based <code>index</code>, moving the element currently there and everything after it one position along.</span>
   </div>
   <div class="fn-row">
-    <a href="#delete/2" class="fn-sig"><code>fn delete(list, value)</code></a>
+    <a href="#delete/2" class="fn-sig"><code>function delete(list, value)</code></a>
     <span class="fn-summary">Returns a new list with the first element equal to <code>value</code> (using <code>==</code>) removed. Every later occurrence, if any, is left alone — unlike <code>filter(list, do x -&gt; x != value)</code>, which removes every match.</span>
   </div>
   <div class="fn-row private">
-    <a href="#delete_loop/3" class="fn-sig"><code>fnp delete_loop(list, value, acc)</code></a>
+    <a href="#delete_loop/3" class="fn-sig"><code>helper delete_loop(list, value, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>delete</code>, carrying the already-passed prefix in reverse until it finds <code>value</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#delete_at/2" class="fn-sig"><code>fn delete_at(list, index)</code></a>
+    <a href="#delete_at/2" class="fn-sig"><code>function delete_at(list, index)</code></a>
     <span class="fn-summary">Returns a new list with the element at zero-based <code>index</code> removed — the removal-side counterpart to <code>insert</code>. An out-of-range <code>index</code> (negative, or at or past the end) returns <code>list</code> unchanged.</span>
   </div>
   <div class="fn-row">
-    <a href="#update_at/3" class="fn-sig"><code>fn update_at(list, index, f)</code></a>
+    <a href="#update_at/3" class="fn-sig"><code>function update_at(list, index, f)</code></a>
     <span class="fn-summary">Returns a new list with the element at zero-based <code>index</code> replaced by <code>f</code> applied to it. An out-of-range <code>index</code> (negative, or at or past the end) returns <code>list</code> unchanged — <code>f</code> is never called.</span>
   </div>
   <div class="fn-row private">
-    <a href="#update_at_loop/4" class="fn-sig"><code>fnp update_at_loop(list, index, f, acc)</code></a>
+    <a href="#update_at_loop/4" class="fn-sig"><code>helper update_at_loop(list, index, f, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>update_at</code>, carrying the already-passed prefix in reverse.</span>
   </div>
   <div class="fn-row">
-    <a href="#take/2" class="fn-sig"><code>fn take(list, n)</code></a>
+    <a href="#take/2" class="fn-sig"><code>function take(list, n)</code></a>
     <span class="fn-summary">Returns the first <code>n</code> elements of <code>list</code>. Returns <code>[]</code> when <code>n</code> is zero or negative, or the whole list when <code>n</code> exceeds its length.</span>
   </div>
   <div class="fn-row private">
-    <a href="#take_loop/3" class="fn-sig"><code>fnp take_loop(list, n, acc)</code></a>
+    <a href="#take_loop/3" class="fn-sig"><code>helper take_loop(list, n, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>take</code>, building the kept prefix in reverse.</span>
   </div>
   <div class="fn-row">
-    <a href="#drop/2" class="fn-sig"><code>fn drop(list, n)</code></a>
+    <a href="#drop/2" class="fn-sig"><code>function drop(list, n)</code></a>
     <span class="fn-summary">Returns <code>list</code> without its first <code>n</code> elements. When <code>n</code> is zero or negative, returns <code>list</code> unchanged; when <code>n</code> exceeds the length, returns <code>[]</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#take_while/2" class="fn-sig"><code>fn take_while(list, f)</code></a>
+    <a href="#take_while/2" class="fn-sig"><code>function take_while(list, f)</code></a>
     <span class="fn-summary">Returns the longest prefix of <code>list</code> for which <code>f</code> is truthy — a predicate-based cutoff where <code>take</code> is count-based. Stops at the first element for which <code>f</code> is falsy.</span>
   </div>
   <div class="fn-row private">
-    <a href="#take_while_loop/3" class="fn-sig"><code>fnp take_while_loop(list, f, acc)</code></a>
+    <a href="#take_while_loop/3" class="fn-sig"><code>helper take_while_loop(list, f, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>take_while</code>, building the kept prefix in reverse.</span>
   </div>
   <div class="fn-row">
-    <a href="#drop_while/2" class="fn-sig"><code>fn drop_while(list, f)</code></a>
+    <a href="#drop_while/2" class="fn-sig"><code>function drop_while(list, f)</code></a>
     <span class="fn-summary">Returns <code>list</code> with its longest prefix for which <code>f</code> is truthy removed — a predicate-based cutoff where <code>drop</code> is count-based. Stops dropping at the first element for which <code>f</code> is falsy, and returns from there on.</span>
   </div>
   <div class="fn-row">
-    <a href="#slice/3" class="fn-sig"><code>fn slice(list, start, count)</code></a>
+    <a href="#slice/3" class="fn-sig"><code>function slice(list, start, count)</code></a>
     <span class="fn-summary">Returns <code>count</code> elements of <code>list</code> starting at zero-based <code>start</code>. Implemented as <code>take(drop(list, start), count)</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#group_by/2" class="fn-sig"><code>fn group_by(list, f)</code></a>
+    <a href="#group_by/2" class="fn-sig"><code>function group_by(list, f)</code></a>
     <span class="fn-summary">Groups the elements of <code>list</code> by the key returned by <code>f</code>, returning a map from key to the list of elements sharing that key, in original order.</span>
   </div>
   <div class="fn-row private">
-    <a href="#group_by_loop/3" class="fn-sig"><code>fnp group_by_loop(list, f, acc)</code></a>
+    <a href="#group_by_loop/3" class="fn-sig"><code>helper group_by_loop(list, f, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>group_by</code>. Builds each key&#39;s group in reverse (each new element is cheap to prepend); <code>group_by</code> fixes the order of every group with a final <code>reverse</code> once grouping is done.</span>
   </div>
   <div class="fn-row">
-    <a href="#chunk_every/2" class="fn-sig"><code>fn chunk_every(list, n)</code></a>
+    <a href="#chunk_every/2" class="fn-sig"><code>function chunk_every(list, n)</code></a>
     <span class="fn-summary">Splits <code>list</code> into consecutive chunks of <code>n</code> elements each; the final chunk may be shorter than <code>n</code>. <code>n</code> must be positive.</span>
   </div>
   <div class="fn-row private">
-    <a href="#chunk_every_loop/3" class="fn-sig"><code>fnp chunk_every_loop(list, n, acc)</code></a>
+    <a href="#chunk_every_loop/3" class="fn-sig"><code>helper chunk_every_loop(list, n, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>chunk_every</code>, building the chunks in reverse.</span>
   </div>
+  <div class="fn-row private">
+    <a href="#split_chunk/3" class="fn-sig"><code>helper split_chunk(list, n, acc)</code></a>
+    <span class="fn-summary">(private) Splits <code>list</code> into its first <code>n</code> elements and the rest, as <code>(chunk, rest)</code> — <code>chunk_every_loop</code>&#39;s own take/drop in one pass, since it cannot call the public <code>take</code> or <code>drop</code>.</span>
+  </div>
   <div class="fn-row">
-    <a href="#join/2" class="fn-sig"><code>fn join(list, sep)</code></a>
+    <a href="#join/2" class="fn-sig"><code>function join(list, sep)</code></a>
     <span class="fn-summary">Joins the elements of <code>list</code> into a single string separated by <code>sep</code>. Elements are assumed to be strings. The empty list yields <code>&quot;&quot;</code>.</span>
   </div>
   <div class="fn-row private">
-    <a href="#join_loop/3" class="fn-sig"><code>fnp join_loop(list, sep, acc)</code></a>
+    <a href="#join_loop/3" class="fn-sig"><code>helper join_loop(list, sep, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>join</code>, threading the string built so far as <code>acc</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#intersperse/2" class="fn-sig"><code>fn intersperse(list, sep)</code></a>
+    <a href="#intersperse/2" class="fn-sig"><code>function intersperse(list, sep)</code></a>
     <span class="fn-summary">Returns a new list with <code>sep</code> inserted between every pair of adjacent elements. The generic counterpart to <code>join</code>, which does the same thing but for strings specifically, concatenated into one.</span>
   </div>
   <div class="fn-row private">
-    <a href="#intersperse_loop/3" class="fn-sig"><code>fnp intersperse_loop(list, sep, acc)</code></a>
+    <a href="#intersperse_loop/3" class="fn-sig"><code>helper intersperse_loop(list, sep, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>intersperse</code>, building the result in reverse.</span>
   </div>
   <div class="fn-row">
-    <a href="#sample/1" class="fn-sig"><code>fn sample(list)</code></a>
+    <a href="#sample/1" class="fn-sig"><code>function sample(list)</code></a>
     <span class="fn-summary">Returns one element of <code>list</code>, chosen uniformly at random, or <code>nil</code> when <code>list</code> is empty. Not cryptographic — see <code><a href="Kernel.html#random">Kernel.random</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#shuffle/1" class="fn-sig"><code>fn shuffle(list)</code></a>
+    <a href="#shuffle/1" class="fn-sig"><code>function shuffle(list)</code></a>
     <span class="fn-summary">Returns a new list with the elements of <code>list</code> in random order. Every ordering is equally likely. Not cryptographic — see <code><a href="Kernel.html#random">Kernel.random</a></code>.</span>
   </div>
   <div class="fn-row private">
-    <a href="#shuffle_loop/2" class="fn-sig"><code>fnp shuffle_loop(list, acc)</code></a>
+    <a href="#shuffle_loop/2" class="fn-sig"><code>helper shuffle_loop(list, acc)</code></a>
     <span class="fn-summary">(private) Tail-recursive helper for <code>shuffle</code>, building the shuffled result in reverse.</span>
+  </div>
+  <div class="fn-row private">
+    <a href="#remove_at/2" class="fn-sig"><code>helper remove_at(list, index)</code></a>
+    <span class="fn-summary">(private) <code>delete_at</code>, for <code>shuffle_loop</code> since it cannot call the public <code>delete_at</code>. Built on the same <code>split_chunk</code> <code>chunk_every_loop</code> uses, dropping the one element right after the split.</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="range/2">
-  <h3 class="fn-title"><code>fn range(from, to)</code> <a class="anchor" href="#range/2">¶</a></h3>
+  <h3 class="fn-title"><code>function range(from, to)</code> <a class="anchor" href="#range/2">¶</a></h3>
 <p>The integers from <code>from</code> to <code>to</code>, inclusive at both ends, moving in whichever direction gets there: ascending when <code>from &lt;= to</code>, descending when <code>from &gt; to</code> — the one function for both counting up and counting down.</p>
 <pre><code><span class="tok-type">List</span>.range(<span class="tok-lit">1</span>, <span class="tok-lit">5</span>)   <span class="tok-com"># == [1, 2, 3, 4, 5]</span>
 <span class="tok-type">List</span>.range(<span class="tok-lit">5</span>, <span class="tok-lit">1</span>)   <span class="tok-com"># == [5, 4, 3, 2, 1]</span>
@@ -406,11 +422,11 @@
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> counting from <code>from</code> to <code>to</code>, inclusive at both ends</p>
 </div>
 <div class="fn-detail" id="range_loop/4">
-  <h3 class="fn-title"><code>fnp range_loop(current, stop, step, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#range_loop/4">¶</a></h3>
+  <h3 class="fn-title"><code>helper range_loop(current, stop, step, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#range_loop/4">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>range</code>, counting from <code>current</code> to <code>stop</code> by <code>step</code> and building the run in reverse for <code>range</code> to <code>reverse</code> back into order.</p>
 </div>
 <div class="fn-detail" id="map/2">
-  <h3 class="fn-title"><code>fn map(list, f)</code> <a class="anchor" href="#map/2">¶</a></h3>
+  <h3 class="fn-title"><code>function map(list, f)</code> <a class="anchor" href="#map/2">¶</a></h3>
 <p>Applies <code>f</code> to every element of <code>list</code>, returning a new list of the results. Preserves order and length.</p>
 <pre><code><span class="tok-type">List</span>.map([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-kw">do</span> x -&gt; x * <span class="tok-lit">2</span>)   <span class="tok-com"># == [2, 4, 6]</span></code></pre>
 <dl class="params">
@@ -422,11 +438,11 @@
 <p class="returns"><strong>Returns:</strong> a new list of <code>f</code> applied to each element, same order and length</p>
 </div>
 <div class="fn-detail" id="map_loop/3">
-  <h3 class="fn-title"><code>fnp map_loop(list, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#map_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper map_loop(list, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#map_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>map</code>, building the mapped results in reverse.</p>
 </div>
 <div class="fn-detail" id="each/2">
-  <h3 class="fn-title"><code>fn each(list, f)</code> <a class="anchor" href="#each/2">¶</a></h3>
+  <h3 class="fn-title"><code>function each(list, f)</code> <a class="anchor" href="#each/2">¶</a></h3>
 <p>Calls <code>f</code> once per element, discarding the results. Intended for side effects (printing, etc.); returns <code>nil</code>.</p>
 <pre><code><span class="tok-type">List</span>.each([<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;b&quot;</span>], <span class="tok-kw">do</span> x -&gt; print(x))</code></pre>
 <dl class="params">
@@ -438,7 +454,7 @@
 <p class="returns"><strong>Returns:</strong> <code>nil</code></p>
 </div>
 <div class="fn-detail" id="with_index/1">
-  <h3 class="fn-title"><code>fn with_index(list)</code> <a class="anchor" href="#with_index/1">¶</a></h3>
+  <h3 class="fn-title"><code>function with_index(list)</code> <a class="anchor" href="#with_index/1">¶</a></h3>
 <p>Pairs every element of <code>list</code> with its zero-based index.</p>
 <pre><code><span class="tok-type">List</span>.with_index([<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;b&quot;</span>, <span class="tok-str">&quot;c&quot;</span>])   <span class="tok-com"># == [(&quot;a&quot;, 0), (&quot;b&quot;, 1), (&quot;c&quot;, 2)]</span></code></pre>
 <dl class="params">
@@ -448,11 +464,11 @@
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of <code>(element, index)</code> tuples, in order</p>
 </div>
 <div class="fn-detail" id="with_index_loop/3">
-  <h3 class="fn-title"><code>fnp with_index_loop(list, index, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#with_index_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper with_index_loop(list, index, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#with_index_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper carrying the current <code>index</code> and a reverse-order accumulator for <code>with_index</code>.</p>
 </div>
 <div class="fn-detail" id="map_with_index/2">
-  <h3 class="fn-title"><code>fn map_with_index(list, f)</code> <a class="anchor" href="#map_with_index/2">¶</a></h3>
+  <h3 class="fn-title"><code>function map_with_index(list, f)</code> <a class="anchor" href="#map_with_index/2">¶</a></h3>
 <p>Like <code>map</code>, but <code>f</code> also receives the zero-based index of the element it is applied to.</p>
 <pre><code><span class="tok-type">List</span>.map_with_index([<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;b&quot;</span>], <span class="tok-kw">do</span> x, i -&gt; <span class="tok-str">&quot;#{i}:#{x}&quot;</span>)   <span class="tok-com"># == [&quot;0:a&quot;, &quot;1:b&quot;]</span></code></pre>
 <dl class="params">
@@ -464,11 +480,11 @@
 <p class="returns"><strong>Returns:</strong> a new list of <code>f</code> applied to each <code>(element, index)</code> pair</p>
 </div>
 <div class="fn-detail" id="map_with_index_loop/4">
-  <h3 class="fn-title"><code>fnp map_with_index_loop(list, f, index, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#map_with_index_loop/4">¶</a></h3>
+  <h3 class="fn-title"><code>helper map_with_index_loop(list, f, index, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#map_with_index_loop/4">¶</a></h3>
 <p>(private) Tail-recursive helper carrying the current <code>index</code> and a reverse-order accumulator for <code>map_with_index</code>.</p>
 </div>
 <div class="fn-detail" id="each_with_index/2">
-  <h3 class="fn-title"><code>fn each_with_index(list, f)</code> <a class="anchor" href="#each_with_index/2">¶</a></h3>
+  <h3 class="fn-title"><code>function each_with_index(list, f)</code> <a class="anchor" href="#each_with_index/2">¶</a></h3>
 <p>Like <code>each</code>, but <code>f</code> also receives the zero-based index of the element it is called with. Intended for side effects; returns <code>nil</code>.</p>
 <pre><code><span class="tok-type">List</span>.each_with_index([<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;b&quot;</span>], <span class="tok-kw">do</span> x, i -&gt; print(<span class="tok-str">&quot;#{i}:#{x}&quot;</span>))</code></pre>
 <dl class="params">
@@ -480,11 +496,11 @@
 <p class="returns"><strong>Returns:</strong> <code>nil</code></p>
 </div>
 <div class="fn-detail" id="each_with_index_loop/3">
-  <h3 class="fn-title"><code>fnp each_with_index_loop(list, f, index)</code> <span class="badge private">private</span> <a class="anchor" href="#each_with_index_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper each_with_index_loop(list, f, index)</code> <span class="badge private">private</span> <a class="anchor" href="#each_with_index_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper carrying the current <code>index</code> for <code>each_with_index</code>.</p>
 </div>
 <div class="fn-detail" id="reduce/3">
-  <h3 class="fn-title"><code>fn reduce(list, acc, f)</code> <a class="anchor" href="#reduce/3">¶</a></h3>
+  <h3 class="fn-title"><code>function reduce(list, acc, f)</code> <a class="anchor" href="#reduce/3">¶</a></h3>
 <p>Folds <code>list</code> left-to-right, threading an accumulator. <code>f</code> receives the accumulator and the current element, and its return becomes the next accumulator. Returns the final accumulator.</p>
 <pre><code><span class="tok-type">List</span>.reduce([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">0</span>, <span class="tok-kw">do</span> acc, x -&gt; acc + x)   <span class="tok-com"># == 6</span></code></pre>
 <dl class="params">
@@ -498,7 +514,7 @@
 <p class="returns"><strong>Returns:</strong> the final accumulator after folding every element</p>
 </div>
 <div class="fn-detail" id="sum/1">
-  <h3 class="fn-title"><code>fn sum(list)</code> <a class="anchor" href="#sum/1">¶</a></h3>
+  <h3 class="fn-title"><code>function sum(list)</code> <a class="anchor" href="#sum/1">¶</a></h3>
 <p>Returns the sum of the elements of <code>list</code> (numeric). The sum of <code>[]</code> is 0.</p>
 <pre><code><span class="tok-type">List</span>.sum([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])   <span class="tok-com"># == 6</span></code></pre>
 <dl class="params">
@@ -508,7 +524,7 @@
 <p class="returns"><strong>Returns:</strong> the numeric sum (<code>0</code> for an empty list)</p>
 </div>
 <div class="fn-detail" id="product/1">
-  <h3 class="fn-title"><code>fn product(list)</code> <a class="anchor" href="#product/1">¶</a></h3>
+  <h3 class="fn-title"><code>function product(list)</code> <a class="anchor" href="#product/1">¶</a></h3>
 <p>Returns the product of the elements of <code>list</code> (numeric). The product of <code>[]</code> is 1.</p>
 <pre><code><span class="tok-type">List</span>.product([<span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>])   <span class="tok-com"># == 24</span></code></pre>
 <dl class="params">
@@ -518,7 +534,7 @@
 <p class="returns"><strong>Returns:</strong> the numeric product (<code>1</code> for an empty list)</p>
 </div>
 <div class="fn-detail" id="count/2">
-  <h3 class="fn-title"><code>fn count(list, f)</code> <a class="anchor" href="#count/2">¶</a></h3>
+  <h3 class="fn-title"><code>function count(list, f)</code> <a class="anchor" href="#count/2">¶</a></h3>
 <p>Returns the number of elements for which <code>f</code> is truthy.</p>
 <pre><code><span class="tok-type">List</span>.count([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))   <span class="tok-com"># == 2</span></code></pre>
 <dl class="params">
@@ -530,7 +546,7 @@
 <p class="returns"><strong>Returns:</strong> the <code><a href="Integer.html">Integer</a></code> count of elements for which <code>f</code> is truthy</p>
 </div>
 <div class="fn-detail" id="min/1">
-  <h3 class="fn-title"><code>fn min(list)</code> <a class="anchor" href="#min/1">¶</a></h3>
+  <h3 class="fn-title"><code>function min(list)</code> <a class="anchor" href="#min/1">¶</a></h3>
 <p>Returns the smallest element of <code>list</code>, or <code>nil</code> if empty.</p>
 <pre><code><span class="tok-type">List</span>.min([<span class="tok-lit">3</span>, <span class="tok-lit">1</span>, <span class="tok-lit">2</span>])   <span class="tok-com"># == 1</span></code></pre>
 <dl class="params">
@@ -540,7 +556,7 @@
 <p class="returns"><strong>Returns:</strong> the smallest element, or <code>nil</code> if <code>list</code> is empty</p>
 </div>
 <div class="fn-detail" id="max/1">
-  <h3 class="fn-title"><code>fn max(list)</code> <a class="anchor" href="#max/1">¶</a></h3>
+  <h3 class="fn-title"><code>function max(list)</code> <a class="anchor" href="#max/1">¶</a></h3>
 <p>Returns the largest element of <code>list</code>, or <code>nil</code> if empty.</p>
 <pre><code><span class="tok-type">List</span>.max([<span class="tok-lit">3</span>, <span class="tok-lit">1</span>, <span class="tok-lit">2</span>])   <span class="tok-com"># == 3</span></code></pre>
 <dl class="params">
@@ -550,7 +566,7 @@
 <p class="returns"><strong>Returns:</strong> the largest element, or <code>nil</code> if <code>list</code> is empty</p>
 </div>
 <div class="fn-detail" id="min_of/2">
-  <h3 class="fn-title"><code>fnp min_of(a, b)</code> <span class="badge private">private</span> <a class="anchor" href="#min_of/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper min_of(a, b)</code> <span class="badge private">private</span> <a class="anchor" href="#min_of/2">¶</a></h3>
 <p>(private) Two-argument minimum that tolerates a <code>nil</code> operand, used as the reducing step for <code>min</code>.</p>
 <dl class="params">
   <dt><code>a</code></dt>
@@ -561,7 +577,7 @@
 <p class="returns"><strong>Returns:</strong> the smaller of <code>a</code> and <code>b</code>, treating <code>nil</code> as absent</p>
 </div>
 <div class="fn-detail" id="max_of/2">
-  <h3 class="fn-title"><code>fnp max_of(a, b)</code> <span class="badge private">private</span> <a class="anchor" href="#max_of/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper max_of(a, b)</code> <span class="badge private">private</span> <a class="anchor" href="#max_of/2">¶</a></h3>
 <p>(private) Two-argument maximum that tolerates a <code>nil</code> operand, used as the reducing step for <code>max</code>.</p>
 <dl class="params">
   <dt><code>a</code></dt>
@@ -572,7 +588,7 @@
 <p class="returns"><strong>Returns:</strong> the larger of <code>a</code> and <code>b</code>, treating <code>nil</code> as absent</p>
 </div>
 <div class="fn-detail" id="filter/2">
-  <h3 class="fn-title"><code>fn filter(list, f)</code> <a class="anchor" href="#filter/2">¶</a></h3>
+  <h3 class="fn-title"><code>function filter(list, f)</code> <a class="anchor" href="#filter/2">¶</a></h3>
 <p>Returns a new list containing only the elements of <code>list</code> for which <code>f</code> is truthy, in their original order.</p>
 <pre><code><span class="tok-type">List</span>.filter([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))   <span class="tok-com"># == [2, 4]</span></code></pre>
 <dl class="params">
@@ -584,11 +600,11 @@
 <p class="returns"><strong>Returns:</strong> a new list of the elements for which <code>f</code> is truthy, in order</p>
 </div>
 <div class="fn-detail" id="filter_loop/3">
-  <h3 class="fn-title"><code>fnp filter_loop(list, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#filter_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper filter_loop(list, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#filter_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>filter</code>, building the kept elements in reverse.</p>
 </div>
 <div class="fn-detail" id="reject/2">
-  <h3 class="fn-title"><code>fn reject(list, f)</code> <a class="anchor" href="#reject/2">¶</a></h3>
+  <h3 class="fn-title"><code>function reject(list, f)</code> <a class="anchor" href="#reject/2">¶</a></h3>
 <p>Inverse of <code>filter</code>: returns the elements for which <code>f</code> is falsy.</p>
 <pre><code><span class="tok-type">List</span>.reject([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))   <span class="tok-com"># == [1, 3]</span></code></pre>
 <dl class="params">
@@ -600,7 +616,7 @@
 <p class="returns"><strong>Returns:</strong> a new list of the elements for which <code>f</code> is falsy, in order</p>
 </div>
 <div class="fn-detail" id="partition/2">
-  <h3 class="fn-title"><code>fn partition(list, f)</code> <a class="anchor" href="#partition/2">¶</a></h3>
+  <h3 class="fn-title"><code>function partition(list, f)</code> <a class="anchor" href="#partition/2">¶</a></h3>
 <p>Splits <code>list</code> into a tuple of two lists: those for which <code>f</code> is truthy and those for which it is falsy. Relative order is preserved in each half.</p>
 <pre><code><span class="tok-type">List</span>.partition([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))
 <span class="tok-com"># == ([2, 4], [1, 3])</span></code></pre>
@@ -613,7 +629,7 @@
 <p class="returns"><strong>Returns:</strong> a <code>(truthy, falsy)</code> tuple of two lists, each in original order</p>
 </div>
 <div class="fn-detail" id="uniq/1">
-  <h3 class="fn-title"><code>fn uniq(list)</code> <a class="anchor" href="#uniq/1">¶</a></h3>
+  <h3 class="fn-title"><code>function uniq(list)</code> <a class="anchor" href="#uniq/1">¶</a></h3>
 <p>Returns a new list with duplicate values removed, keeping the first occurrence of each. Equality uses <code>==</code>.</p>
 <pre><code><span class="tok-type">List</span>.uniq([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">1</span>, <span class="tok-lit">3</span>, <span class="tok-lit">2</span>])   <span class="tok-com"># == [1, 2, 3]</span></code></pre>
 <dl class="params">
@@ -623,11 +639,15 @@
 <p class="returns"><strong>Returns:</strong> a new list with duplicates removed, keeping first occurrences</p>
 </div>
 <div class="fn-detail" id="uniq_loop/2">
-  <h3 class="fn-title"><code>fnp uniq_loop(list, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#uniq_loop/2">¶</a></h3>
-<p>(private) Tail-recursive helper for <code>uniq</code>, building the kept first-occurrences in reverse.</p>
+  <h3 class="fn-title"><code>helper uniq_loop(list, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#uniq_loop/2">¶</a></h3>
+<p>(private) Tail-recursive helper for <code>uniq</code>, building the kept first-occurrences in reverse. Order in <code>acc</code> does not matter for the membership check, only for the caller&#39;s final <code>reverse</code>, so a value is kept the first time it is seen and skipped every time after.</p>
+</div>
+<div class="fn-detail" id="already_kept/2">
+  <h3 class="fn-title"><code>helper already_kept(acc, value)</code> <span class="badge private">private</span> <a class="anchor" href="#already_kept/2">¶</a></h3>
+<p>(private) Whether <code>value</code> is already in <code>acc</code>, by <code>==</code> — <code>uniq_loop</code>&#39;s own membership check, since it cannot reach the public <code>contains</code>.</p>
 </div>
 <div class="fn-detail" id="dedup/1">
-  <h3 class="fn-title"><code>fn dedup(list)</code> <a class="anchor" href="#dedup/1">¶</a></h3>
+  <h3 class="fn-title"><code>function dedup(list)</code> <a class="anchor" href="#dedup/1">¶</a></h3>
 <p>Returns a new list with <em>consecutive</em> duplicate values collapsed to one, using <code>==</code>. Unlike <code>uniq</code>, a repeat elsewhere in the list (not adjacent to its first occurrence) is left alone.</p>
 <pre><code><span class="tok-type">List</span>.dedup([<span class="tok-lit">1</span>, <span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">1</span>, <span class="tok-lit">1</span>, <span class="tok-lit">3</span>])   <span class="tok-com"># == [1, 2, 1, 3]</span>
 <span class="tok-type">List</span>.uniq([<span class="tok-lit">1</span>, <span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">1</span>, <span class="tok-lit">1</span>, <span class="tok-lit">3</span>])    <span class="tok-com"># == [1, 2, 3]</span></code></pre>
@@ -638,11 +658,11 @@
 <p class="returns"><strong>Returns:</strong> a new list with consecutive duplicates removed</p>
 </div>
 <div class="fn-detail" id="dedup_from/3">
-  <h3 class="fn-title"><code>fnp dedup_from(list, last, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#dedup_from/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper dedup_from(list, last, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#dedup_from/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>dedup</code>, carrying the last element kept — so an arbitrarily long run collapses to its first element rather than comparing only adjacent pairs — and a reverse-order accumulator.</p>
 </div>
 <div class="fn-detail" id="dedup_by/2">
-  <h3 class="fn-title"><code>fn dedup_by(list, f)</code> <a class="anchor" href="#dedup_by/2">¶</a></h3>
+  <h3 class="fn-title"><code>function dedup_by(list, f)</code> <a class="anchor" href="#dedup_by/2">¶</a></h3>
 <p>Like <code>dedup</code>, but two elements collapse when <code>f</code> returns the same key for both, rather than when they are themselves <code>==</code>. Keeps the first element of each run, like <code>dedup</code>.</p>
 <pre><code><span class="tok-type">List</span>.dedup_by([<span class="tok-lit">1</span>, <span class="tok-lit">3</span>, <span class="tok-lit">2</span>, <span class="tok-lit">4</span>, <span class="tok-lit">5</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))
 <span class="tok-com"># == [1, 2, 5]</span></code></pre>
@@ -655,11 +675,11 @@
 <p class="returns"><strong>Returns:</strong> a new list with consecutive same-key elements removed</p>
 </div>
 <div class="fn-detail" id="dedup_by_from/4">
-  <h3 class="fn-title"><code>fnp dedup_by_from(list, key, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#dedup_by_from/4">¶</a></h3>
+  <h3 class="fn-title"><code>helper dedup_by_from(list, key, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#dedup_by_from/4">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>dedup_by</code>, carrying the key of the last element kept and a reverse-order accumulator.</p>
 </div>
 <div class="fn-detail" id="concat/1">
-  <h3 class="fn-title"><code>fn concat(list)</code> <a class="anchor" href="#concat/1">¶</a></h3>
+  <h3 class="fn-title"><code>function concat(list)</code> <a class="anchor" href="#concat/1">¶</a></h3>
 <p>Flattens one level: given a list of lists, concatenates them in order.</p>
 <pre><code><span class="tok-type">List</span>.concat([[<span class="tok-lit">1</span>, <span class="tok-lit">2</span>], [<span class="tok-lit">3</span>], [<span class="tok-lit">4</span>, <span class="tok-lit">5</span>]])   <span class="tok-com"># == [1, 2, 3, 4, 5]</span></code></pre>
 <dl class="params">
@@ -669,7 +689,7 @@
 <p class="returns"><strong>Returns:</strong> a single list, the inner lists concatenated in order</p>
 </div>
 <div class="fn-detail" id="flatten/1">
-  <h3 class="fn-title"><code>fn flatten(list)</code> <a class="anchor" href="#flatten/1">¶</a></h3>
+  <h3 class="fn-title"><code>function flatten(list)</code> <a class="anchor" href="#flatten/1">¶</a></h3>
 <p>Flattens <code>list</code> all the way down, however deeply its elements are themselves nested lists — unlike <code>concat</code>, which only drops one level. A non-list element is kept as-is.</p>
 <pre><code><span class="tok-type">List</span>.flatten([<span class="tok-lit">1</span>, [<span class="tok-lit">2</span>, [<span class="tok-lit">3</span>, <span class="tok-lit">4</span>]], [<span class="tok-lit">5</span>]])   <span class="tok-com"># == [1, 2, 3, 4, 5]</span></code></pre>
 <dl class="params">
@@ -679,11 +699,11 @@
 <p class="returns"><strong>Returns:</strong> a single flat list of every non-list element, in order</p>
 </div>
 <div class="fn-detail" id="flatten_loop/2">
-  <h3 class="fn-title"><code>fnp flatten_loop(list, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#flatten_loop/2">¶</a></h3>
-<p>(private) Tail-recursive helper for <code>flatten</code>: walks <code>list</code> one element at a time, so stack use is bounded by <code>list</code>&#39;s own length rather than its total (flattened) element count — a nested list still recurses into <code>flatten</code> itself, bounded instead by its nesting depth.</p>
+  <h3 class="fn-title"><code>helper flatten_loop(list, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#flatten_loop/2">¶</a></h3>
+<p>(private) Tail-recursive helper for <code>flatten</code>: walks <code>list</code> one element at a time, so stack use is bounded by <code>list</code>&#39;s own length rather than its total (flattened) element count — a nested list still recurses into <code>flatten_loop</code> itself, bounded instead by its nesting depth. <code>flatten_loop(head, [])</code> is already <code>reverse(flatten(head))</code> — the public round trip through <code>flatten</code> would reverse it twice — so a nested list&#39;s own reversed accumulator prepends directly onto <code>acc</code>.</p>
 </div>
 <div class="fn-detail" id="flat_map/2">
-  <h3 class="fn-title"><code>fn flat_map(list, f)</code> <a class="anchor" href="#flat_map/2">¶</a></h3>
+  <h3 class="fn-title"><code>function flat_map(list, f)</code> <a class="anchor" href="#flat_map/2">¶</a></h3>
 <p>Maps <code>f</code> over <code>list</code> and flattens the result one level. Equivalent to <code>concat(map(list, f))</code> — handy when <code>f</code> returns a list per element.</p>
 <pre><code><span class="tok-type">List</span>.flat_map([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>], <span class="tok-kw">do</span> x -&gt; [x, x])   <span class="tok-com"># == [1, 1, 2, 2]</span></code></pre>
 <dl class="params">
@@ -695,7 +715,7 @@
 <p class="returns"><strong>Returns:</strong> the mapped lists concatenated in order</p>
 </div>
 <div class="fn-detail" id="zip/2">
-  <h3 class="fn-title"><code>fn zip(a, b)</code> <a class="anchor" href="#zip/2">¶</a></h3>
+  <h3 class="fn-title"><code>function zip(a, b)</code> <a class="anchor" href="#zip/2">¶</a></h3>
 <p>Pairs up <code>a</code> and <code>b</code> element-wise. Stops at the shorter list — a trailing tail on the longer one has nothing to pair with, so it is dropped.</p>
 <pre><code><span class="tok-type">List</span>.zip([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], [<span class="tok-lit">:a</span>, <span class="tok-lit">:b</span>])   <span class="tok-com"># == [(1, :a), (2, :b)]</span></code></pre>
 <dl class="params">
@@ -707,11 +727,11 @@
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of <code>(a_element, b_element)</code> tuples, one per shared index</p>
 </div>
 <div class="fn-detail" id="zip_loop/3">
-  <h3 class="fn-title"><code>fnp zip_loop(a, b, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#zip_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper zip_loop(a, b, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#zip_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>zip</code>, building pairs in reverse.</p>
 </div>
 <div class="fn-detail" id="zip_with/3">
-  <h3 class="fn-title"><code>fn zip_with(a, b, f)</code> <a class="anchor" href="#zip_with/3">¶</a></h3>
+  <h3 class="fn-title"><code>function zip_with(a, b, f)</code> <a class="anchor" href="#zip_with/3">¶</a></h3>
 <p>Combines <code>a</code> and <code>b</code> element-wise through <code>f</code> instead of pairing them into tuples. Stops at the shorter list, same as <code>zip</code>.</p>
 <pre><code><span class="tok-type">List</span>.zip_with([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], [<span class="tok-lit">10</span>, <span class="tok-lit">20</span>], <span class="tok-kw">do</span> x, y -&gt; x + y)   <span class="tok-com"># == [11, 22]</span></code></pre>
 <dl class="params">
@@ -725,11 +745,11 @@
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of <code>f</code> applied to each pair, one per shared index</p>
 </div>
 <div class="fn-detail" id="zip_with_loop/4">
-  <h3 class="fn-title"><code>fnp zip_with_loop(a, b, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#zip_with_loop/4">¶</a></h3>
+  <h3 class="fn-title"><code>helper zip_with_loop(a, b, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#zip_with_loop/4">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>zip_with</code>, building results in reverse.</p>
 </div>
 <div class="fn-detail" id="unzip/1">
-  <h3 class="fn-title"><code>fn unzip(pairs)</code> <a class="anchor" href="#unzip/1">¶</a></h3>
+  <h3 class="fn-title"><code>function unzip(pairs)</code> <a class="anchor" href="#unzip/1">¶</a></h3>
 <p>Splits a list of <code>(x, y)</code> tuples into a tuple of two lists — the inverse of <code>zip</code>.</p>
 <pre><code><span class="tok-type">List</span>.unzip([(<span class="tok-lit">1</span>, <span class="tok-lit">:a</span>), (<span class="tok-lit">2</span>, <span class="tok-lit">:b</span>)])   <span class="tok-com"># == ([1, 2], [:a, :b])</span></code></pre>
 <dl class="params">
@@ -739,7 +759,7 @@
 <p class="returns"><strong>Returns:</strong> a <code>(xs, ys)</code> tuple: the first elements, then the second elements</p>
 </div>
 <div class="fn-detail" id="reverse/1">
-  <h3 class="fn-title"><code>fn reverse(list)</code> <a class="anchor" href="#reverse/1">¶</a></h3>
+  <h3 class="fn-title"><code>function reverse(list)</code> <a class="anchor" href="#reverse/1">¶</a></h3>
 <p>Returns a new list with the elements of <code>list</code> in reverse order.</p>
 <pre><code><span class="tok-type">List</span>.reverse([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])   <span class="tok-com"># == [3, 2, 1]</span></code></pre>
 <dl class="params">
@@ -748,8 +768,12 @@
 </dl>
 <p class="returns"><strong>Returns:</strong> a new list with the elements in reverse order</p>
 </div>
+<div class="fn-detail" id="reverse_loop/2">
+  <h3 class="fn-title"><code>helper reverse_loop(list, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#reverse_loop/2">¶</a></h3>
+<p>(private) Tail-recursive helper for <code>reverse</code>. Also the reversal other helpers reach for when they need to flip an accumulator of their own — they cannot call the public <code>reverse</code> — so this stays a plain, two-arg loop rather than folding into <code>reverse</code> itself.</p>
+</div>
 <div class="fn-detail" id="sort/1">
-  <h3 class="fn-title"><code>fn sort(list)</code> <a class="anchor" href="#sort/1">¶</a></h3>
+  <h3 class="fn-title"><code>function sort(list)</code> <a class="anchor" href="#sort/1">¶</a></h3>
 <p>Returns a new list with the elements of <code>list</code> sorted in ascending order using <code>&lt;</code>. Elements must be mutually comparable.</p>
 <pre><code><span class="tok-type">List</span>.sort([<span class="tok-lit">3</span>, <span class="tok-lit">1</span>, <span class="tok-lit">2</span>])   <span class="tok-com"># == [1, 2, 3]</span></code></pre>
 <dl class="params">
@@ -759,7 +783,7 @@
 <p class="returns"><strong>Returns:</strong> a new list sorted in ascending order</p>
 </div>
 <div class="fn-detail" id="sorted_insert/2">
-  <h3 class="fn-title"><code>fnp sorted_insert(list, x)</code> <span class="badge private">private</span> <a class="anchor" href="#sorted_insert/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper sorted_insert(list, x)</code> <span class="badge private">private</span> <a class="anchor" href="#sorted_insert/2">¶</a></h3>
 <p>(private) Inserts <code>x</code> into the already-sorted <code>list</code> at the first position where it is <code>&lt;=</code> the current head, preserving order. Named apart from the public <code>insert</code>, which places a value at an index.</p>
 <dl class="params">
   <dt><code>list</code></dt>
@@ -770,11 +794,11 @@
 <p class="returns"><strong>Returns:</strong> <code>list</code> with <code>x</code> inserted so the result stays sorted</p>
 </div>
 <div class="fn-detail" id="sorted_insert_loop/3">
-  <h3 class="fn-title"><code>fnp sorted_insert_loop(list, x, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#sorted_insert_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper sorted_insert_loop(list, x, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#sorted_insert_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>sorted_insert</code>, carrying the already-passed prefix in reverse until it finds where <code>x</code> belongs.</p>
 </div>
 <div class="fn-detail" id="sort_by/2">
-  <h3 class="fn-title"><code>fn sort_by(list, f)</code> <a class="anchor" href="#sort_by/2">¶</a></h3>
+  <h3 class="fn-title"><code>function sort_by(list, f)</code> <a class="anchor" href="#sort_by/2">¶</a></h3>
 <p>Returns a new list sorted in ascending order of <code>f(element)</code>, rather than the elements themselves — the way to sort a list of structs or tuples by one field.</p>
 <pre><code><span class="tok-type">List</span>.sort_by([<span class="tok-str">&quot;ccc&quot;</span>, <span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;bb&quot;</span>], <span class="tok-kw">do</span> s -&gt; <span class="tok-type">String</span>.length(s))
 <span class="tok-com"># == [&quot;a&quot;, &quot;bb&quot;, &quot;ccc&quot;]</span></code></pre>
@@ -787,15 +811,15 @@
 <p class="returns"><strong>Returns:</strong> a new list sorted in ascending order of <code>f</code>&#39;s result</p>
 </div>
 <div class="fn-detail" id="sorted_insert_by/3">
-  <h3 class="fn-title"><code>fnp sorted_insert_by(list, x, f)</code> <span class="badge private">private</span> <a class="anchor" href="#sorted_insert_by/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper sorted_insert_by(list, x, f)</code> <span class="badge private">private</span> <a class="anchor" href="#sorted_insert_by/3">¶</a></h3>
 <p>(private) Inserts <code>x</code> into the already-<code>sort_by</code>-sorted <code>list</code> at the first position where <code>f(x)</code> is <code>&lt;=</code> the current head&#39;s key.</p>
 </div>
 <div class="fn-detail" id="sorted_insert_by_loop/4">
-  <h3 class="fn-title"><code>fnp sorted_insert_by_loop(list, x, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#sorted_insert_by_loop/4">¶</a></h3>
+  <h3 class="fn-title"><code>helper sorted_insert_by_loop(list, x, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#sorted_insert_by_loop/4">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>sorted_insert_by</code>, carrying the already-passed prefix in reverse until it finds where <code>x</code> belongs.</p>
 </div>
 <div class="fn-detail" id="max_by/2">
-  <h3 class="fn-title"><code>fn max_by(list, f)</code> <a class="anchor" href="#max_by/2">¶</a></h3>
+  <h3 class="fn-title"><code>function max_by(list, f)</code> <a class="anchor" href="#max_by/2">¶</a></h3>
 <p>Returns the element of <code>list</code> for which <code>f</code> is largest, or <code>nil</code> if empty. The way to find the largest of a list of structs or tuples by one field.</p>
 <pre><code><span class="tok-type">List</span>.max_by([<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;ccc&quot;</span>, <span class="tok-str">&quot;bb&quot;</span>], <span class="tok-kw">do</span> s -&gt; <span class="tok-type">String</span>.length(s))   <span class="tok-com"># == &quot;ccc&quot;</span></code></pre>
 <dl class="params">
@@ -807,7 +831,7 @@
 <p class="returns"><strong>Returns:</strong> the element with the largest <code>f</code>, or <code>nil</code> if <code>list</code> is empty</p>
 </div>
 <div class="fn-detail" id="min_by/2">
-  <h3 class="fn-title"><code>fn min_by(list, f)</code> <a class="anchor" href="#min_by/2">¶</a></h3>
+  <h3 class="fn-title"><code>function min_by(list, f)</code> <a class="anchor" href="#min_by/2">¶</a></h3>
 <p>Returns the element of <code>list</code> for which <code>f</code> is smallest, or <code>nil</code> if empty.</p>
 <pre><code><span class="tok-type">List</span>.min_by([<span class="tok-str">&quot;ccc&quot;</span>, <span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;bb&quot;</span>], <span class="tok-kw">do</span> s -&gt; <span class="tok-type">String</span>.length(s))   <span class="tok-com"># == &quot;a&quot;</span></code></pre>
 <dl class="params">
@@ -819,15 +843,15 @@
 <p class="returns"><strong>Returns:</strong> the element with the smallest <code>f</code>, or <code>nil</code> if <code>list</code> is empty</p>
 </div>
 <div class="fn-detail" id="max_of_by/3">
-  <h3 class="fn-title"><code>fnp max_of_by(a, b, f)</code> <span class="badge private">private</span> <a class="anchor" href="#max_of_by/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper max_of_by(a, b, f)</code> <span class="badge private">private</span> <a class="anchor" href="#max_of_by/3">¶</a></h3>
 <p>(private) Two-argument, key-based maximum tolerating a <code>nil</code> operand — the reducing step for <code>max_by</code>.</p>
 </div>
 <div class="fn-detail" id="min_of_by/3">
-  <h3 class="fn-title"><code>fnp min_of_by(a, b, f)</code> <span class="badge private">private</span> <a class="anchor" href="#min_of_by/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper min_of_by(a, b, f)</code> <span class="badge private">private</span> <a class="anchor" href="#min_of_by/3">¶</a></h3>
 <p>(private) Two-argument, key-based minimum tolerating a <code>nil</code> operand — the reducing step for <code>min_by</code>.</p>
 </div>
 <div class="fn-detail" id="find/2">
-  <h3 class="fn-title"><code>fn find(list, f)</code> <a class="anchor" href="#find/2">¶</a></h3>
+  <h3 class="fn-title"><code>function find(list, f)</code> <a class="anchor" href="#find/2">¶</a></h3>
 <p>Returns the first element for which <code>f</code> is truthy, or <code>nil</code> if none match.</p>
 <pre><code><span class="tok-type">List</span>.find([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-kw">do</span> x -&gt; x &gt; <span class="tok-lit">2</span>)   <span class="tok-com"># == 3</span></code></pre>
 <dl class="params">
@@ -839,7 +863,7 @@
 <p class="returns"><strong>Returns:</strong> the first element for which <code>f</code> is truthy, or <code>nil</code> if none match</p>
 </div>
 <div class="fn-detail" id="find_index/2">
-  <h3 class="fn-title"><code>fn find_index(list, f)</code> <a class="anchor" href="#find_index/2">¶</a></h3>
+  <h3 class="fn-title"><code>function find_index(list, f)</code> <a class="anchor" href="#find_index/2">¶</a></h3>
 <p>Returns the zero-based index of the first element for which <code>f</code> is truthy, or <code>nil</code> if none match.</p>
 <pre><code><span class="tok-type">List</span>.find_index([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-kw">do</span> x -&gt; x &gt; <span class="tok-lit">2</span>)   <span class="tok-com"># == 2</span></code></pre>
 <dl class="params">
@@ -851,7 +875,7 @@
 <p class="returns"><strong>Returns:</strong> the zero-based <code><a href="Integer.html">Integer</a></code> index of the first match, or <code>nil</code> if none</p>
 </div>
 <div class="fn-detail" id="find_index_loop/3">
-  <h3 class="fn-title"><code>fnp find_index_loop(list, f, index)</code> <span class="badge private">private</span> <a class="anchor" href="#find_index_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper find_index_loop(list, f, index)</code> <span class="badge private">private</span> <a class="anchor" href="#find_index_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper carrying the current <code>index</code> for <code>find_index</code>.</p>
 <dl class="params">
   <dt><code>list</code></dt>
@@ -864,7 +888,7 @@
 <p class="returns"><strong>Returns:</strong> the index of the first match, or <code>nil</code> if none match</p>
 </div>
 <div class="fn-detail" id="index_of/2">
-  <h3 class="fn-title"><code>fn index_of(list, value)</code> <a class="anchor" href="#index_of/2">¶</a></h3>
+  <h3 class="fn-title"><code>function index_of(list, value)</code> <a class="anchor" href="#index_of/2">¶</a></h3>
 <p>Returns the zero-based index of the first element equal to <code>value</code> (using <code>==</code>), or <code>nil</code> if it is not present. <code>find_index</code> takes a predicate; this is the by-value shorthand, matching <code>contains</code>&#39;s by-value search.</p>
 <pre><code><span class="tok-type">List</span>.index_of([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-lit">3</span>)   <span class="tok-com"># == 2</span>
 <span class="tok-type">List</span>.index_of([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-lit">9</span>)   <span class="tok-com"># == nil</span></code></pre>
@@ -877,7 +901,7 @@
 <p class="returns"><strong>Returns:</strong> the zero-based <code><a href="Integer.html">Integer</a></code> index of the first match, or <code>nil</code> if none</p>
 </div>
 <div class="fn-detail" id="contains/2">
-  <h3 class="fn-title"><code>fn contains(list, value)</code> <a class="anchor" href="#contains/2">¶</a></h3>
+  <h3 class="fn-title"><code>function contains(list, value)</code> <a class="anchor" href="#contains/2">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is present in <code>list</code> (using <code>==</code>), else <code>false</code>.</p>
 <pre><code><span class="tok-type">List</span>.contains([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">2</span>)   <span class="tok-com"># == true</span></code></pre>
 <dl class="params">
@@ -889,7 +913,7 @@
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is in <code>list</code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="all/2">
-  <h3 class="fn-title"><code>fn all(list, f)</code> <a class="anchor" href="#all/2">¶</a></h3>
+  <h3 class="fn-title"><code>function all(list, f)</code> <a class="anchor" href="#all/2">¶</a></h3>
 <p>Returns <code>true</code> if <code>f</code> is truthy for every element (trivially <code>true</code> for an empty list). Short-circuits on the first falsy element.</p>
 <pre><code><span class="tok-type">List</span>.all([<span class="tok-lit">2</span>, <span class="tok-lit">4</span>, <span class="tok-lit">6</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))   <span class="tok-com"># == true</span></code></pre>
 <dl class="params">
@@ -901,7 +925,7 @@
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>f</code> is truthy for every element, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="any/2">
-  <h3 class="fn-title"><code>fn any(list, f)</code> <a class="anchor" href="#any/2">¶</a></h3>
+  <h3 class="fn-title"><code>function any(list, f)</code> <a class="anchor" href="#any/2">¶</a></h3>
 <p>Returns <code>true</code> if <code>f</code> is truthy for at least one element (<code>false</code> for an empty list). Short-circuits on the first truthy element.</p>
 <pre><code><span class="tok-type">List</span>.any([<span class="tok-lit">1</span>, <span class="tok-lit">3</span>, <span class="tok-lit">5</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))   <span class="tok-com"># == false</span></code></pre>
 <dl class="params">
@@ -913,7 +937,7 @@
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>f</code> is truthy for at least one element, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="first/1">
-  <h3 class="fn-title"><code>fn first(list)</code> <a class="anchor" href="#first/1">¶</a></h3>
+  <h3 class="fn-title"><code>function first(list)</code> <a class="anchor" href="#first/1">¶</a></h3>
 <p>Returns the first element of <code>list</code>, or <code>nil</code> if empty.</p>
 <pre><code><span class="tok-type">List</span>.first([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])   <span class="tok-com"># == 1</span></code></pre>
 <dl class="params">
@@ -923,7 +947,7 @@
 <p class="returns"><strong>Returns:</strong> the first element, or <code>nil</code> if <code>list</code> is empty</p>
 </div>
 <div class="fn-detail" id="last/1">
-  <h3 class="fn-title"><code>fn last(list)</code> <a class="anchor" href="#last/1">¶</a></h3>
+  <h3 class="fn-title"><code>function last(list)</code> <a class="anchor" href="#last/1">¶</a></h3>
 <p>Returns the last element of <code>list</code>, or <code>nil</code> if empty. Walks the whole list.</p>
 <pre><code><span class="tok-type">List</span>.last([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])   <span class="tok-com"># == 3</span></code></pre>
 <dl class="params">
@@ -933,7 +957,7 @@
 <p class="returns"><strong>Returns:</strong> the last element, or <code>nil</code> if <code>list</code> is empty</p>
 </div>
 <div class="fn-detail" id="insert/3">
-  <h3 class="fn-title"><code>fn insert(list, index, value)</code> <a class="anchor" href="#insert/3">¶</a></h3>
+  <h3 class="fn-title"><code>function insert(list, index, value)</code> <a class="anchor" href="#insert/3">¶</a></h3>
 <p>Returns a new list with <code>value</code> placed at zero-based <code>index</code>, moving the element currently there and everything after it one position along.</p>
 <p>An <code>index</code> at or past the end appends, and a negative one inserts at the front — the position is clamped rather than being an error, which matches <code>take</code>/<code>drop</code> treating out-of-range counts as the nearest sensible edge.</p>
 <pre><code><span class="tok-type">List</span>.insert([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">1</span>, <span class="tok-lit">:x</span>)    <span class="tok-com"># == [1, :x, 2, 3]</span>
@@ -950,7 +974,7 @@
 <p class="returns"><strong>Returns:</strong> a new list, one element longer</p>
 </div>
 <div class="fn-detail" id="delete/2">
-  <h3 class="fn-title"><code>fn delete(list, value)</code> <a class="anchor" href="#delete/2">¶</a></h3>
+  <h3 class="fn-title"><code>function delete(list, value)</code> <a class="anchor" href="#delete/2">¶</a></h3>
 <p>Returns a new list with the first element equal to <code>value</code> (using <code>==</code>) removed. Every later occurrence, if any, is left alone — unlike <code>filter(list, do x -&gt; x != value)</code>, which removes every match.</p>
 <pre><code><span class="tok-type">List</span>.delete([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">1</span>, <span class="tok-lit">3</span>], <span class="tok-lit">1</span>)   <span class="tok-com"># == [2, 1, 3]</span>
 <span class="tok-type">List</span>.delete([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">9</span>)      <span class="tok-com"># == [1, 2, 3]</span></code></pre>
@@ -963,11 +987,11 @@
 <p class="returns"><strong>Returns:</strong> a new list, one element shorter if <code>value</code> was found</p>
 </div>
 <div class="fn-detail" id="delete_loop/3">
-  <h3 class="fn-title"><code>fnp delete_loop(list, value, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#delete_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper delete_loop(list, value, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#delete_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>delete</code>, carrying the already-passed prefix in reverse until it finds <code>value</code>.</p>
 </div>
 <div class="fn-detail" id="delete_at/2">
-  <h3 class="fn-title"><code>fn delete_at(list, index)</code> <a class="anchor" href="#delete_at/2">¶</a></h3>
+  <h3 class="fn-title"><code>function delete_at(list, index)</code> <a class="anchor" href="#delete_at/2">¶</a></h3>
 <p>Returns a new list with the element at zero-based <code>index</code> removed — the removal-side counterpart to <code>insert</code>. An out-of-range <code>index</code> (negative, or at or past the end) returns <code>list</code> unchanged.</p>
 <pre><code><span class="tok-type">List</span>.delete_at([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">1</span>)    <span class="tok-com"># == [1, 3]</span>
 <span class="tok-type">List</span>.delete_at([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">99</span>)   <span class="tok-com"># == [1, 2, 3]</span></code></pre>
@@ -980,7 +1004,7 @@
 <p class="returns"><strong>Returns:</strong> a new list, one element shorter if <code>index</code> was in range</p>
 </div>
 <div class="fn-detail" id="update_at/3">
-  <h3 class="fn-title"><code>fn update_at(list, index, f)</code> <a class="anchor" href="#update_at/3">¶</a></h3>
+  <h3 class="fn-title"><code>function update_at(list, index, f)</code> <a class="anchor" href="#update_at/3">¶</a></h3>
 <p>Returns a new list with the element at zero-based <code>index</code> replaced by <code>f</code> applied to it. An out-of-range <code>index</code> (negative, or at or past the end) returns <code>list</code> unchanged — <code>f</code> is never called.</p>
 <pre><code><span class="tok-type">List</span>.update_at([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">1</span>, <span class="tok-kw">do</span> x -&gt; x * <span class="tok-lit">10</span>)   <span class="tok-com"># == [1, 20, 3]</span>
 <span class="tok-type">List</span>.update_at([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">99</span>, <span class="tok-kw">do</span> x -&gt; x * <span class="tok-lit">10</span>)  <span class="tok-com"># == [1, 2, 3]</span></code></pre>
@@ -995,11 +1019,11 @@
 <p class="returns"><strong>Returns:</strong> a new list with <code>index</code> updated, or <code>list</code> unchanged if out of range</p>
 </div>
 <div class="fn-detail" id="update_at_loop/4">
-  <h3 class="fn-title"><code>fnp update_at_loop(list, index, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#update_at_loop/4">¶</a></h3>
+  <h3 class="fn-title"><code>helper update_at_loop(list, index, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#update_at_loop/4">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>update_at</code>, carrying the already-passed prefix in reverse.</p>
 </div>
 <div class="fn-detail" id="take/2">
-  <h3 class="fn-title"><code>fn take(list, n)</code> <a class="anchor" href="#take/2">¶</a></h3>
+  <h3 class="fn-title"><code>function take(list, n)</code> <a class="anchor" href="#take/2">¶</a></h3>
 <p>Returns the first <code>n</code> elements of <code>list</code>. Returns <code>[]</code> when <code>n</code> is zero or negative, or the whole list when <code>n</code> exceeds its length.</p>
 <pre><code><span class="tok-type">List</span>.take([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-lit">2</span>)   <span class="tok-com"># == [1, 2]</span></code></pre>
 <dl class="params">
@@ -1011,11 +1035,11 @@
 <p class="returns"><strong>Returns:</strong> a new list of the first <code>n</code> elements (fewer if <code>list</code> is shorter)</p>
 </div>
 <div class="fn-detail" id="take_loop/3">
-  <h3 class="fn-title"><code>fnp take_loop(list, n, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#take_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper take_loop(list, n, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#take_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>take</code>, building the kept prefix in reverse.</p>
 </div>
 <div class="fn-detail" id="drop/2">
-  <h3 class="fn-title"><code>fn drop(list, n)</code> <a class="anchor" href="#drop/2">¶</a></h3>
+  <h3 class="fn-title"><code>function drop(list, n)</code> <a class="anchor" href="#drop/2">¶</a></h3>
 <p>Returns <code>list</code> without its first <code>n</code> elements. When <code>n</code> is zero or negative, returns <code>list</code> unchanged; when <code>n</code> exceeds the length, returns <code>[]</code>.</p>
 <pre><code><span class="tok-type">List</span>.drop([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>], <span class="tok-lit">2</span>)   <span class="tok-com"># == [3, 4]</span></code></pre>
 <dl class="params">
@@ -1027,7 +1051,7 @@
 <p class="returns"><strong>Returns:</strong> <code>list</code> without its first <code>n</code> elements</p>
 </div>
 <div class="fn-detail" id="take_while/2">
-  <h3 class="fn-title"><code>fn take_while(list, f)</code> <a class="anchor" href="#take_while/2">¶</a></h3>
+  <h3 class="fn-title"><code>function take_while(list, f)</code> <a class="anchor" href="#take_while/2">¶</a></h3>
 <p>Returns the longest prefix of <code>list</code> for which <code>f</code> is truthy — a predicate-based cutoff where <code>take</code> is count-based. Stops at the first element for which <code>f</code> is falsy.</p>
 <pre><code><span class="tok-type">List</span>.take_while([<span class="tok-lit">2</span>, <span class="tok-lit">4</span>, <span class="tok-lit">5</span>, <span class="tok-lit">6</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))   <span class="tok-com"># == [2, 4]</span></code></pre>
 <dl class="params">
@@ -1039,11 +1063,11 @@
 <p class="returns"><strong>Returns:</strong> a new list of the leading elements for which <code>f</code> is truthy</p>
 </div>
 <div class="fn-detail" id="take_while_loop/3">
-  <h3 class="fn-title"><code>fnp take_while_loop(list, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#take_while_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper take_while_loop(list, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#take_while_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>take_while</code>, building the kept prefix in reverse.</p>
 </div>
 <div class="fn-detail" id="drop_while/2">
-  <h3 class="fn-title"><code>fn drop_while(list, f)</code> <a class="anchor" href="#drop_while/2">¶</a></h3>
+  <h3 class="fn-title"><code>function drop_while(list, f)</code> <a class="anchor" href="#drop_while/2">¶</a></h3>
 <p>Returns <code>list</code> with its longest prefix for which <code>f</code> is truthy removed — a predicate-based cutoff where <code>drop</code> is count-based. Stops dropping at the first element for which <code>f</code> is falsy, and returns from there on.</p>
 <pre><code><span class="tok-type">List</span>.drop_while([<span class="tok-lit">2</span>, <span class="tok-lit">4</span>, <span class="tok-lit">5</span>, <span class="tok-lit">6</span>], <span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))   <span class="tok-com"># == [5, 6]</span></code></pre>
 <dl class="params">
@@ -1055,7 +1079,7 @@
 <p class="returns"><strong>Returns:</strong> <code>list</code> without its leading elements for which <code>f</code> is truthy</p>
 </div>
 <div class="fn-detail" id="slice/3">
-  <h3 class="fn-title"><code>fn slice(list, start, count)</code> <a class="anchor" href="#slice/3">¶</a></h3>
+  <h3 class="fn-title"><code>function slice(list, start, count)</code> <a class="anchor" href="#slice/3">¶</a></h3>
 <p>Returns <code>count</code> elements of <code>list</code> starting at zero-based <code>start</code>. Implemented as <code>take(drop(list, start), count)</code>.</p>
 <pre><code><span class="tok-type">List</span>.slice([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>, <span class="tok-lit">5</span>], <span class="tok-lit">1</span>, <span class="tok-lit">3</span>)   <span class="tok-com"># == [2, 3, 4]</span></code></pre>
 <dl class="params">
@@ -1069,7 +1093,7 @@
 <p class="returns"><strong>Returns:</strong> a new list of up to <code>count</code> elements from <code>start</code></p>
 </div>
 <div class="fn-detail" id="group_by/2">
-  <h3 class="fn-title"><code>fn group_by(list, f)</code> <a class="anchor" href="#group_by/2">¶</a></h3>
+  <h3 class="fn-title"><code>function group_by(list, f)</code> <a class="anchor" href="#group_by/2">¶</a></h3>
 <p>Groups the elements of <code>list</code> by the key returned by <code>f</code>, returning a map from key to the list of elements sharing that key, in original order.</p>
 <p><code>f</code> must return a valid map key — an <code><a href="Integer.html">Integer</a></code>, <code><a href="String.html">String</a></code> or <code>Symbol</code>. A predicate returning a boolean is the common slip; yield a symbol instead:</p>
 <pre><code><span class="tok-type">List</span>.group_by([<span class="tok-lit">:ok</span>, <span class="tok-lit">:error</span>, <span class="tok-lit">:ok</span>], <span class="tok-kw">do</span> x -&gt; x)
@@ -1088,11 +1112,11 @@
 <p class="returns"><strong>Returns:</strong> a <code><a href="Map.html">Map</a></code> from key to the list of elements with that key, in order</p>
 </div>
 <div class="fn-detail" id="group_by_loop/3">
-  <h3 class="fn-title"><code>fnp group_by_loop(list, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#group_by_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper group_by_loop(list, f, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#group_by_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>group_by</code>. Builds each key&#39;s group in reverse (each new element is cheap to prepend); <code>group_by</code> fixes the order of every group with a final <code>reverse</code> once grouping is done.</p>
 </div>
 <div class="fn-detail" id="chunk_every/2">
-  <h3 class="fn-title"><code>fn chunk_every(list, n)</code> <a class="anchor" href="#chunk_every/2">¶</a></h3>
+  <h3 class="fn-title"><code>function chunk_every(list, n)</code> <a class="anchor" href="#chunk_every/2">¶</a></h3>
 <p>Splits <code>list</code> into consecutive chunks of <code>n</code> elements each; the final chunk may be shorter than <code>n</code>. <code>n</code> must be positive.</p>
 <pre><code><span class="tok-type">List</span>.chunk_every([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>, <span class="tok-lit">5</span>], <span class="tok-lit">2</span>)   <span class="tok-com"># == [[1, 2], [3, 4], [5]]</span></code></pre>
 <dl class="params">
@@ -1104,11 +1128,15 @@
 <p class="returns"><strong>Returns:</strong> a list of chunks, the last possibly shorter than <code>n</code></p>
 </div>
 <div class="fn-detail" id="chunk_every_loop/3">
-  <h3 class="fn-title"><code>fnp chunk_every_loop(list, n, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#chunk_every_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper chunk_every_loop(list, n, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#chunk_every_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>chunk_every</code>, building the chunks in reverse.</p>
 </div>
+<div class="fn-detail" id="split_chunk/3">
+  <h3 class="fn-title"><code>helper split_chunk(list, n, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#split_chunk/3">¶</a></h3>
+<p>(private) Splits <code>list</code> into its first <code>n</code> elements and the rest, as <code>(chunk, rest)</code> — <code>chunk_every_loop</code>&#39;s own take/drop in one pass, since it cannot call the public <code>take</code> or <code>drop</code>.</p>
+</div>
 <div class="fn-detail" id="join/2">
-  <h3 class="fn-title"><code>fn join(list, sep)</code> <a class="anchor" href="#join/2">¶</a></h3>
+  <h3 class="fn-title"><code>function join(list, sep)</code> <a class="anchor" href="#join/2">¶</a></h3>
 <p>Joins the elements of <code>list</code> into a single string separated by <code>sep</code>. Elements are assumed to be strings. The empty list yields <code>&quot;&quot;</code>.</p>
 <pre><code><span class="tok-type">List</span>.join([<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot;b&quot;</span>, <span class="tok-str">&quot;c&quot;</span>], <span class="tok-str">&quot;, &quot;</span>)   <span class="tok-com"># == &quot;a, b, c&quot;</span></code></pre>
 <dl class="params">
@@ -1120,11 +1148,11 @@
 <p class="returns"><strong>Returns:</strong> a single <code><a href="String.html">String</a></code> of the elements joined by <code>sep</code> (<code>&quot;&quot;</code> when empty)</p>
 </div>
 <div class="fn-detail" id="join_loop/3">
-  <h3 class="fn-title"><code>fnp join_loop(list, sep, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#join_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper join_loop(list, sep, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#join_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>join</code>, threading the string built so far as <code>acc</code>.</p>
 </div>
 <div class="fn-detail" id="intersperse/2">
-  <h3 class="fn-title"><code>fn intersperse(list, sep)</code> <a class="anchor" href="#intersperse/2">¶</a></h3>
+  <h3 class="fn-title"><code>function intersperse(list, sep)</code> <a class="anchor" href="#intersperse/2">¶</a></h3>
 <p>Returns a new list with <code>sep</code> inserted between every pair of adjacent elements. The generic counterpart to <code>join</code>, which does the same thing but for strings specifically, concatenated into one.</p>
 <pre><code><span class="tok-type">List</span>.intersperse([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">0</span>)   <span class="tok-com"># == [1, 0, 2, 0, 3]</span>
 <span class="tok-type">List</span>.intersperse([<span class="tok-lit">1</span>], <span class="tok-lit">0</span>)         <span class="tok-com"># == [1]</span>
@@ -1138,11 +1166,11 @@
 <p class="returns"><strong>Returns:</strong> a new list with <code>sep</code> between every original pair of elements</p>
 </div>
 <div class="fn-detail" id="intersperse_loop/3">
-  <h3 class="fn-title"><code>fnp intersperse_loop(list, sep, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#intersperse_loop/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper intersperse_loop(list, sep, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#intersperse_loop/3">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>intersperse</code>, building the result in reverse.</p>
 </div>
 <div class="fn-detail" id="sample/1">
-  <h3 class="fn-title"><code>fn sample(list)</code> <a class="anchor" href="#sample/1">¶</a></h3>
+  <h3 class="fn-title"><code>function sample(list)</code> <a class="anchor" href="#sample/1">¶</a></h3>
 <p>Returns one element of <code>list</code>, chosen uniformly at random, or <code>nil</code> when <code>list</code> is empty. Not cryptographic — see <code><a href="Kernel.html#random">Kernel.random</a></code>.</p>
 <pre><code><span class="tok-type">List</span>.sample([<span class="tok-lit">:only</span>])   <span class="tok-com"># == :only</span>
 <span class="tok-type">List</span>.sample([])        <span class="tok-com"># == nil</span></code></pre>
@@ -1153,7 +1181,7 @@
 <p class="returns"><strong>Returns:</strong> a randomly chosen element, or <code>nil</code> if <code>list</code> is empty</p>
 </div>
 <div class="fn-detail" id="shuffle/1">
-  <h3 class="fn-title"><code>fn shuffle(list)</code> <a class="anchor" href="#shuffle/1">¶</a></h3>
+  <h3 class="fn-title"><code>function shuffle(list)</code> <a class="anchor" href="#shuffle/1">¶</a></h3>
 <p>Returns a new list with the elements of <code>list</code> in random order. Every ordering is equally likely. Not cryptographic — see <code><a href="Kernel.html#random">Kernel.random</a></code>.</p>
 <pre><code><span class="tok-type">List</span>.shuffle([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])
 | <span class="tok-type">List</span>.sort()   <span class="tok-com"># == [1, 2, 3]</span></code></pre>
@@ -1164,8 +1192,12 @@
 <p class="returns"><strong>Returns:</strong> a new list, <code>list</code>&#39;s elements in random order</p>
 </div>
 <div class="fn-detail" id="shuffle_loop/2">
-  <h3 class="fn-title"><code>fnp shuffle_loop(list, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#shuffle_loop/2">¶</a></h3>
+  <h3 class="fn-title"><code>helper shuffle_loop(list, acc)</code> <span class="badge private">private</span> <a class="anchor" href="#shuffle_loop/2">¶</a></h3>
 <p>(private) Tail-recursive helper for <code>shuffle</code>, building the shuffled result in reverse.</p>
+</div>
+<div class="fn-detail" id="remove_at/2">
+  <h3 class="fn-title"><code>helper remove_at(list, index)</code> <span class="badge private">private</span> <a class="anchor" href="#remove_at/2">¶</a></h3>
+<p>(private) <code>delete_at</code>, for <code>shuffle_loop</code> since it cannot call the public <code>delete_at</code>. Built on the same <code>split_chunk</code> <code>chunk_every_loop</code> uses, dropping the one element right after the split.</p>
 </div>
 </section>
 </section>

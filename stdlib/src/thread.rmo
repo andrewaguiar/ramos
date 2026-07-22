@@ -47,7 +47,7 @@ module Thread
   # registry of threads and no automatic wait at program end; the handle is the
   # only way back to the work.
 
-  fn start(f)
+  function start(f)
     # @doc
     #
     # Starts `f`, a lambda of no arguments, on its own thread and returns a
@@ -66,7 +66,7 @@ module Thread
     #   Thread.await(t)   # == 42
     native("start_thread", [f])
 
-  fn await(t)
+  function await(t)
     # @doc
     #
     # Waits for the thread `t` to finish and returns what its lambda produced. A
@@ -83,7 +83,7 @@ module Thread
     #   Thread.await(Thread.start(do -> "done"))   # == "done"
     native("await_thread", [t])
 
-  fn await_all(threads)
+  function await_all(threads)
     # @doc
     #
     # Waits for every thread in `threads` and returns their results as a list, in
@@ -103,7 +103,7 @@ module Thread
     #   Thread.await_all([Thread.start(do -> :a), Thread.start(do -> :b)])   # == [:a, :b]
     List.map(threads, do t -> await(t))
 
-  fn map(list, f)
+  function map(list, f)
     # @doc
     #
     # A parallel `List.map`: `f` is applied to every element on its own thread,
@@ -124,7 +124,7 @@ module Thread
     | List.map(do element -> start(do -> f(element)))
     | await_all()
 
-  fn each(list, f)
+  function each(list, f)
     # @doc
     #
     # Like `map`, but for side effects: `f` runs on its own thread for every

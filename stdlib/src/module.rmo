@@ -10,27 +10,27 @@ module Module
   #
   #   # ramos doctest setup
   #   module Greeter
-  #     fn hello(name)
+  #     function hello(name)
   #       "hi #{name}"
   #
-  #     fnp secret()
+  #     helper secret()
   #       42
   #
   #   Module.functions(Greeter)                    # == ["hello"]
   #   Module.apply(Greeter, "hello", ["Andrew"])    # == "hi Andrew"
   #
   # Conventions:
-  #   - both functions only ever see a module's *public* functions — `fnp`
+  #   - both functions only ever see a module's *public* functions — `helper`
   #     stays exactly as unreachable from here as it is from a written
   #     `Greeter.secret()` call outside the module.
   #   - a function is named with a `String` (`"hello"`), not a `Symbol` —
   #     matching `type_of`, since a module's own name is a `String` too.
 
-  fn functions(m)
+  function functions(m)
     # @doc
     #
     # The names of the public functions `m` defines, in declaration order.
-    # `fnp` functions are never included — they are not callable from outside
+    # `helper` functions are never included — they are not callable from outside
     # `m` either.
     #
     # @param m: the module to inspect
@@ -39,7 +39,7 @@ module Module
     #   Module.functions(Greeter)   # == ["hello"]
     native("module_functions", [m])
 
-  fn apply(m, fn_name, args)
+  function apply(m, fn_name, args)
     # @doc
     #
     # Resolves `fn_name` on module `m` and calls it with `args`, a list of its

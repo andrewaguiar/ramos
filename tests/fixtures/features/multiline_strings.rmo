@@ -17,7 +17,7 @@ print(str)
 # Here the string opens at the function-body level, so "Usage: ..." is flush
 # left in the value while "  -h ..." keeps its two extra spaces. Interpolation
 # works exactly as in single-line strings.
-fn usage(name)
+function usage(name)
   """
     Usage: #{name} <file>
       -h  show this help

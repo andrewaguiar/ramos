@@ -9,14 +9,14 @@ struct Account
     owner: nil
     balance: 0
 
-  fn summary(self)
+  function summary(self)
     "#{self.owner}: #{self.balance}"
 
-  fn deposit(self, amount)
+  function deposit(self, amount)
     self
     | Struct.put(:balance, self.balance + amount)
 
-  fn withdraw(self, amount)
+  function withdraw(self, amount)
     cond
       amount <= 0 ->
         (:error, WithdrawalError{code: 400, message: "amount must be positive"})

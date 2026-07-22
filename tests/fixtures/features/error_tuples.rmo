@@ -2,7 +2,7 @@
 # a tagged tuple instead: `(:ok, value)` on success, `(:error, (:type, msg))`
 # on failure. The error is an ordinary value, so it is matched like any other.
 
-fn withdraw(balance, amount)
+function withdraw(balance, amount)
   cond
     amount <= 0 -> (:error, (:invalid_amount, "amount must be positive"))
     amount > balance -> (:error, (:insufficient_funds, "balance is too low"))

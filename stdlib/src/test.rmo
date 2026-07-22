@@ -14,7 +14,7 @@ trait Test
   #
   #     alias MyApp.User
   #
-  #     fn test_user_hello()
+  #     function test_user_hello()
   #       user = User{name: "Andrew"}
   #       assert(user.hello() == "Ola Andrew")
   #

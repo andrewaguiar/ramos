@@ -1,5 +1,5 @@
 //! The REPL session (`ramos::interp::Session`): unlike a one-shot `run`, it
-//! keeps scope, `fn`s, and `module`s alive across entries. These drive that
+//! keeps scope, `function`s, and `module`s alive across entries. These drive that
 //! persistence directly, the way the `ramos repl` loop feeds it one entry at a
 //! time.
 
@@ -57,7 +57,7 @@ fn function_definitions_persist_and_are_callable() {
     let mut s = Session::new();
     // A definition-only entry yields nil, but registers the function.
     let def = "\
-fn double(n)
+function double(n)
   n * 2
 ";
     assert_eq!(feed(&mut s, def), "nil");

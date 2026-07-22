@@ -70,7 +70,7 @@ fn hello_world_with_interpolation() {
 fn module_with_indentation() {
     let src = "\
 module Geometry
-  fn area(r)
+  function area(r)
     r * r * 3.14
 ";
     assert_kinds(
@@ -80,7 +80,7 @@ module Geometry
             upper("Geometry"),
             T::Newline,
             T::Indent,
-            T::Fn,
+            T::Function,
             ident("area"),
             T::LParen,
             ident("r"),
@@ -198,7 +198,7 @@ fn pipes_continue_across_lines() {
     // README "Greet" example shape: leading-pipe continuation lines.
     let src = "\
 module Greet
-  fn hi_all(people)
+  function hi_all(people)
     people
     | List.map(do p -> p.name)
     | List.join(\", \")
@@ -273,7 +273,7 @@ module Doc
   #
   # Doc — indented comment lines are ignored.
 
-  fn value()
+  function value()
     42  # trailing comment
 ";
     assert_kinds(
@@ -283,7 +283,7 @@ module Doc
             upper("Doc"),
             T::Newline,
             T::Indent,
-            T::Fn,
+            T::Function,
             ident("value"),
             T::LParen,
             T::RParen,
@@ -416,10 +416,10 @@ s =
 
 #[test]
 fn multiline_string_indent_stripping_and_interpolation() {
-    // opened at indent 4 (the assigned value's own line, inside a fn): content
+    // opened at indent 4 (the assigned value's own line, inside a function): content
     // at 6, and the extra spaces past that are content
     let src = "\
-fn help()
+function help()
   text =
     \"\"\"
       Usage: #{name}
@@ -470,7 +470,7 @@ fn an_assigned_multiline_string_starts_on_its_own_line() {
     // never hangs off the end of its `=`.
     for src in [
         "s = \"\"\"\n  hi\n\"\"\"\n",
-        "module A\n  fn f()\n    s = \"\"\"\n      hi\n    \"\"\"\n",
+        "module A\n  function f()\n    s = \"\"\"\n      hi\n    \"\"\"\n",
     ] {
         assert_eq!(
             err_code(src),
@@ -482,7 +482,7 @@ fn an_assigned_multiline_string_starts_on_its_own_line() {
     // Written the way the rule asks for, and everywhere an assignment is not.
     for src in [
         "s =\n  \"\"\"\n    hi\n  \"\"\"\n",
-        "fn help()\n  \"\"\"\n    usage\n  \"\"\"\n",
+        "function help()\n  \"\"\"\n    usage\n  \"\"\"\n",
         "case x\n  1 ->\n    \"\"\"\n      one\n    \"\"\"\n",
     ] {
         assert!(lex(src).is_ok(), "should lex clean:\n{src}");
@@ -534,7 +534,7 @@ fn strict_no_tabs_in_indentation() {
 #[test]
 fn strict_indent_must_be_multiple_of_two() {
     assert_eq!(
-        err_code("module Foo\n   fn bar()\n"),
+        err_code("module Foo\n   function bar()\n"),
         ErrorCode::BadIndentation
     );
 }
@@ -542,7 +542,7 @@ fn strict_indent_must_be_multiple_of_two() {
 #[test]
 fn strict_indent_one_level_at_a_time() {
     assert_eq!(
-        err_code("module Foo\n    fn bar()\n"),
+        err_code("module Foo\n    function bar()\n"),
         ErrorCode::BadIndentation
     );
 }
@@ -576,7 +576,7 @@ fn strict_assigned_blocks_start_on_their_own_line() {
         "r = case x\n  1 -> :one\n",
         "r = cond\n  true -> 1\n",
         "r = run\n  :ok = check()\n",
-        "module A\n  fn f()\n    c = cond\n      true -> 1\n",
+        "module A\n  function f()\n    c = cond\n      true -> 1\n",
     ] {
         assert_eq!(
             err_code(src),
@@ -594,7 +594,7 @@ fn an_assigned_do_with_a_block_body_starts_on_its_own_line() {
     for src in [
         "f = do x\n  x + 1\n",
         "f = do x, y\n  z = x + y\n  z * 2\n",
-        "module A\n  fn g()\n    f = do x\n      x + 1\n",
+        "module A\n  function g()\n    f = do x\n      x + 1\n",
         // An `->` inside a comment or a string is not the head's own arrow.
         "f = do x  # maps x -> y\n  x + 1\n",
     ] {
@@ -697,28 +697,28 @@ fn single_pipe_still_lexes_as_the_pipe_operator() {
 fn payments_module_end_to_end() {
     let src = "\
 module Payments
-  fn max_amount()
+  function max_amount()
     10000
 
-  fn validate(amount)
+  function validate(amount)
     cond
       amount <= 0 -> raise BusinessError{message: \"must be positive\", code: 555}
       amount > Payments.max_amount() -> :too_high
       true -> :ok
 
-  fnp double_all(list)
+  helper double_all(list)
     list
     | List.map(do x -> x * 2)
     | List.join(\", \")
 ";
     let ks = kinds(src);
     let count = |f: &dyn Fn(&T) -> bool| ks.iter().filter(|k| f(k)).count();
-    assert!(ks.contains(&T::Fnp));
+    assert!(ks.contains(&T::Helper));
     assert!(ks.contains(&upper("BusinessError")));
     assert_eq!(count(&|k| *k == T::Pipe), 2);
     assert_eq!(count(&|k| matches!(k, T::Symbol(_))), 2);
     assert_eq!(count(&|k| *k == T::Arrow), 4, "3 cond arms + 1 lambda");
-    // module(0) → body(2) → fn body(4) → cond arms(6); fnp body dedents back
+    // module(0) → body(2) → function body(4) → cond arms(6); helper body dedents back
     assert_eq!(count(&|k| *k == T::Indent), count(&|k| *k == T::Dedent));
 }
 
@@ -740,15 +740,15 @@ fn a_float_requires_a_digit_immediately_after_the_dot() {
 fn a_lone_end_line_vanishes_from_the_token_stream() {
     // `end` is purely decorative — indentation alone closes the block — so
     // the token stream with one is identical to the token stream without it.
-    let without_end = "fn f()\n  1\n";
-    let with_end = "fn f()\n  1\nend\n";
+    let without_end = "function f()\n  1\n";
+    let with_end = "function f()\n  1\nend\n";
     assert_eq!(kinds(with_end), kinds(without_end));
 }
 
 #[test]
 fn nested_end_markers_all_vanish() {
-    let without_end = "module A\n  fn f()\n    1\n";
-    let with_ends = "module A\n  fn f()\n    1\n  end\nend\n";
+    let without_end = "module A\n  function f()\n    1\n";
+    let with_ends = "module A\n  function f()\n    1\n  end\nend\n";
     assert_eq!(kinds(with_ends), kinds(without_end));
 }
 
@@ -756,7 +756,7 @@ fn nested_end_markers_all_vanish() {
 fn end_without_a_trailing_newline_still_vanishes() {
     // The lexer synthesizes a final newline before EOF when the source
     // doesn't end in one; `end` should disappear the same way either way.
-    assert_eq!(kinds("fn f()\n  1\nend"), kinds("fn f()\n  1\n"));
+    assert_eq!(kinds("function f()\n  1\nend"), kinds("function f()\n  1\n"));
 }
 
 #[test]

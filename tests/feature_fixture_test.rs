@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 const FEATURES: &[(&str, &[&str])] = &[
     // syntax & literals
     ("comments.rmo", &["Assign", "Lit \"# not a comment\""]),
-    ("doc_comments.rmo", &["module Greeter", "fn greet(name)"]),
+    ("doc_comments.rmo", &["module Greeter", "function greet(name)"]),
     (
         "variables.rmo",
         &["Assign", "Binding x", "Int 100", "Var x"],
@@ -87,7 +87,7 @@ const FEATURES: &[(&str, &[&str])] = &[
     ),
     (
         "multiline_strings.rmo",
-        &["Str", "Interp", "fn usage(name)"],
+        &["Str", "Interp", "function usage(name)"],
     ),
     // control flow
     (
@@ -135,14 +135,14 @@ const FEATURES: &[(&str, &[&str])] = &[
         &["Call .map()", "Call .join()", "Call .filter()"],
     ),
     // modules
-    ("module.rmo", &["module PersonUtils", "fn hello(person)"]),
+    ("module.rmo", &["module PersonUtils", "function hello(person)"]),
     (
         "namespaced_module.rmo",
         &["module MyApp.Business.SystemUser"],
     ),
     (
         "private_functions.rmo",
-        &["module Accounts", "fn create(name)", "fnp normalize(name)"],
+        &["module Accounts", "function create(name)", "helper normalize(name)"],
     ),
     (
         "alias.rmo",
@@ -164,7 +164,7 @@ const FEATURES: &[(&str, &[&str])] = &[
         &[
             "struct Person",
             "attributes",
-            "fn hello(self)",
+            "function hello(self)",
             "Self",
             "StructLit Person",
             "Access .name",
@@ -176,7 +176,7 @@ const FEATURES: &[(&str, &[&str])] = &[
     ),
     (
         "trait.rmo",
-        &["trait Helloable", "fn is_over_eighteen(self) [declaration]"],
+        &["trait Helloable", "function is_over_eighteen(self) [declaration]"],
     ),
     (
         "implements.rmo",
@@ -191,8 +191,8 @@ const FEATURES: &[(&str, &[&str])] = &[
         &[
             "module Cache",
             "implements Actor",
-            "fn call(f, args, state, config)",
-            "fn cast(f, args, state, config)",
+            "function call(f, args, state, config)",
+            "function cast(f, args, state, config)",
         ],
     ),
     // errors as values
@@ -304,7 +304,7 @@ fn doc_comments_leave_no_trace_in_the_ast() {
             "doc comment leaked into the AST: {marker}"
         );
     }
-    assert!(out.contains("fn greet(name)"), "{out}");
+    assert!(out.contains("function greet(name)"), "{out}");
 }
 
 #[test]

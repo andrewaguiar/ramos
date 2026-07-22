@@ -79,7 +79,7 @@ fn the_run_covers_every_example_the_sources_carry() {
 #[test]
 fn an_example_carries_the_bindings_above_it() {
     let source = "\
-  fn f(x)
+  function f(x)
     # @doc
     #
     #   base = 10
@@ -96,7 +96,7 @@ fn an_example_carries_the_bindings_above_it() {
 #[test]
 fn prose_between_snippets_ends_the_scope() {
     let source = "\
-  fn f(x)
+  function f(x)
     # @doc
     #
     #   base = 10
@@ -126,7 +126,7 @@ module Demo
   #
   #   Person{name: \"Andrew\"}.name   # == \"Andrew\"
 
-  fn f(x)
+  function f(x)
     # @doc
     #
     #   Person{}.name   # == nil
@@ -146,7 +146,7 @@ module Demo
 #[test]
 fn a_pipeline_asserts_at_each_stage() {
     let source = "\
-  fn f(x)
+  function f(x)
     # @doc
     #
     #   [1, 2, 3]
@@ -178,7 +178,7 @@ fn a_drifted_doc_fails_the_run_and_names_the_line() {
         dir.join("src").join("demo.rmo"),
         "\
 module Demo
-  fn double(x)
+  function double(x)
     # @doc
     #
     #   Demo.double(2)   # == 5
@@ -210,7 +210,7 @@ fn examples_are_sandboxed_from_each_other_and_from_the_tree() {
         dir.join("src").join("demo.rmo"),
         "\
 module Demo
-  fn f(x)
+  function f(x)
     # @doc
     #
     #   File.write(\"scratch.txt\", \"one\")

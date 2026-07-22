@@ -54,30 +54,30 @@
 <p>A module is itself a value in Ramos: <code><a href="Kernel.html">Kernel</a></code> (or <code><a href="Integer.html">Integer</a></code>, or any module written) can be bound, passed around, and stored — <code>is_module</code> tests for one and <code>type_of</code> names it. This module is what you do with one once you have it, when the function to call is not known at the call site.</p>
 <pre><code><span class="tok-com"># ramos doctest setup</span>
 <span class="tok-kw">module</span> <span class="tok-type">Greeter</span>
-  <span class="tok-kw">fn</span> hello(name)
+  <span class="tok-kw">function</span> hello(name)
     <span class="tok-str">&quot;hi #{name}&quot;</span></code></pre>
-<pre><code><span class="tok-kw">fnp</span> secret()
+<pre><code><span class="tok-kw">helper</span> secret()
   <span class="tok-lit">42</span></code></pre>
 <pre><code><span class="tok-type">Module</span>.functions(<span class="tok-type">Greeter</span>)                    <span class="tok-com"># == [&quot;hello&quot;]</span>
 <span class="tok-type">Module</span>.apply(<span class="tok-type">Greeter</span>, <span class="tok-str">&quot;hello&quot;</span>, [<span class="tok-str">&quot;Andrew&quot;</span>])    <span class="tok-com"># == &quot;hi Andrew&quot;</span></code></pre>
 <p>Conventions:</p>
-<ul><li>both functions only ever see a module&#39;s <em>public</em> functions — <code>fnp</code> stays exactly as unreachable from here as it is from a written <code>Greeter.secret()</code> call outside the module.</li><li>a function is named with a <code><a href="String.html">String</a></code> (<code>&quot;hello&quot;</code>), not a <code>Symbol</code> — matching <code>type_of</code>, since a module&#39;s own name is a <code><a href="String.html">String</a></code> too.</li></ul>
+<ul><li>both functions only ever see a module&#39;s <em>public</em> functions — <code>helper</code> stays exactly as unreachable from here as it is from a written <code>Greeter.secret()</code> call outside the module.</li><li>a function is named with a <code><a href="String.html">String</a></code> (<code>&quot;hello&quot;</code>), not a <code>Symbol</code> — matching <code>type_of</code>, since a module&#39;s own name is a <code><a href="String.html">String</a></code> too.</li></ul>
 </section>
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#functions/1" class="fn-sig"><code>fn functions(m)</code></a>
-    <span class="fn-summary">The names of the public functions <code>m</code> defines, in declaration order. <code>fnp</code> functions are never included — they are not callable from outside <code>m</code> either.</span>
+    <a href="#functions/1" class="fn-sig"><code>function functions(m)</code></a>
+    <span class="fn-summary">The names of the public functions <code>m</code> defines, in declaration order. <code>helper</code> functions are never included — they are not callable from outside <code>m</code> either.</span>
   </div>
   <div class="fn-row">
-    <a href="#apply/3" class="fn-sig"><code>fn apply(m, fn_name, args)</code></a>
+    <a href="#apply/3" class="fn-sig"><code>function apply(m, fn_name, args)</code></a>
     <span class="fn-summary">Resolves <code>fn_name</code> on module <code>m</code> and calls it with <code>args</code>, a list of its arguments — like <code><a href="Kernel.html#apply">Kernel.apply</a></code>, but the function is looked up by name on a module rather than held as a lambda. Use it when <em>which</em> function to call is only known at runtime (a dispatch table, a plugin name read from config); otherwise call the function directly.</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="functions/1">
-  <h3 class="fn-title"><code>fn functions(m)</code> <a class="anchor" href="#functions/1">¶</a></h3>
-<p>The names of the public functions <code>m</code> defines, in declaration order. <code>fnp</code> functions are never included — they are not callable from outside <code>m</code> either.</p>
+  <h3 class="fn-title"><code>function functions(m)</code> <a class="anchor" href="#functions/1">¶</a></h3>
+<p>The names of the public functions <code>m</code> defines, in declaration order. <code>helper</code> functions are never included — they are not callable from outside <code>m</code> either.</p>
 <pre><code><span class="tok-type">Module</span>.functions(<span class="tok-type">Greeter</span>)   <span class="tok-com"># == [&quot;hello&quot;]</span></code></pre>
 <dl class="params">
   <dt><code>m</code></dt>
@@ -86,7 +86,7 @@
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of <code><a href="String.html">String</a></code> function names, in declaration order</p>
 </div>
 <div class="fn-detail" id="apply/3">
-  <h3 class="fn-title"><code>fn apply(m, fn_name, args)</code> <a class="anchor" href="#apply/3">¶</a></h3>
+  <h3 class="fn-title"><code>function apply(m, fn_name, args)</code> <a class="anchor" href="#apply/3">¶</a></h3>
 <p>Resolves <code>fn_name</code> on module <code>m</code> and calls it with <code>args</code>, a list of its arguments — like <code><a href="Kernel.html#apply">Kernel.apply</a></code>, but the function is looked up by name on a module rather than held as a lambda. Use it when <em>which</em> function to call is only known at runtime (a dispatch table, a plugin name read from config); otherwise call the function directly.</p>
 <p>Has no Ramos body: the interpreter intercepts the call, because resolving <code>fn_name</code> and running it needs the evaluator, which a native cannot reach. Raises if <code>m</code> has no public function named <code>fn_name</code>.</p>
 <pre><code><span class="tok-type">Module</span>.apply(<span class="tok-type">Integer</span>, <span class="tok-str">&quot;abs&quot;</span>, [-<span class="tok-lit">7</span>])   <span class="tok-com"># == 7</span></code></pre>

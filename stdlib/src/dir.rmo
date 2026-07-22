@@ -27,7 +27,7 @@ module Dir
   #   - `mkdir` creates parent directories as needed and is happy if the
   #     directory already exists.
 
-  fn cwd()
+  function cwd()
     # @doc
     #
     # Returns the process's current working directory.
@@ -37,7 +37,7 @@ module Dir
     #   Dir.cwd()   # (:ok, "/home/andrew/dev/ramos") — whatever it happens to be
     native("dir_current", [])
 
-  fn cd(path)
+  function cd(path)
     # @doc
     #
     # Changes the process's current working directory to `path`. Affects every
@@ -50,7 +50,7 @@ module Dir
     #   Dir.cd("src")   # == :ok
     native("dir_change", [path])
 
-  fn mkdir(path)
+  function mkdir(path)
     # @doc
     #
     # Creates the directory at `path`, including any missing parent directories
@@ -62,7 +62,7 @@ module Dir
     #   Dir.mkdir("build/cache")   # == :ok
     native("dir_make", [path])
 
-  fn ls(path)
+  function ls(path)
     # @doc
     #
     # Lists the entries of the directory at `path` — the bare names of the files
@@ -77,7 +77,7 @@ module Dir
     #   Dir.ls("stdlib")   # == (:ok, ["dir.rmo", "file.rmo"])
     native("dir_list", [path])
 
-  fn exists(path)
+  function exists(path)
     # @doc
     #
     # Returns `true` if something exists at `path` (a file or a directory), else
@@ -91,7 +91,7 @@ module Dir
     #   Dir.exists("missing")  # == false
     native("path_exists", [path])
 
-  fn is_dir(path)
+  function is_dir(path)
     # @doc
     #
     # Returns `true` if `path` exists and is a directory, else `false` (including

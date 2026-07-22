@@ -65,39 +65,39 @@
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#cwd/0" class="fn-sig"><code>fn cwd()</code></a>
+    <a href="#cwd/0" class="fn-sig"><code>function cwd()</code></a>
     <span class="fn-summary">Returns the process&#39;s current working directory.</span>
   </div>
   <div class="fn-row">
-    <a href="#cd/1" class="fn-sig"><code>fn cd(path)</code></a>
+    <a href="#cd/1" class="fn-sig"><code>function cd(path)</code></a>
     <span class="fn-summary">Changes the process&#39;s current working directory to <code>path</code>. Affects every relative path used afterwards, in both <code><a href="Dir.html">Dir</a></code> and <code><a href="File.html">File</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#mkdir/1" class="fn-sig"><code>fn mkdir(path)</code></a>
+    <a href="#mkdir/1" class="fn-sig"><code>function mkdir(path)</code></a>
     <span class="fn-summary">Creates the directory at <code>path</code>, including any missing parent directories (like <code>mkdir -p</code>). Succeeds if the directory already exists.</span>
   </div>
   <div class="fn-row">
-    <a href="#ls/1" class="fn-sig"><code>fn ls(path)</code></a>
+    <a href="#ls/1" class="fn-sig"><code>function ls(path)</code></a>
     <span class="fn-summary">Lists the entries of the directory at <code>path</code> — the bare names of the files and subdirectories it contains (not full paths), sorted.</span>
   </div>
   <div class="fn-row">
-    <a href="#exists/1" class="fn-sig"><code>fn exists(path)</code></a>
+    <a href="#exists/1" class="fn-sig"><code>function exists(path)</code></a>
     <span class="fn-summary">Returns <code>true</code> if something exists at <code>path</code> (a file or a directory), else <code>false</code>. Use <code>is_dir</code> to require that it is a directory.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_dir/1" class="fn-sig"><code>fn is_dir(path)</code></a>
+    <a href="#is_dir/1" class="fn-sig"><code>function is_dir(path)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>path</code> exists and is a directory, else <code>false</code> (including when <code>path</code> is a regular file or does not exist).</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="cwd/0">
-  <h3 class="fn-title"><code>fn cwd()</code> <a class="anchor" href="#cwd/0">¶</a></h3>
+  <h3 class="fn-title"><code>function cwd()</code> <a class="anchor" href="#cwd/0">¶</a></h3>
 <p>Returns the process&#39;s current working directory.</p>
 <pre><code><span class="tok-type">Dir</span>.cwd()   <span class="tok-com"># (:ok, &quot;/home/andrew/dev/ramos&quot;) — whatever it happens to be</span></code></pre>
 <p class="returns"><strong>Returns:</strong> <code>(:ok, path)</code>, or <code>(:error, reason)</code> if it cannot be determined</p>
 </div>
 <div class="fn-detail" id="cd/1">
-  <h3 class="fn-title"><code>fn cd(path)</code> <a class="anchor" href="#cd/1">¶</a></h3>
+  <h3 class="fn-title"><code>function cd(path)</code> <a class="anchor" href="#cd/1">¶</a></h3>
 <p>Changes the process&#39;s current working directory to <code>path</code>. Affects every relative path used afterwards, in both <code><a href="Dir.html">Dir</a></code> and <code><a href="File.html">File</a></code>.</p>
 <pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;src&quot;</span>)
 <span class="tok-type">Dir</span>.cd(<span class="tok-str">&quot;src&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
@@ -108,7 +108,7 @@
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> (e.g. <code>:enoent</code>) on failure</p>
 </div>
 <div class="fn-detail" id="mkdir/1">
-  <h3 class="fn-title"><code>fn mkdir(path)</code> <a class="anchor" href="#mkdir/1">¶</a></h3>
+  <h3 class="fn-title"><code>function mkdir(path)</code> <a class="anchor" href="#mkdir/1">¶</a></h3>
 <p>Creates the directory at <code>path</code>, including any missing parent directories (like <code>mkdir -p</code>). Succeeds if the directory already exists.</p>
 <pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;build/cache&quot;</span>)   <span class="tok-com"># == :ok</span></code></pre>
 <dl class="params">
@@ -118,7 +118,7 @@
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, or <code>(:error, reason)</code> on failure</p>
 </div>
 <div class="fn-detail" id="ls/1">
-  <h3 class="fn-title"><code>fn ls(path)</code> <a class="anchor" href="#ls/1">¶</a></h3>
+  <h3 class="fn-title"><code>function ls(path)</code> <a class="anchor" href="#ls/1">¶</a></h3>
 <p>Lists the entries of the directory at <code>path</code> — the bare names of the files and subdirectories it contains (not full paths), sorted.</p>
 <pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;stdlib&quot;</span>)
 <span class="tok-type">File</span>.write(<span class="tok-str">&quot;stdlib/dir.rmo&quot;</span>, <span class="tok-str">&quot;&quot;</span>)
@@ -131,7 +131,7 @@
 <p class="returns"><strong>Returns:</strong> <code>(:ok, names)</code> (a sorted list of strings), or <code>(:error, reason)</code></p>
 </div>
 <div class="fn-detail" id="exists/1">
-  <h3 class="fn-title"><code>fn exists(path)</code> <a class="anchor" href="#exists/1">¶</a></h3>
+  <h3 class="fn-title"><code>function exists(path)</code> <a class="anchor" href="#exists/1">¶</a></h3>
 <p>Returns <code>true</code> if something exists at <code>path</code> (a file or a directory), else <code>false</code>. Use <code>is_dir</code> to require that it is a directory.</p>
 <pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;stdlib&quot;</span>)
 <span class="tok-type">Dir</span>.exists(<span class="tok-str">&quot;stdlib&quot;</span>)   <span class="tok-com"># == true</span>
@@ -143,7 +143,7 @@
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>path</code> exists, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_dir/1">
-  <h3 class="fn-title"><code>fn is_dir(path)</code> <a class="anchor" href="#is_dir/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_dir(path)</code> <a class="anchor" href="#is_dir/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>path</code> exists and is a directory, else <code>false</code> (including when <code>path</code> is a regular file or does not exist).</p>
 <pre><code><span class="tok-type">Dir</span>.mkdir(<span class="tok-str">&quot;stdlib&quot;</span>)
 <span class="tok-type">File</span>.write(<span class="tok-str">&quot;stdlib/dir.rmo&quot;</span>, <span class="tok-str">&quot;&quot;</span>)

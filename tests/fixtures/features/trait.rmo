@@ -3,10 +3,10 @@
 # every implementer must define it.
 
 trait Helloable
-  fn hello(self)
+  function hello(self)
     print("Ola #{self.name}, eu tenho #{self.age}")
 
-  fn describe(self)
+  function describe(self)
     "#{self.name} (#{self.age})"
 
-  fn is_over_eighteen(self)   # required, no body
+  function is_over_eighteen(self)   # required, no body

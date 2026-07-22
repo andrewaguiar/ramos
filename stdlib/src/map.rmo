@@ -35,7 +35,7 @@ module Map
   #     overwrite.
   #   - equality ignores order: `{a: 1, b: 2} == {b: 2, a: 1}` is `true`.
 
-  fn entries(map)
+  function entries(map)
     # @doc
     #
     # The map's `(key, value)` pairs, in insertion order.
@@ -46,7 +46,7 @@ module Map
     #   Map.entries({a: 1, b: 2})   # == [(:a, 1), (:b, 2)]
     native("map_entries", [map])
 
-  fn put(map, key, value)
+  function put(map, key, value)
     # @doc
     #
     # A new map with `key` set to `value`. An existing key keeps its position;
@@ -61,7 +61,7 @@ module Map
     #   Map.put({a: 1}, :a, 9)   # == {a: 9}
     native("map_put", [map, key, value])
 
-  fn get(map, key, default)
+  function get(map, key, default)
     # @doc
     #
     # The value stored under `key`.
@@ -75,7 +75,7 @@ module Map
     #   Map.get({a: 1}, :b, 0)   # == 0
     native("map_get", [map, key, default])
 
-  fn has_key(map, key)
+  function has_key(map, key)
     # @doc
     #
     # Whether `map` holds `key`.
@@ -88,7 +88,7 @@ module Map
     #   Map.has_key({a: 1}, :b)   # == false
     native("map_has_key", [map, key])
 
-  fn keys(map)
+  function keys(map)
     # @doc
     #
     # The map's keys, in insertion order.
@@ -99,7 +99,7 @@ module Map
     #   Map.keys({a: 1, b: 2})   # == [:a, :b]
     native("map_keys", [map])
 
-  fn values(map)
+  function values(map)
     # @doc
     #
     # The map's values, in insertion order — the counterpart to `keys`.
@@ -112,7 +112,7 @@ module Map
     #   Map.values({a: 1, b: 2})   # == [1, 2]
     to_list(map)
 
-  fn delete(map, key)
+  function delete(map, key)
     # @doc
     #
     # A new map without `key`. Removing a key that is not there is not an error.
@@ -125,7 +125,7 @@ module Map
     #   Map.delete({a: 1}, :z)         # == {a: 1}
     native("map_delete", [map, key])
 
-  fn update(map, key, f)
+  function update(map, key, f)
     # @doc
     #
     # A new map with `key`'s value replaced by `f` applied to it. A key that is
@@ -142,7 +142,7 @@ module Map
       has_key(map, key) -> put(map, key, f(get(map, key, nil)))
       true -> map
 
-  fn put_new(map, key, value)
+  function put_new(map, key, value)
     # @doc
     #
     # A new map with `key` set to `value`, but only when `key` is not already
@@ -161,7 +161,7 @@ module Map
       has_key(map, key) -> map
       true -> put(map, key, value)
 
-  fn merge_with(a, b, f)
+  function merge_with(a, b, f)
     # @doc
     #
     # Merges `a` and `b` like `++`, except a key present in both is resolved by
@@ -177,19 +177,21 @@ module Map
     #   # == {a: 1, b: 12, c: 3}
     List.reduce(entries(b), a, do acc, pair -> merge_pair(acc, pair, f))
 
-  fnp merge_pair(acc, pair, f)
+  helper merge_pair(acc, pair, f)
     # @doc
     #
     # (private) One step of `merge_with`'s fold: puts `pair`'s key into `acc`,
     # combining with the existing value through `f` when the key already
-    # exists there.
+    # exists there. Goes through `native` directly rather than the public
+    # `put`/`get`/`has_key`, which a helper cannot call.
     key = at(pair, 0)
     value = at(pair, 1)
     cond
-      has_key(acc, key) -> put(acc, key, f(get(acc, key, nil), value))
-      true -> put(acc, key, value)
+      native("map_has_key", [acc, key]) ->
+        native("map_put", [acc, key, f(native("map_get", [acc, key, nil]), value)])
+      true -> native("map_put", [acc, key, value])
 
-  fn filter(map, f)
+  function filter(map, f)
     # @doc
     #
     # The pairs for which `f` is truthy, in order.
@@ -201,7 +203,7 @@ module Map
     #   Map.filter({a: 1, b: 2}, do k, v -> v > 1)   # == {b: 2}
     from_list(List.filter(entries(map), do pair -> apply_pair(f, pair)))
 
-  fn reject(map, f)
+  function reject(map, f)
     # @doc
     #
     # Inverse of `filter`: the pairs for which `f` is falsy.
@@ -213,10 +215,10 @@ module Map
     #   Map.reject({a: 1, b: 2}, do k, v -> v > 1)   # == {a: 1}
     from_list(List.reject(entries(map), do pair -> apply_pair(f, pair)))
 
-  fnp apply_pair(f, pair)
+  helper apply_pair(f, pair)
     f(at(pair, 0), at(pair, 1))
 
-  fn map_values(map, f)
+  function map_values(map, f)
     # @doc
     #
     # A new map with each value replaced by `f` applied to it. Keys are kept.
@@ -228,7 +230,7 @@ module Map
     #   Map.map_values({a: 1, b: 2}, do v -> v * 10)   # == {a: 10, b: 20}
     map_entries(map, do k, v -> (k, f(v)))
 
-  fn map_keys(map, f)
+  function map_keys(map, f)
     # @doc
     #
     # A new map with each key replaced by `f` applied to it. Values are kept;
@@ -241,7 +243,7 @@ module Map
     #   Map.map_keys({1: :a, 2: :b}, do k -> k * 10)   # == {10: :a, 20: :b}
     map_entries(map, do k, v -> (f(k), v))
 
-  fn map_entries(map, f)
+  function map_entries(map, f)
     # @doc
     #
     # A new map built by replacing each pair with the `(key, value)` tuple `f`
@@ -254,7 +256,7 @@ module Map
     #   Map.map_entries({a: 1}, do k, v -> (k, v + 1))   # == {a: 2}
     from_list(List.map(entries(map), do pair -> apply_pair(f, pair)))
 
-  fn from_list(pairs)
+  function from_list(pairs)
     # @doc
     #
     # A map built from a list of `(key, value)` tuples, in order. A repeated key

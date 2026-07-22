@@ -105,7 +105,7 @@ fn indentation_stress_never_panics() {
     // Lines of varying indentation ending in block openers and stray dedents —
     // the shape that exercises the INDENT/DEDENT stack hardest.
     let openers = [
-        "module M", "fn f()", "case x", "cond", "if a", "  x = 1", "|", "\"\"\"",
+        "module M", "function f()", "case x", "cond", "if a", "  x = 1", "|", "\"\"\"",
     ];
     hammer(0x0BAD_C0DE_1234_5678, 40_000, |rng| {
         let lines = rng.below(8);
@@ -127,7 +127,7 @@ fn mutating_real_snippets_never_panics() {
     // doubled. Mutations of real input reach states pure noise rarely does: a
     // string opened and never closed, an indent off by one space.
     let seeds = [
-        "module M\n  fn f(x)\n    case x\n      1 -> :one\n      _ -> :other\n",
+        "module M\n  function f(x)\n    case x\n      1 -> :one\n      _ -> :other\n",
         "x = \"hi #{name}\"\n[a, b | rest] = list\n",
         "cond\n  a > 1 -> :big\n  true -> :small\n",
         "greet = do name -> \"Ola #{name}\"\n",

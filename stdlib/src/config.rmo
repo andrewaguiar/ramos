@@ -61,7 +61,7 @@ module Config
 
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     # @doc
     #
     # The server half. `:get` is the only operation — the settings are fixed
@@ -77,7 +77,7 @@ module Config
 
   # client half — callers never write `call_actor` / `cast_actor`
 
-  fn start()
+  function start()
     # @doc
     #
     # Read the environment's file and start the `:config` actor on it. Call it
@@ -95,7 +95,7 @@ module Config
       (:ok, text) -> start_actor(:config, Config, parse(text), {})
       (:error, reason) -> (:error, reason)
 
-  fn get(section, key)
+  function get(section, key)
     # @doc
     #
     # The value of `key` under `[section]`, as a `String`.
@@ -111,7 +111,7 @@ module Config
     #   Config.get("nope", "host")       # == nil
     call_actor(:config, Config, :get, [section, key])
 
-  fn path()
+  function path()
     # @doc
     #
     # The file `start` will read, chosen from `APP_ENV`: `.env.<downcased>`
@@ -130,18 +130,18 @@ module Config
 
   # private functions — the TOML subset a settings file uses
 
-  fnp get_impl(args, state)
+  helper get_impl(args, state)
     [section, key] = args
     (Map.get(Map.get(state, section, {}), key, nil), state)
 
   # Fold the lines into `(sections, current_section)`, carrying the section a
   # `key = value` line belongs to until the next header replaces it.
-  fnp parse(text)
+  helper parse(text)
     lines = String.split(text, "\n")
     parsed = List.reduce(lines, ({}, nil), do acc, line -> parse_line(acc, line))
     at(parsed, 0)
 
-  fnp parse_line(acc, raw)
+  helper parse_line(acc, raw)
     (sections, current) = acc
     line = String.trim(raw)
     cond
@@ -150,49 +150,49 @@ module Config
       current == nil -> acc
       true -> (put_pair(sections, current, line), current)
 
-  fnp is_skippable(line)
+  helper is_skippable(line)
     is_empty(line) or String.starts_with(line, "#")
 
-  fnp is_header(line)
+  helper is_header(line)
     String.starts_with(line, "[") and String.ends_with(line, "]")
 
-  fnp header_name(line)
+  helper header_name(line)
     String.trim(String.slice(line, 1, String.length(line) - 2))
 
   # A pair line without an `=` says nothing, so it is dropped rather than
   # stored under an empty key.
-  fnp put_pair(sections, section, line)
+  helper put_pair(sections, section, line)
     split = String.find(line, "=")
     cond
       split == nil -> sections
       true -> put_entry(sections, section, key_of(line, split), value_of(line, split))
 
-  fnp put_entry(sections, section, key, value)
+  helper put_entry(sections, section, key, value)
     Map.put(sections, section, Map.put(Map.get(sections, section, {}), key, value))
 
-  fnp key_of(line, split)
+  helper key_of(line, split)
     String.trim(String.slice(line, 0, split))
 
-  fnp value_of(line, split)
+  helper value_of(line, split)
     unquote(String.trim(String.slice(line, split + 1, String.length(line))))
 
   # Quotes win over comments: a value that opens with one ends at its closing
   # quote, so a `#` inside is part of the value and a comment after it is not.
-  fnp unquote(value)
+  helper unquote(value)
     cond
       String.starts_with(value, "\"") -> take_quoted(value, "\"")
       String.starts_with(value, "'") -> take_quoted(value, "'")
       true -> drop_comment(value)
 
   # An unterminated quote is taken as written rather than swallowing the line.
-  fnp take_quoted(value, quote)
+  helper take_quoted(value, quote)
     rest = String.slice(value, 1, String.length(value) - 1)
     close = String.find(rest, quote)
     cond
       close == nil -> value
       true -> String.slice(rest, 0, close)
 
-  fnp drop_comment(value)
+  helper drop_comment(value)
     mark = String.find(value, " #")
     cond
       mark == nil -> value

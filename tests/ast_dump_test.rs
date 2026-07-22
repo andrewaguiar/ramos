@@ -59,23 +59,23 @@ fn renders_definitions_with_their_heads() {
         render(
             "\
 module Payments
-  fn max()
+  function max()
     10
 
-  fnp helper(a, b)
+  helper assist(a, b)
     a
 
-  fn native(s)
+  function native(s)
 "
         ),
         "\
 Program
   module Payments
-    fn max()
+    function max()
       Int 10
-    fnp helper(a, b)
+    helper assist(a, b)
       Var a
-    fn native(s) [declaration]
+    function native(s) [declaration]
 "
     );
 }
@@ -220,8 +220,8 @@ fn example_fixture_uses_every_ast_node() {
     has("trait Describable");
     has("implements Describable");
     has("attributes");
-    has("fn pi()");
-    has("fnp sum_all(list)");
+    has("function pi()");
+    has("helper sum_all(list)");
     has("[declaration]");
     // statements
     has("Assign");

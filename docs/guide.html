@@ -74,7 +74,7 @@
 <ul>
   <li><strong>2 space indentation</strong> — exactly 2 spaces per indentation level, never tabs</li>
   <li><strong>Whitespace around operators</strong> — <code>x = 1</code> is correct, <code>x=1</code> is an error</li>
-  <li><strong>Whitespace after commas</strong> — <code>fn test(n, x)</code> is correct, <code>fn test(n,x)</code> is an error (applies to arguments, lists, tuples and maps)</li>
+  <li><strong>Whitespace after commas</strong> — <code>function test(n, x)</code> is correct, <code>function test(n,x)</code> is an error (applies to arguments, lists, tuples and maps)</li>
   <li><strong>Parentheses on calls</strong> — <code>foo()</code>, never bare <code>foo</code>; a bare name is always a variable or a field access</li>
   <li><strong>Assigned blocks start on their own line</strong> — when the value being assigned is an <code>if</code>, <code>case</code>, <code>cond</code> or <code>run</code> block, a <code>&quot;&quot;&quot;</code> multiline string, or a <code>do</code> lambda with an indented body, it begins on the line <em>after</em> the <code>=</code>, indented one level:</li>
 </ul>
@@ -131,35 +131,35 @@ greet = <span class="tok-kw">do</span> name -&gt; <span class="tok-str">&quot;Ol
 print(greet(<span class="tok-str">&quot;Andrew&quot;</span>))</code></pre>
 <p><code>print</code> lives in the <code><a href="Kernel.html">Kernel</a></code> module — and <code><a href="Kernel.html">Kernel</a></code> is the one module that is implicitly in scope everywhere, so <code>print(x)</code> is sugar for <code><a href="Kernel.html#print">Kernel.print(x)</a></code> and you never write the <code><a href="Kernel.html">Kernel.</a></code> prefix (or <code>alias</code> it). See the <a href="#standard-library">Standard library</a> section for the rest of what <code><a href="Kernel.html">Kernel</a></code> provides.</p>
 <h3 id="entrypoints">Entrypoints</h3>
-<p>A runnable Ramos program starts from an <strong>entrypoint</strong>: a <code>.rmo</code> file whose module exposes a public <code>fn main()</code>. <code>ramos run</code> loads the file and calls that module&#39;s <code>main()</code> with no arguments:</p>
+<p>A runnable Ramos program starts from an <strong>entrypoint</strong>: a <code>.rmo</code> file whose module exposes a public <code>function main()</code>. <code>ramos run</code> loads the file and calls that module&#39;s <code>main()</code> with no arguments:</p>
 <pre><code><span class="tok-com"># app.rmo</span>
 <span class="tok-kw">module</span> <span class="tok-type">App</span>
-  <span class="tok-kw">fn</span> main()
+  <span class="tok-kw">function</span> main()
     print(<span class="tok-str">&quot;Ola world&quot;</span>)</code></pre>
 <pre><code>ramos <span class="tok-kw">run</span> app.rmo        <span class="tok-com"># calls App.main()</span></code></pre>
-<p><code>main()</code> is only the way in, not the whole module: an entrypoint may define whatever other functions it needs, public or private. Keeping it thin is still the habit worth having — <code>fnp</code> helpers break <code>main()</code> up without widening what the module exposes:</p>
+<p><code>main()</code> is only the way in, not the whole module: an entrypoint may define whatever other functions it needs, public or private. Keeping it thin is still the habit worth having — <code>helper</code> functions break <code>main()</code> up without widening what the module exposes:</p>
 <pre><code><span class="tok-com"># app.rmo</span>
 <span class="tok-kw">module</span> <span class="tok-type">App</span>
-  <span class="tok-kw">fn</span> main()
+  <span class="tok-kw">function</span> main()
     [<span class="tok-str">&quot;Andrew&quot;</span>, <span class="tok-str">&quot;Ana&quot;</span>]
     | <span class="tok-type">List</span>.map(<span class="tok-kw">do</span> name -&gt; greeting(name))
     | <span class="tok-type">List</span>.each(<span class="tok-kw">do</span> line -&gt; print(line))
 
-  <span class="tok-kw">fnp</span> greeting(name)          <span class="tok-com"># private helper, fine</span>
+  <span class="tok-kw">helper</span> greeting(name)          <span class="tok-com"># private helper, fine</span>
     <span class="tok-str">&quot;Ola #{name}&quot;</span></code></pre>
 <p>Most real work still belongs in other modules, and an entrypoint reaches those through <code>alias</code>, which drops a namespaced module&#39;s prefix so you can call it by its short name:</p>
 <pre><code><span class="tok-com"># cli.rmo</span>
 <span class="tok-kw">module</span> <span class="tok-type">Cli</span>
   <span class="tok-kw">alias</span> <span class="tok-type">MyApp</span>.<span class="tok-type">Business</span>.<span class="tok-type">Greeter</span>
 
-  <span class="tok-kw">fn</span> main()
+  <span class="tok-kw">function</span> main()
     <span class="tok-type">Greeter</span>.greet_all([<span class="tok-str">&quot;Andrew&quot;</span>, <span class="tok-str">&quot;Ana&quot;</span>])</code></pre>
 <p>Alias several modules the same way; each <code>alias</code> line sits at the top of the entrypoint body:</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">Cli</span>
   <span class="tok-kw">alias</span> <span class="tok-type">MyApp</span>.<span class="tok-type">Business</span>.<span class="tok-type">Greeter</span>
   <span class="tok-kw">alias</span> <span class="tok-type">MyApp</span>.<span class="tok-type">Reporting</span>.<span class="tok-type">Summary</span>
 
-  <span class="tok-kw">fn</span> main()
+  <span class="tok-kw">function</span> main()
     [<span class="tok-str">&quot;Andrew&quot;</span>, <span class="tok-str">&quot;Ana&quot;</span>]
     | <span class="tok-type">Greeter</span>.greet_all()
     | <span class="tok-type">Summary</span>.print_report()</code></pre>
@@ -178,8 +178,8 @@ print(greet(<span class="tok-str">&quot;Andrew&quot;</span>))</code></pre>
   <tr><td><code>trait</code></td><td>Define a contract of functions for structs to implement</td></tr>
   <tr><td><code>implements</code></td><td>Declare that a struct implements a trait</td></tr>
   <tr><td><code>attributes</code></td><td>Declare struct fields with default values</td></tr>
-  <tr><td><code>fn</code></td><td>Define a public function</td></tr>
-  <tr><td><code>fnp</code></td><td>Define a private function (module-scoped)</td></tr>
+  <tr><td><code>function</code></td><td>Define a public function</td></tr>
+  <tr><td><code>helper</code></td><td>Define a private function (module-scoped)</td></tr>
   <tr><td><code>case</code></td><td>Pattern match a value against patterns</td></tr>
   <tr><td><code>if</code></td><td>Branch two ways on a condition (no <code>else if</code> — use <code>cond</code>)</td></tr>
   <tr><td><code>else</code></td><td>The other branch of an <code>if</code></td></tr>
@@ -233,34 +233,43 @@ map = {name: <span class="tok-str">&quot;andrew&quot;</span>}</code></pre>
 <h3 id="pure-modules">Pure modules</h3>
 <p>A <strong>pure module</strong> is a namespace of functions with no per-instance state. It is itself a value, so it can be passed around and inspected.</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">PersonUtils</span>
-  <span class="tok-kw">fn</span> hello(person)
+  <span class="tok-kw">function</span> hello(person)
     print(<span class="tok-str">&quot;Ola #{person.name}, eu tenho #{person.age}&quot;</span>)
 
-  <span class="tok-kw">fnp</span> secret()          <span class="tok-com"># fnp = private, only callable from inside the module</span>
+  <span class="tok-kw">helper</span> secret()          <span class="tok-com"># helper = private, only callable from inside the module</span>
     <span class="tok-lit">42</span>
 
 <span class="tok-type">PersonUtils</span>.hello(andrew)
 andrew
 | <span class="tok-type">PersonUtils</span>.hello()</code></pre>
-<p>A name resolves to exactly one function: Ramos does not overload on arity, and <code>fn</code> and <code>fnp</code> share the one namespace. Defining a name twice in the same body is an error rather than a second definition that could never be reached:</p>
+<p>A name resolves to exactly one function: Ramos does not overload on arity, and <code>function</code> and <code>helper</code> share the one namespace. Defining a name twice in the same body is an error rather than a second definition that could never be reached:</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">Dup</span>
-  <span class="tok-kw">fn</span> twice(x)
+  <span class="tok-kw">function</span> twice(x)
     x * <span class="tok-lit">2</span>
 
-  <span class="tok-kw">fn</span> twice(x, y)     <span class="tok-com"># error: `Dup` defines `twice` more than once</span>
+  <span class="tok-kw">function</span> twice(x, y)     <span class="tok-com"># error: `Dup` defines `twice` more than once</span>
     x + y</code></pre>
+<p>A <code>helper</code> may call another <code>helper</code>, and a <code>function</code> may call a <code>helper</code> — that is the whole point of one. What it may not do is call back into its own module&#39;s <code>function</code>s: the direction only runs one way, so a helper cannot widen its own reach by reaching for the public surface it exists to support. This is checked the same way a duplicate name is, at parse time:</p>
+<pre><code><span class="tok-kw">module</span> <span class="tok-type">Payments</span>
+  <span class="tok-kw">function</span> charge(amount)
+    log(amount)
+    amount
+
+  <span class="tok-kw">helper</span> log(amount)
+    charge(amount)     <span class="tok-com"># error: `Payments.log` is a `helper` and calls</span>
+                        <span class="tok-com"># `Payments.charge`, a `function` in the same module</span></code></pre>
 <p>There is no <code>const</code>: a constant is a function that takes no arguments, so it is defined and called like everything else. One construct covers both, and the call parentheses say plainly that a name is being resolved in a module.</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">SystemUser</span>
-  <span class="tok-kw">fn</span> default_email()
+  <span class="tok-kw">function</span> default_email()
     <span class="tok-str">&quot;system@ramos.com.br&quot;</span>
 
-  <span class="tok-kw">fn</span> max_retries()
+  <span class="tok-kw">function</span> max_retries()
     <span class="tok-lit">3</span>
 
 print(<span class="tok-type">SystemUser</span>.default_email())
 print(<span class="tok-type">SystemUser</span>.max_retries())</code></pre>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">Greet</span>
-  <span class="tok-kw">fn</span> hi_all(people)
+  <span class="tok-kw">function</span> hi_all(people)
     people
     | <span class="tok-type">List</span>.map(<span class="tok-kw">do</span> p -&gt; <span class="tok-str">&quot;hi #{p.name}&quot;</span>)
     | <span class="tok-type">List</span>.join(<span class="tok-str">&quot;, &quot;</span>)</code></pre>
@@ -286,7 +295,7 @@ print(<span class="tok-type">SystemUser</span>.max_retries())</code></pre>
     name: <span class="tok-lit">nil</span>
     age: <span class="tok-lit">0</span>
 
-  <span class="tok-kw">fn</span> hello(<span class="tok-kw">self</span>)
+  <span class="tok-kw">function</span> hello(<span class="tok-kw">self</span>)
     print(<span class="tok-str">&quot;Ola #{self.name}, eu tenho #{self.age}&quot;</span>)
 
 andrew = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;Andrew&quot;</span>, age: <span class="tok-lit">40</span>}
@@ -305,10 +314,10 @@ older =
 <h3 id="traits">Traits</h3>
 <p>Traits declare a contract of functions. A function <strong>with a body</strong> is a default implementation; a function <strong>without a body</strong> is required and every implementer must define it. A struct declares its traits with the <code>implements</code> keyword.</p>
 <pre><code><span class="tok-kw">trait</span> <span class="tok-type">Helloable</span>
-  <span class="tok-kw">fn</span> hello(<span class="tok-kw">self</span>)
+  <span class="tok-kw">function</span> hello(<span class="tok-kw">self</span>)
     print(<span class="tok-str">&quot;Ola #{self.name}, eu tenho #{self.age}&quot;</span>)
 
-  <span class="tok-kw">fn</span> is_over_eighteen(<span class="tok-kw">self</span>)         <span class="tok-com"># required, no body</span>
+  <span class="tok-kw">function</span> is_over_eighteen(<span class="tok-kw">self</span>)         <span class="tok-com"># required, no body</span>
 
 <span class="tok-kw">struct</span> <span class="tok-type">Person</span>
   <span class="tok-kw">implements</span> <span class="tok-type">Helloable</span>
@@ -317,7 +326,7 @@ older =
     name: <span class="tok-lit">nil</span>
     age: <span class="tok-lit">0</span>
 
-  <span class="tok-kw">fn</span> is_over_eighteen(<span class="tok-kw">self</span>)
+  <span class="tok-kw">function</span> is_over_eighteen(<span class="tok-kw">self</span>)
     <span class="tok-kw">self</span>.age &gt; <span class="tok-lit">18</span>
 
 andrew = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;Andrew&quot;</span>, age: <span class="tok-lit">40</span>}
@@ -331,7 +340,7 @@ andrew = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;
     code: <span class="tok-lit">0</span>
     message: <span class="tok-lit">nil</span>
 
-<span class="tok-kw">fn</span> charge(amount)
+<span class="tok-kw">function</span> charge(amount)
   <span class="tok-kw">cond</span>
     amount &lt;= <span class="tok-lit">0</span> -&gt; (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">555</span>, message: <span class="tok-str">&quot;must be positive&quot;</span>})
     amount &gt; <span class="tok-lit">10000</span> -&gt; (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">556</span>, message: <span class="tok-str">&quot;too large&quot;</span>})
@@ -391,7 +400,7 @@ andrew = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;
   <span class="tok-com">#</span>
   <span class="tok-com">#   [1, 2, 3] | List.map(do x -&gt; x * 2)   # == [2, 4, 6]</span>
 
-  <span class="tok-kw">fn</span> map(list, f)
+  <span class="tok-kw">function</span> map(list, f)
     <span class="tok-com"># @doc</span>
     <span class="tok-com">#</span>
     <span class="tok-com"># Applies `f` to every element of `list`, returning a new list of the</span>
@@ -467,12 +476,12 @@ parity = <span class="tok-kw">do</span> x -&gt; <span class="tok-kw">cond</span>
   <li><strong>never tabs</strong></li>
 </ul>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">Geometry</span>
-  <span class="tok-kw">fn</span> area(r)
+  <span class="tok-kw">function</span> area(r)
     r * r * <span class="tok-lit">3.14</span></code></pre>
-<p>Blocks are introduced by <code>module</code>, <code>struct</code>, <code>trait</code>, <code>fn</code>, <code>if</code>, <code>case</code>, <code>cond</code> and <code>do</code>.</p>
+<p>Blocks are introduced by <code>module</code>, <code>struct</code>, <code>trait</code>, <code>function</code>, <code>if</code>, <code>case</code>, <code>cond</code> and <code>do</code>.</p>
 <p>Indentation is what actually closes a block — <code>end</code> is never required. It exists only as an optional visual marker for readers who like seeing where a block ends, and carries no meaning: the parser drops it before it ever matters, so a program reads identically with or without one. Put it, if you use it at all, on its own line, dedented back to the level of whatever it is marking the end of:</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">Geometry</span>
-  <span class="tok-kw">fn</span> area(r)
+  <span class="tok-kw">function</span> area(r)
     r * r * <span class="tok-lit">3.14</span>
   end
 end</code></pre>
@@ -538,7 +547,7 @@ print(<span class="tok-str">&quot;Ola #{name}, you have #{1 + 1} new messages&qu
 
 print(str)
 
-<span class="tok-kw">fn</span> usage(name)
+<span class="tok-kw">function</span> usage(name)
   <span class="tok-str">&quot;&quot;&quot;
     Usage: #{name} &lt;file&gt;
       -h  show this help
@@ -621,7 +630,7 @@ print(result) <span class="tok-com"># (:error, (:invalid_string, &quot;1 is not 
 <p><code>run</code> is how a chain of fallible steps stays flat. A failed match is an ordinary value, not an interruption — which is the whole model, described next.</p>
 <h3 id="error-handling">Error handling</h3>
 <p>Ramos has no exceptions. Nothing interrupts execution, unwinds the stack, or jumps to a handler somewhere up the call chain. A function that can fail says so in what it <strong>returns</strong>: a tagged tuple, <code>(:ok, value)</code> on success and <code>(:error, (:type, message))</code> on failure.</p>
-<pre><code><span class="tok-kw">fn</span> withdraw(balance, amount)
+<pre><code><span class="tok-kw">function</span> withdraw(balance, amount)
   <span class="tok-kw">cond</span>
     amount &lt;= <span class="tok-lit">0</span> -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:invalid_amount</span>, <span class="tok-str">&quot;amount must be positive&quot;</span>))
     amount &gt; balance -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:insufficient_funds</span>, <span class="tok-str">&quot;balance is too low&quot;</span>))
@@ -635,10 +644,10 @@ print(result) <span class="tok-com"># (:error, (:invalid_string, &quot;1 is not 
 <p>The <code>(:type, message)</code> pair is the convention the standard library follows: a lowercase symbol naming <em>what</em> went wrong, and a string describing it. The tag is what you match on; the message is for the human reading the output. Where there is nothing useful to say, <code>(:error, reason)</code> with a bare symbol reason is enough — that is what <code><a href="File.html">File</a></code> and <code><a href="Dir.html">Dir</a></code> return (<code>:enoent</code>, <code>:eacces</code>, …).</p>
 <p>Because a failure is a value, a function that cannot handle one passes it along by returning it, and the choice is visible at every step rather than hidden in whether some caller installed a handler:</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">FileHandler</span>
-  <span class="tok-kw">fn</span> default_content()
+  <span class="tok-kw">function</span> default_content()
     <span class="tok-str">&quot;Default content&quot;</span>
 
-  <span class="tok-kw">fn</span> read_safely(path)
+  <span class="tok-kw">function</span> read_safely(path)
     <span class="tok-kw">case</span> <span class="tok-type">File</span>.read(path)
       (<span class="tok-lit">:ok</span>, text) -&gt; text
       (<span class="tok-lit">:error</span>, reason) -&gt;
@@ -684,7 +693,7 @@ double_then_add(<span class="tok-lit">2</span>, <span class="tok-lit">3</span>) 
 lb = <span class="tok-kw">do</span> x -&gt; x + v
 
 lb(<span class="tok-lit">2</span>)   <span class="tok-com"># == 3</span></code></pre>
-<p>A lambda may not refer to the name it is being bound to (<code>f = do x -&gt; f(x)</code>): lambdas are anonymous and non-recursive, and a named <code>fn</code> is how you recurse.</p>
+<p>A lambda may not refer to the name it is being bound to (<code>f = do x -&gt; f(x)</code>): lambdas are anonymous and non-recursive, and a named <code>function</code> is how you recurse.</p>
 <h2 id="standard-library">Standard library</h2>
 <p>Each type ships with a rich, pipe-friendly module. A few highlights (<code><a href="Kernel.html">Kernel</a></code>, <code><a href="String.html">String</a></code>, <code><a href="List.html">List</a></code>, and <code><a href="Tuple.html">Tuple</a></code> have inline-documented sources under <a href="https://github.com/andrewaguiar/ramos/src/branch/main/stdlib/"><code>stdlib/</code></a>; the remaining modules are not in this repo yet):</p>
 <ul>
@@ -726,7 +735,7 @@ lb(<span class="tok-lit">2</span>)   <span class="tok-com"># == 3</span></code><
   <span class="tok-kw">implements</span> <span class="tok-type">Actor</span>
 
   <span class="tok-com"># server</span>
-  <span class="tok-kw">fn</span> call(f, args, state, config)
+  <span class="tok-kw">function</span> call(f, args, state, config)
     <span class="tok-kw">case</span> f
       <span class="tok-lit">:get</span> -&gt;
         [key] = args
@@ -736,13 +745,13 @@ lb(<span class="tok-lit">2</span>)   <span class="tok-com"># == 3</span></code><
         (<span class="tok-lit">:ok</span>, <span class="tok-type">Map</span>.put(state, key, value))
 
   <span class="tok-com"># client</span>
-  <span class="tok-kw">fn</span> start()
+  <span class="tok-kw">function</span> start()
     start_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, {}, {})
 
-  <span class="tok-kw">fn</span> get(key)
+  <span class="tok-kw">function</span> get(key)
     call_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:get</span>, [key])
 
-  <span class="tok-kw">fn</span> set(key, value)
+  <span class="tok-kw">function</span> set(key, value)
     call_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:set</span>, [key, value])</code></pre>
 <pre><code><span class="tok-type">Cache</span>.start()
 <span class="tok-type">Cache</span>.set(<span class="tok-str">&quot;key&quot;</span>, <span class="tok-str">&quot;v2&quot;</span>)
@@ -783,7 +792,7 @@ is_actor_started(<span class="tok-lit">:beta</span>)   <span class="tok-com"># =
 <h4 id="call-and-cast">call and cast</h4>
 <p><code>call</code> waits: the message goes to the actor&#39;s thread, the handler runs there, and its reply comes back before the next statement. <code>cast</code> does not — <code>:ok</code> comes back as soon as the message is sent, and the handler runs on the actor&#39;s thread while this one carries on. One actor handles its own mailbox in order, so a <code>call</code> always sees every message sent to that actor before it.</p>
 <p>The second callback returns only the new state, because a cast has no reply to send anywhere:</p>
-<pre><code><span class="tok-kw">fn</span> cast(f, args, state, config)
+<pre><code><span class="tok-kw">function</span> cast(f, args, state, config)
   [key] = args
   <span class="tok-type">Map</span>.delete(state, key)</code></pre>
 <p><code>cast</code> is a trait <em>default</em>, not a requirement: unless a module defines its own, a cast runs that module&#39;s <code>call</code> and discards the reply. So an actor written only for <code>call</code> can be cast to without writing anything extra, and you override <code>cast</code> for work that only makes sense fire-and-forget.</p>
@@ -848,13 +857,13 @@ total = <span class="tok-type">Thread</span>.await(t)       <span class="tok-com
 
   <span class="tok-kw">alias</span> <span class="tok-type">MyApp</span>.<span class="tok-type">User</span>
 
-  <span class="tok-kw">fn</span> test_user_hello()
+  <span class="tok-kw">function</span> test_user_hello()
     <span class="tok-com"># @doc</span>
     <span class="tok-com"># A user greets by name.</span>
     user = <span class="tok-type">User</span>{name: <span class="tok-str">&quot;Andrew&quot;</span>}
     assert(user.hello() == <span class="tok-str">&quot;Ola Andrew&quot;</span>)
 
-  <span class="tok-kw">fn</span> test_default_age()
+  <span class="tok-kw">function</span> test_default_age()
     <span class="tok-com"># @doc</span>
     <span class="tok-com"># A user built with no age is 18, not 0.</span>
     assert(<span class="tok-type">User</span>{}.age == <span class="tok-lit">0</span>)</code></pre>
@@ -874,7 +883,7 @@ ramos test --quietly                    # results only, no doc lines</code></pre
 <p>A test with no <code>@doc</code> simply prints its name, and <code>--quietly</code> drops every doc line — for a CI log, or a run whose tests you already know by heart.</p>
 <p><code>ramos test</code> exits non-zero when anything fails, so it drops straight into a build script.</p>
 <p>Tests live under <strong><code>src/test/</code></strong> and follow the same file rules as everything else — the namespace is the path, so <code>MyApp.UserTest</code> is <code>src/test/my_app/user_test.rmo</code>. A test module&#39;s name must <strong>end in <code><a href="Test.html">Test</a></code></strong>, and it must <code>implements Test</code>: the name makes it read as a test in a failure report, and the trait makes being run something a module opts into rather than something its name causes. A test reaches the code it exercises through the ordinary <code>alias</code>, resolved against <code>src/</code>.</p>
-<p>Only public <code>test_</code> functions run, each with no arguments, so a module can keep <code>fnp</code> helpers beside them. A test stops at its first failed <code>assert</code> and the run continues with the next test.</p>
+<p>Only public <code>test_</code> functions run, each with no arguments, so a module can keep <code>helper</code> functions beside them. A test stops at its first failed <code>assert</code> and the run continues with the next test.</p>
 <h4 id="assert">assert</h4>
 <p><code>assert(condition)</code> is a <code><a href="Kernel.html">Kernel</a></code> function. It returns <code>:ok</code> when the condition holds — any truthy value, since only <code>false</code> and <code>nil</code> are falsy — and fails the test otherwise. A failure travels the ordinary error path; nothing is thrown, because Ramos has nothing to throw.</p>
 <p>When the condition is a comparison, the failure reports both sides, which is usually the whole story:</p>
@@ -927,7 +936,7 @@ ramos lexer app.rmo --no-color               # force plain output</code></pre>
 <pre><code>RAMA_STACK_SIZE=1G ramos run deep.rmo    # 1 gibibyte; also accepts 512M, 64K, a byte count</code></pre>
 <h2 id="the-repl">The REPL</h2>
 <pre><code>ramos repl</code></pre>
-<p>An interactive session: type an expression, see its value. The prompt is indentation-aware, so multi-line <code>case</code>, <code>cond</code>, <code>fn</code> and <code>do</code> blocks carry across lines.</p>
+<p>An interactive session: type an expression, see its value. The prompt is indentation-aware, so multi-line <code>case</code>, <code>cond</code>, <code>function</code> and <code>do</code> blocks carry across lines.</p>
 <h2 id="project-layout">Project layout</h2>
 <pre><code>.
 ├── README.md                # this file — language tour

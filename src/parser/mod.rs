@@ -60,9 +60,9 @@ impl Parser {
             T::Module => Ok(Item::Module(self.parse_module()?)),
             T::Struct => Ok(Item::Struct(self.parse_struct()?)),
             T::Trait => Ok(Item::Trait(self.parse_trait()?)),
-            T::Fn => Ok(Item::Function(self.parse_fn(false)?)),
-            T::Fnp => Err(self
-                .err_here("private functions (`fnp`) are only allowed inside a module or struct")),
+            T::Function => Ok(Item::Function(self.parse_fn(false)?)),
+            T::Helper => Err(self
+                .err_here("helpers (`helper`) are only allowed inside a module or struct")),
             _ => Ok(Item::Statement(self.parse_stmt()?)),
         }
     }
@@ -88,8 +88,8 @@ impl Parser {
         let mut functions = Vec::new();
         while !self.check(&T::Dedent) {
             match self.peek() {
-                T::Fn => functions.push(self.parse_fn(false)?),
-                T::Fnp => functions.push(self.parse_fn(true)?),
+                T::Function => functions.push(self.parse_fn(false)?),
+                T::Helper => functions.push(self.parse_fn(true)?),
                 T::Alias => {
                     return Err(self.err_here("`alias` must be at the top of the module body"))
                 }
@@ -98,7 +98,7 @@ impl Parser {
                 }
                 _ => {
                     return Err(self.err_here(
-                        "only `implements`, `alias`, `fn` and `fnp` definitions are allowed \
+                        "only `implements`, `alias`, `function` and `helper` definitions are allowed \
                          inside a module",
                     ))
                 }
@@ -106,6 +106,7 @@ impl Parser {
         }
         self.bump(); // Dedent
         check_unique_fn_names(&name, &functions)?;
+        check_helpers_dont_call_functions(&name, &functions)?;
         Ok(ModuleDef {
             name,
             implements,
@@ -144,8 +145,8 @@ impl Parser {
         let mut functions = Vec::new();
         while !self.check(&T::Dedent) {
             match self.peek() {
-                T::Fn => functions.push(self.parse_fn(false)?),
-                T::Fnp => functions.push(self.parse_fn(true)?),
+                T::Function => functions.push(self.parse_fn(false)?),
+                T::Helper => functions.push(self.parse_fn(true)?),
                 T::Implements => {
                     return Err(self.err_here("`implements` must be at the top of the struct body"))
                 }
@@ -155,12 +156,13 @@ impl Parser {
                     ))
                 }
                 _ => return Err(self.err_here(
-                    "only `implements`, `attributes`, `fn` and `fnp` are allowed inside a struct",
+                    "only `implements`, `attributes`, `function` and `helper` are allowed inside a struct",
                 )),
             }
         }
         self.bump(); // Dedent
         check_unique_fn_names(&name, &functions)?;
+        check_helpers_dont_call_functions(&name, &functions)?;
         Ok(StructDef {
             name,
             implements,
@@ -190,8 +192,8 @@ impl Parser {
         let mut functions = Vec::new();
         while !self.check(&T::Dedent) {
             match self.peek() {
-                T::Fn => functions.push(self.parse_fn(false)?),
-                _ => return Err(self.err_here("only `fn` definitions are allowed inside a trait")),
+                T::Function => functions.push(self.parse_fn(false)?),
+                _ => return Err(self.err_here("only `function` definitions are allowed inside a trait")),
             }
         }
         self.bump(); // Dedent
@@ -205,7 +207,7 @@ impl Parser {
 
     fn parse_fn(&mut self, private: bool) -> Result<FnDef, ParseError> {
         let span = self.span();
-        self.bump(); // fn | fnp
+        self.bump(); // function | helper
         let name = self.expect_ident("a function name")?;
         self.expect(&T::LParen, "`(` — function definitions require parentheses")?;
         let mut params = Vec::new();
@@ -1111,7 +1113,7 @@ impl Parser {
 /// Ramos does not overload on arity: a name resolves to exactly one function, so
 /// a second definition is unreachable rather than an alternative. Silently
 /// keeping the first is the kind of quiet surprise the rest of the language
-/// refuses, so the collision is named — including between `fn` and `fnp`, which
+/// refuses, so the collision is named — including between `function` and `helper`, which
 /// share one namespace.
 fn check_unique_fn_names(owner: &ModulePath, functions: &[FnDef]) -> Result<(), ParseError> {
     let mut seen: Vec<&str> = Vec::new();
@@ -1129,6 +1131,161 @@ fn check_unique_fn_names(owner: &ModulePath, functions: &[FnDef]) -> Result<(), 
         seen.push(&f.name);
     }
     Ok(())
+}
+
+/// Reject a `helper`'s body calling one of the module's own `function`s — by
+/// bare name or `self.name()` — directly.
+///
+/// A helper exists to be called *by* a function, breaking its body into
+/// smaller pieces without widening what the module exposes. Letting a helper
+/// call back into the public surface it is meant to serve blurs that
+/// direction, so the boundary is named the same way a duplicate name is: at
+/// parse time, once every function in the body is known.
+fn check_helpers_dont_call_functions(
+    owner: &ModulePath,
+    functions: &[FnDef],
+) -> Result<(), ParseError> {
+    let public: Vec<&str> = functions
+        .iter()
+        .filter(|f| !f.private)
+        .map(|f| f.name.as_str())
+        .collect();
+    for f in functions.iter().filter(|f| f.private) {
+        let mut bound: Vec<String> = f.params.clone();
+        if let Some(called) = block_calls_public(&f.body, &mut bound, &public) {
+            return Err(ParseError {
+                message: format!(
+                    "`{owner}.{}` is a `helper` and calls `{owner}.{called}`, a `function` \
+                     in the same module — a helper may call other helpers, but not call \
+                     back into the module's public functions",
+                    f.name
+                ),
+                span: f.span,
+            });
+        }
+    }
+    Ok(())
+}
+
+/// The first name among `public` that `block` calls directly (bare, or
+/// `self.name()`) without it being shadowed by a parameter or local binding.
+/// Mirrors [`crate::interp::freevars::free_names`]'s bound-name tracking, but
+/// looks only at call targets, not every free reference.
+fn block_calls_public(block: &Block, bound: &mut Vec<String>, public: &[&str]) -> Option<String> {
+    let base = bound.len();
+    let mut found = None;
+    for stmt in block {
+        found = match stmt {
+            Stmt::Expr(e) => expr_calls_public(e, bound, public),
+            Stmt::Assign { pattern, value } => {
+                let hit = expr_calls_public(value, bound, public);
+                collect_pattern_names(pattern, bound);
+                hit
+            }
+            Stmt::Alias { .. } => None,
+        };
+        if found.is_some() {
+            break;
+        }
+    }
+    bound.truncate(base);
+    found
+}
+
+fn expr_calls_public(e: &Expr, bound: &mut Vec<String>, public: &[&str]) -> Option<String> {
+    match e {
+        Expr::Call { callee, args } => {
+            let hit = match callee {
+                Callee::Local(name) => {
+                    (!bound.iter().any(|b| b == name) && public.contains(&name.as_str()))
+                        .then(|| name.clone())
+                }
+                Callee::Method { target, name } => {
+                    let self_call = matches!(target.as_ref(), Expr::SelfRef);
+                    if self_call && public.contains(&name.as_str()) {
+                        Some(name.clone())
+                    } else {
+                        expr_calls_public(target, bound, public)
+                    }
+                }
+            };
+            hit.or_else(|| args.iter().find_map(|a| expr_calls_public(a, bound, public)))
+        }
+        Expr::Access { target, .. } => expr_calls_public(target, bound, public),
+        Expr::Unary { operand, .. } => expr_calls_public(operand, bound, public),
+        Expr::Binary { left, right, .. } => expr_calls_public(left, bound, public)
+            .or_else(|| expr_calls_public(right, bound, public)),
+        Expr::List { elements, rest } => elements
+            .iter()
+            .find_map(|x| expr_calls_public(x, bound, public))
+            .or_else(|| rest.as_deref().and_then(|r| expr_calls_public(r, bound, public))),
+        Expr::Tuple(xs) => xs.iter().find_map(|x| expr_calls_public(x, bound, public)),
+        Expr::Map(entries) => entries
+            .iter()
+            .find_map(|(_, v)| expr_calls_public(v, bound, public)),
+        Expr::StructLit { fields, .. } => fields
+            .iter()
+            .find_map(|(_, v)| expr_calls_public(v, bound, public)),
+        Expr::Str(pieces) => pieces.iter().find_map(|p| match p {
+            StrPiece::Interp(e) => expr_calls_public(e, bound, public),
+            StrPiece::Lit(_) => None,
+        }),
+        Expr::Lambda { params, body } => {
+            let base = bound.len();
+            bound.extend(params.iter().cloned());
+            let hit = block_calls_public(body, bound, public);
+            bound.truncate(base);
+            hit
+        }
+        Expr::Case { subject, arms } => expr_calls_public(subject, bound, public)
+            .or_else(|| arms.iter().find_map(|arm| case_arm_calls_public(arm, bound, public))),
+        Expr::Cond { arms } => arms.iter().find_map(|arm| {
+            expr_calls_public(&arm.condition, bound, public)
+                .or_else(|| block_calls_public(&arm.body, bound, public))
+        }),
+        Expr::If {
+            condition,
+            then_body,
+            else_body,
+        } => expr_calls_public(condition, bound, public)
+            .or_else(|| block_calls_public(then_body, bound, public))
+            .or_else(|| else_body.as_ref().and_then(|b| block_calls_public(b, bound, public))),
+        Expr::Run { body, arms } => block_calls_public(body, bound, public)
+            .or_else(|| arms.iter().find_map(|arm| case_arm_calls_public(arm, bound, public))),
+        _ => None,
+    }
+}
+
+fn case_arm_calls_public(arm: &CaseArm, bound: &mut Vec<String>, public: &[&str]) -> Option<String> {
+    let base = bound.len();
+    collect_pattern_names(&arm.pattern, bound);
+    let hit = arm
+        .guard
+        .as_ref()
+        .and_then(|g| expr_calls_public(g, bound, public))
+        .or_else(|| block_calls_public(&arm.body, bound, public));
+    bound.truncate(base);
+    hit
+}
+
+fn collect_pattern_names(pattern: &Pattern, bound: &mut Vec<String>) {
+    match pattern {
+        Pattern::Binding(n) => bound.push(n.clone()),
+        Pattern::Tuple(ps) => ps.iter().for_each(|p| collect_pattern_names(p, bound)),
+        Pattern::List { elements, rest } => {
+            elements.iter().for_each(|p| collect_pattern_names(p, bound));
+            if let Some(r) = rest {
+                collect_pattern_names(r, bound);
+            }
+        }
+        Pattern::Map(entries) => entries
+            .iter()
+            .for_each(|(_, p)| collect_pattern_names(p, bound)),
+        Pattern::Struct { fields, .. } => {
+            fields.iter().for_each(|(_, p)| collect_pattern_names(p, bound));
+        }
+        _ => {}
+    }
 }
 
 /// Reject a pattern that binds the same name twice.

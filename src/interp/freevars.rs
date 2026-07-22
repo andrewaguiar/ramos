@@ -2,7 +2,7 @@
 //!
 //! This backs one rule: a lambda may not refer to the name it is bound to
 //! (`f = do x -> f(x)`). Lambdas are anonymous and non-recursive — a named
-//! `fn` is how you recurse.
+//! `function` is how you recurse.
 //!
 //! Beyond the language rule, forbidding self-reference removes the one
 //! reference cycle a closure could otherwise form: a lambda stored under a name

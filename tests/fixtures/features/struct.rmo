@@ -7,7 +7,7 @@ struct Person
     name: nil
     age: 0
 
-  fn hello(self)
+  function hello(self)
     print("Ola #{self.name}, eu tenho #{self.age}")
 
 # Construction is the map-literal syntax prefixed by the struct name; omitted

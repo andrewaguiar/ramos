@@ -50,7 +50,7 @@ struct DateTime
     millisecond: 0
     offset_minutes: 0
 
-  fn new(year, month, day, hour, minute, second, offset_minutes)
+  function new(year, month, day, hour, minute, second, offset_minutes)
     # @doc
     #
     # Builds a `DateTime` from local fields at `offset_minutes` from UTC, with
@@ -72,7 +72,7 @@ struct DateTime
     utc_ms = raw_millis(year, month, day, hour, minute, second, 0) - offset_minutes * 60000
     from_epoch_millis(utc_ms, offset_minutes)
 
-  fn now()
+  function now()
     # @doc
     #
     # The current instant, as UTC (`offset_minutes: 0`).
@@ -82,7 +82,7 @@ struct DateTime
     #   DateTime.now().offset_minutes   # == 0
     from_epoch_millis(Kernel.now(), 0)
 
-  fn now_at(offset_minutes)
+  function now_at(offset_minutes)
     # @doc
     #
     # The current instant, as local fields at `offset_minutes` from UTC.
@@ -93,7 +93,7 @@ struct DateTime
     #   DateTime.now_at(-300).offset_minutes   # == -300
     from_epoch_millis(Kernel.now(), offset_minutes)
 
-  fn now_in(time_zone)
+  function now_in(time_zone)
     # @doc
     #
     # The current instant, as local fields in `time_zone`.
@@ -104,7 +104,7 @@ struct DateTime
     #   DateTime.now_in(TimeZone.fixed("IST", 330)).offset_minutes   # == 330
     now_at(time_zone.offset_minutes)
 
-  fn from_epoch_millis(utc_ms, offset_minutes)
+  function from_epoch_millis(utc_ms, offset_minutes)
     # @doc
     #
     # The `DateTime` for the instant `utc_ms` milliseconds after the epoch,
@@ -118,6 +118,13 @@ struct DateTime
     #   # == DateTime{year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
     #   DateTime.from_epoch_millis(0, 60)
     #   # == DateTime{year: 1970, month: 1, day: 1, hour: 1, minute: 0, second: 0, millisecond: 0, offset_minutes: 60}
+    from_epoch_millis_raw(utc_ms, offset_minutes)
+
+  helper from_epoch_millis_raw(utc_ms, offset_minutes)
+    # @doc
+    #
+    # (private) `from_epoch_millis`'s own body, so `shift` can reach it
+    # without calling the public function.
     local_ms = utc_ms + offset_minutes * 60000
     epoch_day = floor_div(local_ms, 86400000)
     millis_of_day = local_ms % 86400000
@@ -133,7 +140,7 @@ struct DateTime
       offset_minutes: offset_minutes
     }
 
-  fn from_naive(naive, offset_minutes)
+  function from_naive(naive, offset_minutes)
     # @doc
     #
     # Tags a `NaiveDateTime`'s fields as the local time at `offset_minutes` —
@@ -156,7 +163,7 @@ struct DateTime
       offset_minutes: offset_minutes
     }
 
-  fn parse(text)
+  function parse(text)
     # @doc
     #
     # Parses `"YYYY-MM-DDTHH:MM:SS±HH:MM"` (or a trailing `"Z"` for UTC) —
@@ -192,7 +199,7 @@ struct DateTime
     utc_ms = raw_millis(d.year, d.month, d.day, to_integer(h), to_integer(mi), to_integer(s), millis_from_fraction(fraction)) - offset_minutes * 60000
     from_epoch_millis(utc_ms, offset_minutes)
 
-  fn date(self)
+  function date(self)
     # @doc
     #
     # The `Date` half of `self`'s local reading, dropping the time of day and
@@ -204,7 +211,7 @@ struct DateTime
     #   DateTime.date(DateTime{year: 2024, month: 2, day: 9, hour: 13})   # == Date{year: 2024, month: 2, day: 9}
     Date{year: self.year, month: self.month, day: self.day}
 
-  fn to_naive(self)
+  function to_naive(self)
     # @doc
     #
     # `self`'s local fields as a `NaiveDateTime`, dropping the offset.
@@ -224,7 +231,7 @@ struct DateTime
       millisecond: self.millisecond
     }
 
-  fn to_utc_epoch_millis(self)
+  function to_utc_epoch_millis(self)
     # @doc
     #
     # The instant `self` names, as milliseconds since the epoch (UTC) — the
@@ -237,7 +244,7 @@ struct DateTime
     #   DateTime.to_utc_epoch_millis(DateTime{year: 1970, month: 1, day: 1, hour: 1, offset_minutes: 60})   # == 0
     raw_millis(self.year, self.month, self.day, self.hour, self.minute, self.second, self.millisecond) - self.offset_minutes * 60000
 
-  fn to_utc(self)
+  function to_utc(self)
     # @doc
     #
     # The same instant as `self`, with its fields expressed at UTC
@@ -250,7 +257,7 @@ struct DateTime
     #   # == DateTime{year: 2024, month: 2, day: 9, hour: 13, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
     with_offset(self, 0)
 
-  fn with_offset(self, offset_minutes)
+  function with_offset(self, offset_minutes)
     # @doc
     #
     # The same instant as `self`, with its fields re-expressed at
@@ -264,7 +271,7 @@ struct DateTime
     #   # == DateTime{year: 2024, month: 2, day: 9, hour: 8, minute: 0, second: 0, millisecond: 0, offset_minutes: -300}
     from_epoch_millis(to_utc_epoch_millis(self), offset_minutes)
 
-  fn in_time_zone(self, time_zone)
+  function in_time_zone(self, time_zone)
     # @doc
     #
     # The same instant as `self`, with its fields re-expressed at
@@ -278,7 +285,7 @@ struct DateTime
     #   DateTime.in_time_zone(DateTime{offset_minutes: 0}, TimeZone.fixed("IST", 330)).offset_minutes   # == 330
     with_offset(self, time_zone.offset_minutes)
 
-  fn time_zone(self)
+  function time_zone(self)
     # @doc
     #
     # `self`'s offset as a `TimeZone`, named after the offset itself
@@ -291,7 +298,7 @@ struct DateTime
     #   DateTime.time_zone(DateTime{offset_minutes: -300}).name   # == "-05:00"
     TimeZone.from_offset_minutes(self.offset_minutes)
 
-  fn to_iso(self)
+  function to_iso(self)
     # @doc
     #
     # `self` rendered as `"YYYY-MM-DDTHH:MM:SS.mmm"` followed by `Z` (when
@@ -307,7 +314,7 @@ struct DateTime
     clock = "#{pad(self.hour, 2)}:#{pad(self.minute, 2)}:#{pad(self.second, 2)}.#{pad(self.millisecond, 3)}"
     "#{Date.to_iso(date(self))}T#{clock}#{TimeZone.offset_text(self.offset_minutes)}"
 
-  fn add_days(self, n)
+  function add_days(self, n)
     # @doc
     #
     # `self` shifted by `n` days, keeping the offset.
@@ -320,7 +327,7 @@ struct DateTime
     #   # == DateTime{year: 2024, month: 2, day: 29, hour: 12, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
     shift(self, n * 86400000)
 
-  fn add_weeks(self, n)
+  function add_weeks(self, n)
     # @doc
     #
     # `self` shifted by `n` weeks (`n * 7` days), keeping the offset.
@@ -333,7 +340,7 @@ struct DateTime
     #   # == DateTime{year: 2024, month: 1, day: 8, hour: 12, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
     shift(self, n * 604800000)
 
-  fn add_months(self, n)
+  function add_months(self, n)
     # @doc
     #
     # `self` shifted by `n` months, keeping the time of day and the offset —
@@ -358,7 +365,7 @@ struct DateTime
       offset_minutes: self.offset_minutes
     }
 
-  fn add_hours(self, n)
+  function add_hours(self, n)
     # @doc
     #
     # `self` shifted by `n` hours, keeping the offset.
@@ -371,7 +378,7 @@ struct DateTime
     #   # == DateTime{year: 2024, month: 2, day: 10, hour: 1, minute: 0, second: 0, millisecond: 0, offset_minutes: 0}
     shift(self, n * 3600000)
 
-  fn add_minutes(self, n)
+  function add_minutes(self, n)
     # @doc
     #
     # `self` shifted by `n` minutes, keeping the offset.
@@ -384,7 +391,7 @@ struct DateTime
     #   # == DateTime{year: 2024, month: 2, day: 9, hour: 1, minute: 15, second: 0, millisecond: 0, offset_minutes: 0}
     shift(self, n * 60000)
 
-  fn add_seconds(self, n)
+  function add_seconds(self, n)
     # @doc
     #
     # `self` shifted by `n` seconds, keeping the offset.
@@ -397,7 +404,7 @@ struct DateTime
     #   # == DateTime{year: 2024, month: 2, day: 9, minute: 1, second: 15, millisecond: 0, offset_minutes: 0}
     shift(self, n * 1000)
 
-  fn compare(self, other)
+  function compare(self, other)
     # @doc
     #
     # Orders two date-times by the instant they name (their UTC equivalent),
@@ -415,7 +422,7 @@ struct DateTime
       to_utc_epoch_millis(self) > to_utc_epoch_millis(other) -> 1
       true -> 0
 
-  fn diff_millis(self, other)
+  function diff_millis(self, other)
     # @doc
     #
     # The number of milliseconds from the instant `other` names to the one
@@ -428,7 +435,7 @@ struct DateTime
     #   DateTime.diff_millis(DateTime{second: 10}, DateTime{second: 1})   # == 9000
     to_utc_epoch_millis(self) - to_utc_epoch_millis(other)
 
-  fn day_of_week(self)
+  function day_of_week(self)
     # @doc
     #
     # The day of the week `self`'s local date falls on. Delegates to
@@ -441,7 +448,7 @@ struct DateTime
     #   DateTime.day_of_week(DateTime{year: 1970, month: 1, day: 1})   # == :thursday
     Date.day_of_week(date(self))
 
-  fnp raw_millis(year, month, day, hour, minute, second, millisecond)
+  helper raw_millis(year, month, day, hour, minute, second, millisecond)
     # @doc
     #
     # (private) Milliseconds since the epoch for the given fields, as if they
@@ -449,21 +456,22 @@ struct DateTime
     # `new`, `parse` and `to_utc_epoch_millis`.
     native("date_to_epoch_day", [year, month, day]) * 86400000 + hour * 3600000 + minute * 60000 + second * 1000 + millisecond
 
-  fnp shift(self, millis)
+  helper shift(self, millis)
     # @doc
     #
     # (private) `self` moved by `millis` milliseconds of real time, keeping
     # its offset. Backs the `add_*` family.
-    from_epoch_millis(to_utc_epoch_millis(self) + millis, self.offset_minutes)
+    utc_ms = raw_millis(self.year, self.month, self.day, self.hour, self.minute, self.second, self.millisecond) - self.offset_minutes * 60000
+    from_epoch_millis_raw(utc_ms + millis, self.offset_minutes)
 
-  fnp floor_div(a, b)
+  helper floor_div(a, b)
     # @doc
     #
     # (private) `a` divided by `b`, rounding toward negative infinity — unlike
     # `/`, which truncates toward zero. `b` is assumed positive.
     (a - a % b) / b
 
-  fnp offset_start(rest)
+  helper offset_start(rest)
     # @doc
     #
     # (private) The index in `rest` (the text after the date) where its
@@ -475,7 +483,7 @@ struct DateTime
       String.contains(rest, "+") -> String.find(rest, "+")
       true -> String.find(rest, "-")
 
-  fnp millis_from_fraction(digits)
+  helper millis_from_fraction(digits)
     # @doc
     #
     # (private) A fractional-second string of any length as milliseconds:
@@ -485,7 +493,7 @@ struct DateTime
     else
       to_integer(String.slice(String.pad_right(digits, 3, "0"), 0, 3))
 
-  fnp pad(n, width)
+  helper pad(n, width)
     # @doc
     #
     # (private) `n` rendered as decimal digits, left-padded with zeros to at

@@ -7,7 +7,7 @@ module StringTest
 
   # ── size and emptiness ────────────────────────────────────────────────
 
-  fn test_is_empty()
+  function test_is_empty()
     # @doc
     # A string is empty only when it has no characters — a space is a
     # character. `is_empty` is `Kernel`'s, not `String`'s own — it already
@@ -16,7 +16,7 @@ module StringTest
     assert(not is_empty("a"))
     assert(not is_empty(" "))
 
-  fn test_length_counts_code_points()
+  function test_length_counts_code_points()
     # @doc
     # Length counts code points, not the bytes they are stored in.
     assert(String.length("") == 0)
@@ -26,19 +26,19 @@ module StringTest
 
   # ── reading ───────────────────────────────────────────────────────────
 
-  fn test_at_returns_a_one_character_string()
+  function test_at_returns_a_one_character_string()
     # @doc
     # `at` reads one position and yields it as a string of its own.
     assert(String.at("hello", 0) == "h")
     assert(String.at("hello", 4) == "o")
 
-  fn test_at_out_of_range_is_nil()
+  function test_at_out_of_range_is_nil()
     # @doc
     # Reading past the end is `nil` rather than an error.
     assert(String.at("hello", 5) == nil)
     assert(String.at("", 0) == nil)
 
-  fn test_slice()
+  function test_slice()
     # @doc
     # `slice` takes a start and a count, clipping both to what the string has.
     assert(String.slice("hello world", 0, 5) == "hello")
@@ -49,7 +49,7 @@ module StringTest
 
   # ── searching ─────────────────────────────────────────────────────────
 
-  fn test_contains()
+  function test_contains()
     # @doc
     # `contains` looks for a substring anywhere in the string.
     assert(String.contains("hello world", "o w"))
@@ -57,7 +57,7 @@ module StringTest
     # every string contains the empty string
     assert(String.contains("hello", ""))
 
-  fn test_starts_and_ends_with()
+  function test_starts_and_ends_with()
     # @doc
     # `starts_with` and `ends_with` anchor the search to one end.
     assert(String.starts_with("hello", "he"))
@@ -65,7 +65,7 @@ module StringTest
     assert(String.ends_with("hello", "lo"))
     assert(not String.ends_with("hello", "he"))
 
-  fn test_find_returns_index_or_nil()
+  function test_find_returns_index_or_nil()
     # @doc
     # `find` gives the index of the first match, or `nil` when there is none.
     assert(String.find("hello world", "world") == 6)
@@ -74,7 +74,7 @@ module StringTest
 
   # ── rewriting ─────────────────────────────────────────────────────────
 
-  fn test_replace_replaces_every_occurrence()
+  function test_replace_replaces_every_occurrence()
     # @doc
     # `replace` rewrites every occurrence, not only the first.
     assert(String.replace("a-b-c", "-", "_") == "a_b_c")
@@ -82,20 +82,20 @@ module StringTest
     # a pattern that is not there leaves the string alone
     assert(String.replace("hello", "z", "!") == "hello")
 
-  fn test_split()
+  function test_split()
     # @doc
     # `split` breaks a string on a separator, always yielding at least one piece.
     assert(String.split("a,b,c", ",") == ["a", "b", "c"])
     assert(String.split("nope", ",") == ["nope"])
 
-  fn test_case_conversion()
+  function test_case_conversion()
     # @doc
     # `upcase` and `downcase` convert a string's letters.
     assert(String.upcase("hello") == "HELLO")
     assert(String.downcase("HELLO") == "hello")
     assert(String.upcase("") == "")
 
-  fn test_case_conversion_is_ascii_only()
+  function test_case_conversion_is_ascii_only()
     # @doc
     # Case conversion is ASCII-only, so a non-ASCII letter is left alone even
     # though the rest of the module counts Unicode code points.
@@ -103,7 +103,7 @@ module StringTest
     assert(String.upcase("mundão") == "MUNDãO")
     assert(String.downcase("MUNDÃO") == "mundÃo")
 
-  fn test_trim()
+  function test_trim()
     # @doc
     # `trim` and its one-sided forms drop surrounding whitespace.
     assert(String.trim("  hi  ") == "hi")
@@ -111,13 +111,13 @@ module StringTest
     assert(String.trim_right("  hi  ") == "  hi")
     assert(String.trim("hi") == "hi")
 
-  fn test_reverse()
+  function test_reverse()
     # @doc
     # `reverse` reads the string back to front.
     assert(String.reverse("abc") == "cba")
     assert(String.reverse("") == "")
 
-  fn test_repeat()
+  function test_repeat()
     # @doc
     # `repeat` concatenates a string with itself a given number of times.
     assert(String.repeat("ab", 3) == "ababab")
@@ -127,7 +127,7 @@ module StringTest
 
   # ── edges ─────────────────────────────────────────────────────────────
 
-  fn test_negative_and_oversized_positions_clamp()
+  function test_negative_and_oversized_positions_clamp()
     # @doc
     # A negative index reads as out of range; a negative start clamps to 0, and
     # a negative count yields the empty string.
@@ -136,7 +136,7 @@ module StringTest
     assert(String.slice("hello", 0, -1) == "")
     assert(String.repeat("ab", -2) == "")
 
-  fn test_empty_needles()
+  function test_empty_needles()
     # @doc
     # The empty string as a needle: found everywhere, and splits into characters.
 
@@ -148,14 +148,14 @@ module StringTest
     # Splitting an empty string yields one empty piece, not no pieces.
     assert(String.split("", ",") == [""])
 
-  fn test_non_string_arguments_are_rejected()
+  function test_non_string_arguments_are_rejected()
     # @doc
     # A String function on a non-string is an error, not a coercion. There is
     # no way to catch it here, so this pins the neighbouring truth: strings are
     # not collections, so Kernel's `size` does not accept one.
     assert(String.length("42") == 2)
 
-  fn test_to_list_and_from_list_are_inverses()
+  function test_to_list_and_from_list_are_inverses()
     # @doc
     # `to_list` and `from_list` round-trip a string through its characters.
     assert(String.to_list("abc") == ["a", "b", "c"])

@@ -20,5 +20,5 @@ module Report
   alias Geometry.Circle
   alias Drawing.Shapes.Ellipse as Oval
 
-  fn areas(r)
+  function areas(r)
     (Circle.area(r), Oval.area(r, r))

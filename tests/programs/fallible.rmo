@@ -1,10 +1,10 @@
 # Errors as values: no exceptions, `run` flattens a chain of fallible steps.
-fn parse_port(text)
+function parse_port(text)
   cond
     is_empty(text) -> (:error, :blank)
     true -> (:ok, to_integer(text))
 
-fn checked(text)
+function checked(text)
   result =
     run
       (:ok, port) = parse_port(text)

@@ -2,7 +2,7 @@
 //!
 //! Covered here: literals, operators, string interpolation, `case` / `cond`,
 //! lambdas + closures, destructuring assignment, function calls, and —
-//! since phase 4 — modules (`Module.f()`, `const`, `fnp` visibility, `alias`,
+//! since phase 4 — modules (`Module.f()`, `const`, `helper` visibility, `alias`,
 //! `self`), `|.` dispatch on a receiver's runtime type, Kernel's implicit
 //! scope, and the `native(str, args)` seam. Structs/traits and
 //! `begin`/`rescue` land in later phases and are reported as "not yet" here
@@ -79,7 +79,7 @@ fn err<T>(message: impl Into<String>) -> Result<T, RuntimeError> {
     Err(RuntimeError::new(message))
 }
 
-/// Run a program. If it defines an entrypoint (a module exposing `fn main()`),
+/// Run a program. If it defines an entrypoint (a module exposing `function main()`),
 /// that `main()` is called; otherwise the file's top-level statements run in
 /// order. Either way the last value is returned. Output from `print` and
 /// friends is written to `out` — a [`Sink`], since a `Thread.start`ed lambda
@@ -195,7 +195,7 @@ pub fn run_tests(
 
 /// A persistent interpreter session for the REPL. Unlike [`run`], which builds a
 /// fresh interpreter and (if present) calls `main`, a session keeps its scope,
-/// `fn`s, and `module`s alive across calls so each entry can build on the last.
+/// `function`s, and `module`s alive across calls so each entry can build on the last.
 ///
 /// Definitions are *registered* (never auto-run), then the entry's top-level
 /// statements execute in order; the last value is returned. Bindings live in the
@@ -287,7 +287,7 @@ struct Interp {
     /// inside it.
     aliases: HashMap<String, String>,
     /// The module whose function is currently executing, so bare calls resolve
-    /// to that module's own `fn`/`fnp` before falling back to Kernel.
+    /// to that module's own `function`/`helper` before falling back to Kernel.
     current_module: Option<Arc<ModuleDef>>,
     /// The program's command-line arguments (after the script path).
     argv: Vec<String>,
@@ -373,7 +373,7 @@ impl MethodTarget {
 }
 
 impl Interp {
-    /// Register the definitions (`fn` / `module`) a program introduces so they
+    /// Register the definitions (`function` / `module`) a program introduces so they
     /// are visible to every statement and to each other. Shared by whole-program
     /// runs and the REPL, where each entry adds to the accumulated definitions.
     fn register_items(&mut self, program: &Program) -> Result<(), RuntimeError> {
@@ -409,7 +409,7 @@ impl Interp {
                 let functions = self.with_trait_functions(&s.name, &s.implements, &s.functions)?;
                 self.structs.insert(name.clone(), Arc::new(s.clone()));
                 // The module view carries the struct's functions, so method
-                // dispatch, `fnp` visibility and bare sibling calls all go
+                // dispatch, `helper` visibility and bare sibling calls all go
                 // through the same code paths modules use.
                 self.modules.insert(
                     name,
@@ -507,7 +507,7 @@ impl Interp {
         // Definitions are visible to every statement and to each other, so
         // register modules and top-level functions before running anything.
         self.register_items(program)?;
-        // An entrypoint is a module exposing a public `fn main()`.
+        // An entrypoint is a module exposing a public `function main()`.
         let entries: Vec<Arc<ModuleDef>> = program
             .items
             .iter()
@@ -576,7 +576,7 @@ impl Interp {
                     if freevars::free_names(params, body).iter().any(|n| n == name) {
                         return err(format!(
                             "a lambda cannot refer to itself (`{name}`); \
-                             use a named `fn` for recursion"
+                             use a named `function` for recursion"
                         ));
                     }
                 }
@@ -879,7 +879,7 @@ impl Interp {
             return self.call_module_apply(args);
         }
         // Resolution order: a local binding holding a lambda, then the current
-        // module's own `fn`/`fnp`, then top-level functions, then the implicit
+        // module's own `function`/`helper`, then top-level functions, then the implicit
         // `Kernel` module, and finally the native table directly (which is what
         // answers before a stdlib is loaded).
         if let Some(v) = env.get(name) {
@@ -1559,7 +1559,7 @@ impl Interp {
     }
 
     /// `module_apply(m, fn_name, args)` — resolve `fn_name` on module `m` and
-    /// call it with `args`, a list. Backs `Module.apply`; enforces `fnp`
+    /// call it with `args`, a list. Backs `Module.apply`; enforces `helper`
     /// visibility the same way a written `m.fn_name(...)` call would, via
     /// `call_module_method`.
     fn call_module_apply(&mut self, args: Vec<Value>) -> Result<Value, RuntimeError> {
@@ -1711,14 +1711,14 @@ impl Interp {
     }
 
     /// True when `module` is the one whose function is currently running —
-    /// which is what makes its `fnp` functions reachable.
+    /// which is what makes its `helper` functions reachable.
     fn inside_module(&self, module: &ModuleDef) -> bool {
         self.current_module
             .as_ref()
             .is_some_and(|current| current.name == module.name)
     }
 
-    /// Call `module.name(args)`, enforcing `fnp` visibility.
+    /// Call `module.name(args)`, enforcing `helper` visibility.
     fn call_module_method(
         &mut self,
         module: &Arc<ModuleDef>,
@@ -1730,7 +1730,7 @@ impl Interp {
         };
         if f.private && !self.inside_module(module) {
             return err(format!(
-                "`{}.{name}` is private (`fnp`) and can only be called from inside `{}`",
+                "`{}.{name}` is private (`helper`) and can only be called from inside `{}`",
                 module.name, module.name
             ));
         }

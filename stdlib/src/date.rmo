@@ -38,7 +38,7 @@ struct Date
     month: 1
     day: 1
 
-  fn new(year, month, day)
+  function new(year, month, day)
     # @doc
     #
     # Builds a `Date`. `day` normalizes when it falls outside the month — `0`
@@ -56,7 +56,7 @@ struct Date
     assert(month >= 1 and month <= 12, "Date.new: month must be 1..12, got #{month}")
     from_epoch_day(native("date_to_epoch_day", [year, month, day]))
 
-  fn today()
+  function today()
     # @doc
     #
     # Today's date, read from the wall clock as UTC.
@@ -66,7 +66,7 @@ struct Date
     #   Date.today().year > 2000   # == true
     from_epoch_day(now() / 86400000)
 
-  fn from_epoch_day(epoch_day)
+  function from_epoch_day(epoch_day)
     # @doc
     #
     # The `Date` that is `epoch_day` days after 1970-01-01 (day `0`).
@@ -80,7 +80,7 @@ struct Date
     (year, month, day) = native("date_from_epoch_day", [epoch_day])
     Date{year: year, month: month, day: day}
 
-  fn parse(text)
+  function parse(text)
     # @doc
     #
     # Parses an ISO-8601 calendar date, `"YYYY-MM-DD"`.
@@ -92,7 +92,7 @@ struct Date
     [year, month, day] = String.split(text, "-")
     new(to_integer(year), to_integer(month), to_integer(day))
 
-  fn to_epoch_day(self)
+  function to_epoch_day(self)
     # @doc
     #
     # `self` as the number of days since 1970-01-01 — the bridge to
@@ -105,7 +105,7 @@ struct Date
     #   Date.to_epoch_day(Date{year: 1969, month: 12, day: 31})   # == -1
     native("date_to_epoch_day", [self.year, self.month, self.day])
 
-  fn to_iso(self)
+  function to_iso(self)
     # @doc
     #
     # `self` rendered as `"YYYY-MM-DD"` (ISO-8601), zero-padded.
@@ -116,7 +116,7 @@ struct Date
     #   Date.to_iso(Date{year: 2024, month: 2, day: 9})   # == "2024-02-09"
     "#{pad(self.year, 4)}-#{pad(self.month, 2)}-#{pad(self.day, 2)}"
 
-  fn add_days(self, n)
+  function add_days(self, n)
     # @doc
     #
     # `self` shifted by `n` days — negative moves backward.
@@ -129,7 +129,7 @@ struct Date
     #   Date.add_days(Date{year: 2024, month: 1, day: 1}, -1)    # == Date{year: 2023, month: 12, day: 31}
     from_epoch_day(to_epoch_day(self) + n)
 
-  fn add_years(self, n)
+  function add_years(self, n)
     # @doc
     #
     # `self` shifted by `n` years, keeping the month and day — except a leap
@@ -145,7 +145,7 @@ struct Date
     #   Date.add_years(Date{year: 2020, month: 6, day: 15}, -5)   # == Date{year: 2015, month: 6, day: 15}
     new(self.year + n, self.month, self.day)
 
-  fn add_weeks(self, n)
+  function add_weeks(self, n)
     # @doc
     #
     # `self` shifted by `n` weeks (`n * 7` days) — negative moves backward.
@@ -158,7 +158,7 @@ struct Date
     #   Date.add_weeks(Date{year: 2024, month: 1, day: 8}, -1)   # == Date{year: 2024, month: 1, day: 1}
     add_days(self, n * 7)
 
-  fn add_months(self, n)
+  function add_months(self, n)
     # @doc
     #
     # `self` shifted by `n` months, carrying into the year and normalizing an
@@ -177,7 +177,7 @@ struct Date
     month = total_months % 12 + 1
     new(year, month, self.day)
 
-  fn compare(self, other)
+  function compare(self, other)
     # @doc
     #
     # Orders two dates as `-1`, `0` or `1` — the shape `Integer.compare` and
@@ -195,7 +195,7 @@ struct Date
       to_epoch_day(self) > to_epoch_day(other) -> 1
       true -> 0
 
-  fn diff_days(self, other)
+  function diff_days(self, other)
     # @doc
     #
     # The number of days from `other` to `self` — positive when `self` is
@@ -209,7 +209,7 @@ struct Date
     #   Date.diff_days(Date{year: 2024, month: 1, day: 1}, Date{year: 2024, month: 1, day: 10})   # == -9
     to_epoch_day(self) - to_epoch_day(other)
 
-  fn day_of_week(self)
+  function day_of_week(self)
     # @doc
     #
     # The day of the week `self` falls on.
@@ -223,7 +223,7 @@ struct Date
     names = [:sunday, :monday, :tuesday, :wednesday, :thursday, :friday, :saturday]
     at(names, (to_epoch_day(self) + 4) % 7)
 
-  fn is_leap_year(year)
+  function is_leap_year(year)
     # @doc
     #
     # Whether `year` has a February 29th, by the proleptic Gregorian rule:
@@ -237,7 +237,7 @@ struct Date
     #   Date.is_leap_year(2000)   # == true
     year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
-  fn days_in_month(self)
+  function days_in_month(self)
     # @doc
     #
     # How many days are in `self`'s month.
@@ -255,7 +255,7 @@ struct Date
     lengths = [31, feb, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     at(lengths, self.month - 1)
 
-  fnp pad(n, width)
+  helper pad(n, width)
     # @doc
     #
     # (private) `n` rendered as decimal digits, left-padded with zeros to at

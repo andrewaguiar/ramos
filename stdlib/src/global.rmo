@@ -43,7 +43,7 @@ module Global
 
   implements Actor
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     # @doc
     #
     # The server half of the one operation with something to say back: `:get`.
@@ -57,7 +57,7 @@ module Global
     case f
       :get -> get_impl(args, state)
 
-  fn cast(f, args, state, config)
+  function cast(f, args, state, config)
     # @doc
     #
     # The server half of the two writes, `:put` and `:clear`. Neither replies,
@@ -74,7 +74,7 @@ module Global
 
   # client half — callers never write `call_actor` / `cast_actor`
 
-  fn start()
+  function start()
     # @doc
     #
     # Start the `:global` actor with an empty map. Call it once, before
@@ -85,7 +85,7 @@ module Global
     #   Global.start()   # == :ok
     start_actor(:global, Global, {}, {})
 
-  fn get(key)
+  function get(key)
     # @doc
     #
     # The value stored under `key`, waiting for the actor to answer. Every
@@ -100,7 +100,7 @@ module Global
     #   Global.get(:host)     # == nil
     call_actor(:global, Global, :get, [key])
 
-  fn put(key, value)
+  function put(key, value)
     # @doc
     #
     # Store `value` under `key`, replacing whatever was there, without waiting
@@ -115,7 +115,7 @@ module Global
     #   Global.put(:user, "andrew")   # == :ok
     cast_actor(:global, Global, :put, [key, value])
 
-  fn clear(key)
+  function clear(key)
     # @doc
     #
     # Drop `key` without waiting for the actor, on the same terms as `put`.
@@ -132,14 +132,14 @@ module Global
 
   # private functions
 
-  fnp get_impl(args, state)
+  helper get_impl(args, state)
     [key] = args
     (Map.get(state, key, nil), state)
 
-  fnp put_impl(args, state)
+  helper put_impl(args, state)
     [key, value] = args
     Map.put(state, key, value)
 
-  fnp clear_impl(args, state)
+  helper clear_impl(args, state)
     [key] = args
     Map.delete(state, key)

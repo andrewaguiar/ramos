@@ -182,7 +182,7 @@ module M
   #
   # A tiny module.
 
-  fn undocumented(x)
+  function undocumented(x)
     x
 ",
     );
@@ -193,7 +193,7 @@ module M
     let html = fs::read_to_string(out.0.join("M.html")).unwrap();
     // The function still gets a signature + anchor, just no prose.
     assert!(html.contains(r#"id="undocumented/1""#));
-    assert!(html.contains("fn undocumented(x)"));
+    assert!(html.contains("function undocumented(x)"));
     // Module doc is present.
     assert!(html.contains("A tiny module."));
 
@@ -212,7 +212,7 @@ module M
   # @module_doc
   # Summary.
 
-  fnp hidden(a, b)
+  helper hidden(a, b)
     a
 ",
     );
@@ -220,7 +220,7 @@ module M
     let out = TempDir::new("priv");
     ramos::doc::generate(&src, &out.0).unwrap();
     let html = fs::read_to_string(out.0.join("M.html")).unwrap();
-    assert!(html.contains("fnp hidden(a, b)"), "fnp signature wrong");
+    assert!(html.contains("helper hidden(a, b)"), "helper signature wrong");
     assert!(
         html.contains(r#"<span class="badge private">private</span>"#),
         "private badge missing"
@@ -240,7 +240,7 @@ fn doc_marker_on_same_line_as_tag_is_kept() {
 module M
   # @module_doc One-line module summary.
 
-  fn f(x)
+  function f(x)
     # @doc Inline doc.
     # @param x: an arg
     # @return x again
@@ -447,7 +447,7 @@ fn programs_page_renders_one_section_per_program() {
     assert!(html.contains("<h2>Hello world "));
 
     // The multi-file `structs/` program shows each of its files under its own
-    // file-name label, the entry file (`main.rmo`, the one with `fn main()`)
+    // file-name label, the entry file (`main.rmo`, the one with `function main()`)
     // last, and its header comment used as the section summary rather than
     // repeated under its own label.
     assert!(html.contains("id=\"structs\""));
@@ -519,12 +519,12 @@ module MathTest
   # A second paragraph, which the summary stops before.
   implements Test
 
-  fn test_addition()
+  function test_addition()
     # @doc
     # Adding two positives keeps their sign.
     assert(1 + 1 == 2)
 
-  fn test_undocumented()
+  function test_undocumented()
     assert(true)
 ";
     let docs = ramos::doc::summaries(src);
@@ -545,7 +545,7 @@ module MathTest
 fn summaries_of_undocumented_source_are_empty() {
     let src = "\
 module Bare
-  fn f()
+  function f()
     1
 ";
     let docs = ramos::doc::summaries(src);

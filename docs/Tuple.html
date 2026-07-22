@@ -64,29 +64,29 @@ to_list((<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#set/3" class="fn-sig"><code>fn set(tuple, index, value)</code></a>
+    <a href="#set/3" class="fn-sig"><code>function set(tuple, index, value)</code></a>
     <span class="fn-summary">Returns a new tuple with the element at zero-based <code>index</code> replaced by <code>value</code>. An out-of-range <code>index</code> returns <code>tuple</code> unchanged — tuples cannot change arity.</span>
   </div>
   <div class="fn-row private">
-    <a href="#replace_at/3" class="fn-sig"><code>fnp replace_at(items, index, value)</code></a>
+    <a href="#replace_at/3" class="fn-sig"><code>helper replace_at(items, index, value)</code></a>
     <span class="fn-summary"></span>
   </div>
   <div class="fn-row">
-    <a href="#from_list/1" class="fn-sig"><code>fn from_list(list)</code></a>
+    <a href="#from_list/1" class="fn-sig"><code>function from_list(list)</code></a>
     <span class="fn-summary">A tuple of the list&#39;s elements, in order — the inverse of Kernel&#39;s <code>to_list</code>. This is the only way to build a tuple whose arity is not written in the source.</span>
   </div>
   <div class="fn-row">
-    <a href="#last/1" class="fn-sig"><code>fn last(tuple)</code></a>
+    <a href="#last/1" class="fn-sig"><code>function last(tuple)</code></a>
     <span class="fn-summary">Returns the last element of <code>tuple</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#to_map/1" class="fn-sig"><code>fn to_map(tuple)</code></a>
+    <a href="#to_map/1" class="fn-sig"><code>function to_map(tuple)</code></a>
     <span class="fn-summary">Converts a tuple of <code>(key, value)</code> pairs into a map. Later pairs win on duplicate keys.</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="set/3">
-  <h3 class="fn-title"><code>fn set(tuple, index, value)</code> <a class="anchor" href="#set/3">¶</a></h3>
+  <h3 class="fn-title"><code>function set(tuple, index, value)</code> <a class="anchor" href="#set/3">¶</a></h3>
 <p>Returns a new tuple with the element at zero-based <code>index</code> replaced by <code>value</code>. An out-of-range <code>index</code> returns <code>tuple</code> unchanged — tuples cannot change arity.</p>
 <pre><code>is out of range</code></pre>
 <pre><code><span class="tok-type">Tuple</span>.set((<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>), <span class="tok-lit">1</span>, <span class="tok-lit">:x</span>)   <span class="tok-com"># == (1, :x, 3)</span>
@@ -102,10 +102,10 @@ to_list((<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot
 <p class="returns"><strong>Returns:</strong> a new tuple with <code>index</code> replaced, or <code>tuple</code> unchanged if <code>index</code></p>
 </div>
 <div class="fn-detail" id="replace_at/3">
-  <h3 class="fn-title"><code>fnp replace_at(items, index, value)</code> <span class="badge private">private</span> <a class="anchor" href="#replace_at/3">¶</a></h3>
+  <h3 class="fn-title"><code>helper replace_at(items, index, value)</code> <span class="badge private">private</span> <a class="anchor" href="#replace_at/3">¶</a></h3>
 </div>
 <div class="fn-detail" id="from_list/1">
-  <h3 class="fn-title"><code>fn from_list(list)</code> <a class="anchor" href="#from_list/1">¶</a></h3>
+  <h3 class="fn-title"><code>function from_list(list)</code> <a class="anchor" href="#from_list/1">¶</a></h3>
 <p>A tuple of the list&#39;s elements, in order — the inverse of Kernel&#39;s <code>to_list</code>. This is the only way to build a tuple whose arity is not written in the source.</p>
 <pre><code><span class="tok-type">Tuple</span>.from_list([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])   <span class="tok-com"># == (1, 2, 3)</span>
 <span class="tok-type">Tuple</span>.from_list([<span class="tok-lit">:ok</span>, <span class="tok-lit">42</span>])   <span class="tok-com"># == (:ok, 42)</span></code></pre>
@@ -117,7 +117,7 @@ to_list((<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot
 <p class="returns"><strong>Returns:</strong> a <code><a href="Tuple.html">Tuple</a></code> of the list&#39;s elements, in order</p>
 </div>
 <div class="fn-detail" id="last/1">
-  <h3 class="fn-title"><code>fn last(tuple)</code> <a class="anchor" href="#last/1">¶</a></h3>
+  <h3 class="fn-title"><code>function last(tuple)</code> <a class="anchor" href="#last/1">¶</a></h3>
 <p>Returns the last element of <code>tuple</code>.</p>
 <pre><code><span class="tok-type">Tuple</span>.last((<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>))   <span class="tok-com"># == 3</span></code></pre>
 <dl class="params">
@@ -127,7 +127,7 @@ to_list((<span class="tok-str">&quot;a&quot;</span>, <span class="tok-str">&quot
 <p class="returns"><strong>Returns:</strong> the last element, or <code>nil</code> if <code>tuple</code> is empty</p>
 </div>
 <div class="fn-detail" id="to_map/1">
-  <h3 class="fn-title"><code>fn to_map(tuple)</code> <a class="anchor" href="#to_map/1">¶</a></h3>
+  <h3 class="fn-title"><code>function to_map(tuple)</code> <a class="anchor" href="#to_map/1">¶</a></h3>
 <p>Converts a tuple of <code>(key, value)</code> pairs into a map. Later pairs win on duplicate keys.</p>
 <pre><code><span class="tok-type">Tuple</span>.to_map(((<span class="tok-lit">:a</span>, <span class="tok-lit">1</span>), (<span class="tok-lit">:b</span>, <span class="tok-lit">2</span>)))   <span class="tok-com"># == {a: 1, b: 2}</span></code></pre>
 <dl class="params">

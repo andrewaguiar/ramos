@@ -1,6 +1,6 @@
 //! `ramos repl` — an interactive session.
 //!
-//! Bindings, `fn`s, `struct`s and `module`s persist across entries: the session
+//! Bindings, `function`s, `struct`s and `module`s persist across entries: the session
 //! accumulates definitions, so a struct defined at one prompt is constructible
 //! at the next. A single complete line runs on Enter; a block (or any
 //! definition) is gathered until a blank line submits it.
@@ -129,12 +129,12 @@ fn parses(src: &str) -> bool {
 }
 
 /// Whether the first word starts a definition or multi-line construct, which the
-/// REPL should always gather over several lines (a bodyless `fn f(x)` parses on
+/// REPL should always gather over several lines (a bodyless `function f(x)` parses on
 /// its own, but the user is almost certainly about to type its body).
 fn opens_a_block(src: &str) -> bool {
     matches!(
         src.split_whitespace().next(),
-        Some("fn" | "fnp" | "module" | "struct" | "trait")
+        Some("function" | "helper" | "module" | "struct" | "trait")
     )
 }
 

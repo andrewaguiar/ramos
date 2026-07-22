@@ -7,7 +7,7 @@ struct DeclineReason
     code: 0
     message: nil
 
-fn charge(amount)
+function charge(amount)
   cond
     amount <= 0 -> (:error, DeclineReason{code: 555, message: "must be positive"})
     amount > 10000 -> (:error, DeclineReason{code: 556, message: "too large"})

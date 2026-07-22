@@ -65,8 +65,8 @@ pub enum TokenKind {
     Trait,
     Implements,
     Attributes,
-    Fn,
-    Fnp,
+    Function,
+    Helper,
     Case,
     Cond,
     If,
@@ -318,8 +318,8 @@ fn source_style(kind: &TokenKind) -> Option<Style> {
         | T::Trait
         | T::Implements
         | T::Attributes
-        | T::Fn
-        | T::Fnp
+        | T::Function
+        | T::Helper
         | T::Case
         | T::Cond
         | T::If
@@ -765,8 +765,8 @@ impl<'a> Lexer<'a> {
             "trait" => TokenKind::Trait,
             "implements" => TokenKind::Implements,
             "attributes" => TokenKind::Attributes,
-            "fn" => TokenKind::Fn,
-            "fnp" => TokenKind::Fnp,
+            "function" => TokenKind::Function,
+            "helper" => TokenKind::Helper,
             "case" => TokenKind::Case,
             "cond" => TokenKind::Cond,
             "if" => TokenKind::If,

@@ -38,7 +38,7 @@ module Struct
   #   - a struct's own functions are called on the instance (`andrew.hello()`),
   #     which passes it as `self`.
 
-  fn get(instance, attribute, default)
+  function get(instance, attribute, default)
     # @doc
     #
     # The value of `attribute`, or `default` when the struct has no such
@@ -54,7 +54,7 @@ module Struct
     #   Struct.get(Person{name: "Andrew"}, :nickname, nil)       # == nil
     native("struct_get", [instance, attribute, default])
 
-  fn put(instance, attribute, value)
+  function put(instance, attribute, value)
     # @doc
     #
     # A new instance with `attribute` set to `value`. Raises when the struct
@@ -68,7 +68,7 @@ module Struct
     #   Struct.put(Person{age: 40}, :age, 41)   # == Person{name: nil, age: 41}
     native("struct_put", [instance, attribute, value])
 
-  fn update(instance, attribute, f)
+  function update(instance, attribute, f)
     # @doc
     #
     # A new instance with `attribute` replaced by `f` applied to its current
@@ -83,7 +83,7 @@ module Struct
     #   # == Person{name: nil, age: 41}
     put(instance, attribute, f(get(instance, attribute, nil)))
 
-  fn keys(instance)
+  function keys(instance)
     # @doc
     #
     # The struct's attribute names, in declaration order.
@@ -94,7 +94,7 @@ module Struct
     #   Struct.keys(Person{name: "Andrew", age: 40})   # == [:name, :age]
     native("struct_keys", [instance])
 
-  fn values(instance)
+  function values(instance)
     # @doc
     #
     # The struct's attribute values, in declaration order.
@@ -105,7 +105,7 @@ module Struct
     #   Struct.values(Person{name: "Andrew", age: 40})   # == ["Andrew", 40]
     native("struct_values", [instance])
 
-  fn to_map(instance)
+  function to_map(instance)
     # @doc
     #
     # The instance as a `Map` keyed by attribute name — the bridge to every
@@ -118,7 +118,7 @@ module Struct
     #   # == {name: "Andrew", age: 40}
     native("struct_to_map", [instance])
 
-  fn is_a(instance, struct_module)
+  function is_a(instance, struct_module)
     # @doc
     #
     # Whether `instance` is an instance of `struct_module`. False for every

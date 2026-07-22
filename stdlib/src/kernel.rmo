@@ -51,7 +51,7 @@ module Kernel
   #     To carry runtime text, use a `String`; to branch on it, match the
   #     string and yield a literal symbol.
 
-  fn native(str, args)
+  function native(str, args)
     # @doc
     #
     # Invokes a host-provided (native) function by name.
@@ -67,7 +67,7 @@ module Kernel
     #
     #   native("print", ["hello"])   # handled by the interpreter
 
-  fn print(value)
+  function print(value)
     # @doc
     #
     # Writes `value` to standard out *without* a trailing newline, then flushes.
@@ -79,7 +79,7 @@ module Kernel
     #   print("loading")        # -> loading
     native("print", [value])
 
-  fn println(value)
+  function println(value)
     # @doc
     #
     # Writes `value` to standard out *followed by a newline*. Like
@@ -93,7 +93,7 @@ module Kernel
     #   println("done")         # -> done\n
     native("println", [value])
 
-  fn new_line()
+  function new_line()
     # @doc
     #
     # Writes a single newline (`\n`) to standard out and flushes. Useful for
@@ -106,7 +106,7 @@ module Kernel
     #   new_line()             # -> ab\n
     native("new_line", [])
 
-  fn read()
+  function read()
     # @doc
     #
     # Reads a single line from standard in (up to and including the newline,
@@ -118,7 +118,7 @@ module Kernel
     #   name = read()
     native("read", [])
 
-  fn read_password()
+  function read_password()
     # @doc
     #
     # Reads a line from standard in *without echoing* it to the terminal, and
@@ -131,7 +131,7 @@ module Kernel
     #   pw = read_password()
     native("read_password", [])
 
-  fn read_all()
+  function read_all()
     # @doc
     #
     # Reads *all* of standard in, to end of input, as a single `String` — the
@@ -143,7 +143,7 @@ module Kernel
     #   text = read_all()      # `cat file | ramos run app.rmo`
     native("read_all", [])
 
-  fn eprint(value)
+  function eprint(value)
     # @doc
     #
     # Writes `value` to standard *error* without a trailing newline. Use it for
@@ -159,7 +159,7 @@ module Kernel
     #   eprint("warning: ")
     native("eprint", [value])
 
-  fn eprintln(value)
+  function eprintln(value)
     # @doc
     #
     # `eprint` with a trailing newline.
@@ -170,7 +170,7 @@ module Kernel
     #   eprintln("could not read config, using defaults")
     native("eprintln", [value])
 
-  fn get_env(name)
+  function get_env(name)
     # @doc
     #
     # Looks up an environment variable by `name` and returns its `String` value,
@@ -182,7 +182,7 @@ module Kernel
     #   get_env("HOME")        # == "/home/andrew"
     native("get_env", [name])
 
-  fn get_args()
+  function get_args()
     # @doc
     #
     # Returns the program's command-line arguments — everything after the
@@ -194,7 +194,7 @@ module Kernel
     #   get_args()             # == ["alice", "42"]
     native("get_args", [])
 
-  fn get_arg(index)
+  function get_arg(index)
     # @doc
     #
     # Returns the command-line argument at zero-based `index`, or `nil` if there
@@ -208,7 +208,7 @@ module Kernel
     #   get_arg(9)             # == nil
     native("get_arg", [index])
 
-  fn sleep(ms)
+  function sleep(ms)
     # @doc
     #
     # Suspends the program for `ms` milliseconds, then returns `nil`. A value of
@@ -220,7 +220,7 @@ module Kernel
     #   sleep(250)             # pause for a quarter second
     native("sleep", [ms])
 
-  fn exit(code)
+  function exit(code)
     # @doc
     #
     # Ends the program with `code` as its exit status — `0` for success, any
@@ -236,7 +236,7 @@ module Kernel
     #   exit(1)                # failure
     native("exit", [code])
 
-  fn now()
+  function now()
     # @doc
     #
     # The wall-clock time as milliseconds since the Unix epoch.
@@ -249,7 +249,7 @@ module Kernel
     #   started = now()
     native("now", [])
 
-  fn monotonic()
+  function monotonic()
     # @doc
     #
     # Milliseconds from a fixed point in the program's life. The value only
@@ -266,7 +266,7 @@ module Kernel
     #   elapsed = monotonic() - started
     native("monotonic", [])
 
-  fn random()
+  function random()
     # @doc
     #
     # A random `Float` in `[0.0, 1.0)` — zero is possible, one is not.
@@ -279,7 +279,7 @@ module Kernel
     #   chance = random()
     native("random", [])
 
-  fn random_int(low, high)
+  function random_int(low, high)
     # @doc
     #
     # A random `Integer` in `low..high`, **inclusive at both ends**. The bounds
@@ -294,7 +294,7 @@ module Kernel
     #   roll = random_int(1, 6)
     native("random_int", [low, high])
 
-  fn apply(f, args)
+  function apply(f, args)
     # @doc
     #
     # Calls the lambda `f` with `args`, a list of its arguments. Use it when the
@@ -312,13 +312,13 @@ module Kernel
     #   apply(do x, y -> x + y, [1, 2])   # == 3
     #   apply(do -> 42, [])               # == 42
 
-  fn module_apply(m, fn_name, args)
+  function module_apply(m, fn_name, args)
     # @doc
     #
     # Resolves `fn_name` on module `m` and calls it with `args`, a list.
     # `Module.apply` is the client-side name for this — prefer it.
     #
-    # Enforces the same `fnp` visibility a written `m.fn_name(...)` call would:
+    # Enforces the same `helper` visibility a written `m.fn_name(...)` call would:
     # a private function is reachable only from inside its own module, so this
     # cannot reach around that rule from the outside.
     #
@@ -334,7 +334,7 @@ module Kernel
     #
     #   module_apply(Integer, "abs", [-7])   # == 7
 
-  fn start_actor(id, actor_module, initial_state, config)
+  function start_actor(id, actor_module, initial_state, config)
     # @doc
     #
     # Starts an actor under `id`, handled by `module` — which must implement the
@@ -358,7 +358,7 @@ module Kernel
     #
     #   start_actor(:global, Global, {}, {})
 
-  fn call_actor(id, actor_module, op, args)
+  function call_actor(id, actor_module, op, args)
     # @doc
     #
     # Sends `op` to the actor registered under `id` and waits for the reply.
@@ -379,7 +379,7 @@ module Kernel
     #
     #   call_actor(:global, Global, :get, ["key"])
 
-  fn cast_actor(id, actor_module, op, args)
+  function cast_actor(id, actor_module, op, args)
     # @doc
     #
     # Sends `op` to the actor registered under `id` **without** waiting for it
@@ -405,7 +405,7 @@ module Kernel
     #
     #   cast_actor(:global, Global, :clear, ["key"])
 
-  fn list_actors()
+  function list_actors()
     # @doc
     #
     # Every running actor as an `(id, module)` pair, sorted by id so the order
@@ -422,7 +422,7 @@ module Kernel
     #   [(id, mod) | _] = list_actors()
     #   call_actor(id, mod, :ping, [])
 
-  fn actor_stats(id)
+  function actor_stats(id)
     # @doc
     #
     # What is known about one running actor, as a `Map`:
@@ -445,7 +445,7 @@ module Kernel
     #
     #   actor_stats(:global)
 
-  fn is_actor_started(id)
+  function is_actor_started(id)
     # @doc
     #
     # Whether `id` names a running actor. False for an id that was never
@@ -458,7 +458,7 @@ module Kernel
     #
     #   is_actor_started(:nobody)   # == false
 
-  fn stop_actor(id)
+  function stop_actor(id)
     # @doc
     #
     # Lets the actor finish everything already sent to it, then ends its thread
@@ -475,7 +475,7 @@ module Kernel
     #
     #   stop_actor(:global)
 
-  fn size(collection)
+  function size(collection)
     # @doc
     #
     # Returns the number of elements in `collection` — the length of a `List`,
@@ -491,7 +491,7 @@ module Kernel
     #   size({a: 1, b: 2})         # == 2
     native("size", [collection])
 
-  fn at(collection, index)
+  function at(collection, index)
     # @doc
     #
     # Returns the element of `collection` at zero-based `index` (`List` or
@@ -508,7 +508,7 @@ module Kernel
     #   at([1, 2, 3], 9)      # == nil
     native("at", [collection, index])
 
-  fn to_string(value)
+  function to_string(value)
     # @doc
     #
     # Converts `value` to its `String` representation — the same rendering that
@@ -522,7 +522,7 @@ module Kernel
     #   to_string(:ok)         # == ":ok"
     native("to_string", [value])
 
-  fn to_integer(value)
+  function to_integer(value)
     # @doc
     #
     # Converts `value` to an `Integer`. A `String` is parsed as a whole number;
@@ -536,7 +536,7 @@ module Kernel
     #   to_integer(3.9)      # == 3
     native("to_integer", [value])
 
-  fn to_float(value)
+  function to_float(value)
     # @doc
     #
     # Converts `value` to a `Float`. An `Integer` widens; a `String` is parsed
@@ -549,7 +549,7 @@ module Kernel
     #   to_float("3.14")     # == 3.14
     native("to_float", [value])
 
-  fn to_list(value)
+  function to_list(value)
     # @doc
     #
     # Converts `value` to a `List`. A `Tuple` yields its elements in order;
@@ -563,7 +563,7 @@ module Kernel
     #   to_list({a: 1, b: 2})      # == [1, 2]
     native("to_list", [value])
 
-  fn current_stacktrace()
+  function current_stacktrace()
     # @doc
     #
     # Returns the current call stacktrace — the chain of Ramos calls leading to
@@ -574,7 +574,7 @@ module Kernel
     #   print(current_stacktrace())
     native("current_stacktrace", [])
 
-  fn is_integer(value)
+  function is_integer(value)
     # @doc
     #
     # Returns `true` if `value` is an `Integer`.
@@ -583,7 +583,7 @@ module Kernel
     # @return `true` if `value` is an `Integer`, else `false`
     native("is_integer", [value])
 
-  fn is_float(value)
+  function is_float(value)
     # @doc
     #
     # Returns `true` if `value` is a `Float`.
@@ -592,7 +592,7 @@ module Kernel
     # @return `true` if `value` is a `Float`, else `false`
     native("is_float", [value])
 
-  fn is_string(value)
+  function is_string(value)
     # @doc
     #
     # Returns `true` if `value` is a `String`.
@@ -601,7 +601,7 @@ module Kernel
     # @return `true` if `value` is a `String`, else `false`
     native("is_string", [value])
 
-  fn is_symbol(value)
+  function is_symbol(value)
     # @doc
     #
     # Returns `true` if `value` is a `Symbol` (e.g. `:ok`).
@@ -610,7 +610,7 @@ module Kernel
     # @return `true` if `value` is a `Symbol`, else `false`
     native("is_symbol", [value])
 
-  fn is_bool(value)
+  function is_bool(value)
     # @doc
     #
     # Returns `true` if `value` is a `Bool` (`true` or `false`).
@@ -619,7 +619,7 @@ module Kernel
     # @return `true` if `value` is a `Bool`, else `false`
     native("is_bool", [value])
 
-  fn is_nil(value)
+  function is_nil(value)
     # @doc
     #
     # Returns `true` if `value` is `nil`.
@@ -628,7 +628,7 @@ module Kernel
     # @return `true` if `value` is `nil`, else `false`
     native("is_nil", [value])
 
-  fn is_list(value)
+  function is_list(value)
     # @doc
     #
     # Returns `true` if `value` is a `List`.
@@ -637,7 +637,7 @@ module Kernel
     # @return `true` if `value` is a `List`, else `false`
     native("is_list", [value])
 
-  fn is_tuple(value)
+  function is_tuple(value)
     # @doc
     #
     # Returns `true` if `value` is a `Tuple`.
@@ -646,7 +646,7 @@ module Kernel
     # @return `true` if `value` is a `Tuple`, else `false`
     native("is_tuple", [value])
 
-  fn is_map(value)
+  function is_map(value)
     # @doc
     #
     # Returns `true` if `value` is a `Map`.
@@ -655,7 +655,7 @@ module Kernel
     # @return `true` if `value` is a `Map`, else `false`
     native("is_map", [value])
 
-  fn is_module(value)
+  function is_module(value)
     # @doc
     #
     # Returns `true` if `value` is a `Module`.
@@ -664,7 +664,7 @@ module Kernel
     # @return `true` if `value` is a `Module`, else `false`
     native("is_module", [value])
 
-  fn is_struct(value)
+  function is_struct(value)
     # @doc
     #
     # Returns `true` if `value` is a `Struct` instance.
@@ -673,7 +673,7 @@ module Kernel
     # @return `true` if `value` is a `Struct` instance, else `false`
     native("is_struct", [value])
 
-  fn inspect(value)
+  function inspect(value)
     # @doc
     #
     # The *debug* rendering of `value`: strings keep their quotes and symbols
@@ -693,7 +693,7 @@ module Kernel
     #   inspect(:ok)         # == ":ok"
     native("inspect", [value])
 
-  fn type_of(value)
+  function type_of(value)
     # @doc
     #
     # The module `value` belongs to — the one the README's Types table lists.
@@ -712,7 +712,7 @@ module Kernel
     #   type_of(nil)       # == "Nil"
     native("type_of", [value])
 
-  fn is_empty(value)
+  function is_empty(value)
     # @doc
     #
     # Whether `value` holds nothing — an empty list, map, tuple or string.
@@ -733,7 +733,7 @@ module Kernel
     else
       size(value) == 0
 
-  fn is_truthy(value)
+  function is_truthy(value)
     # @doc
     #
     # Whether `value` counts as true in a condition. Only `false` and `nil` are
@@ -755,7 +755,7 @@ module Kernel
       value -> true
       true -> false
 
-  fn is_lambda(value)
+  function is_lambda(value)
     # @doc
     #
     # Returns `true` if `value` is a `Lambda` (an anonymous function).

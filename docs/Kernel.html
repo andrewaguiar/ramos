@@ -65,209 +65,209 @@ n = size([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span 
 <section class="functions-summary">
 <h2>Functions</h2>
   <div class="fn-row">
-    <a href="#native/2" class="fn-sig"><code>fn native(str, args)</code></a>
+    <a href="#native/2" class="fn-sig"><code>function native(str, args)</code></a>
     <span class="fn-summary">Invokes a host-provided (native) function by name.</span>
   </div>
   <div class="fn-row">
-    <a href="#print/1" class="fn-sig"><code>fn print(value)</code></a>
+    <a href="#print/1" class="fn-sig"><code>function print(value)</code></a>
     <span class="fn-summary">Writes <code>value</code> to standard out <em>without</em> a trailing newline, then flushes. <code>value</code> is rendered with its <code><a href="String.html">String</a></code> representation.</span>
   </div>
   <div class="fn-row">
-    <a href="#println/1" class="fn-sig"><code>fn println(value)</code></a>
+    <a href="#println/1" class="fn-sig"><code>function println(value)</code></a>
     <span class="fn-summary">Writes <code>value</code> to standard out <em>followed by a newline</em>. Like <code>print(value); new_line()</code>, but the text and its newline are written in a single call, so when threads print at once one line never lands inside another (see the <code><a href="Thread.html">Thread</a></code> module).</span>
   </div>
   <div class="fn-row">
-    <a href="#new_line/0" class="fn-sig"><code>fn new_line()</code></a>
+    <a href="#new_line/0" class="fn-sig"><code>function new_line()</code></a>
     <span class="fn-summary">Writes a single newline (<code>\n</code>) to standard out and flushes. Useful for terminating a sequence of <code>print</code> calls.</span>
   </div>
   <div class="fn-row">
-    <a href="#read/0" class="fn-sig"><code>fn read()</code></a>
+    <a href="#read/0" class="fn-sig"><code>function read()</code></a>
     <span class="fn-summary">Reads a single line from standard in (up to and including the newline, which is stripped) and returns it as a <code><a href="String.html">String</a></code>. Blocks until a line is available; returns <code>nil</code> at end-of-input.</span>
   </div>
   <div class="fn-row">
-    <a href="#read_password/0" class="fn-sig"><code>fn read_password()</code></a>
+    <a href="#read_password/0" class="fn-sig"><code>function read_password()</code></a>
     <span class="fn-summary">Reads a line from standard in <em>without echoing</em> it to the terminal, and returns it as a <code><a href="String.html">String</a></code>. Intended for secrets like passwords. Returns <code>nil</code> at end-of-input. Behavior falls back to plain echoing <code>read</code> when the input stream is not a TTY.</span>
   </div>
   <div class="fn-row">
-    <a href="#read_all/0" class="fn-sig"><code>fn read_all()</code></a>
+    <a href="#read_all/0" class="fn-sig"><code>function read_all()</code></a>
     <span class="fn-summary">Reads <em>all</em> of standard in, to end of input, as a single <code><a href="String.html">String</a></code> — the whole-pipe counterpart to <code>read</code>, which takes one line. Returns <code>&quot;&quot;</code> when the input is empty.</span>
   </div>
   <div class="fn-row">
-    <a href="#eprint/1" class="fn-sig"><code>fn eprint(value)</code></a>
+    <a href="#eprint/1" class="fn-sig"><code>function eprint(value)</code></a>
     <span class="fn-summary">Writes <code>value</code> to standard <em>error</em> without a trailing newline. Use it for diagnostics, so a program&#39;s real output on standard out stays clean enough to pipe.</span>
   </div>
   <div class="fn-row">
-    <a href="#eprintln/1" class="fn-sig"><code>fn eprintln(value)</code></a>
+    <a href="#eprintln/1" class="fn-sig"><code>function eprintln(value)</code></a>
     <span class="fn-summary"><code>eprint</code> with a trailing newline.</span>
   </div>
   <div class="fn-row">
-    <a href="#get_env/1" class="fn-sig"><code>fn get_env(name)</code></a>
+    <a href="#get_env/1" class="fn-sig"><code>function get_env(name)</code></a>
     <span class="fn-summary">Looks up an environment variable by <code>name</code> and returns its <code><a href="String.html">String</a></code> value, or <code>nil</code> if it is not set.</span>
   </div>
   <div class="fn-row">
-    <a href="#get_args/0" class="fn-sig"><code>fn get_args()</code></a>
+    <a href="#get_args/0" class="fn-sig"><code>function get_args()</code></a>
     <span class="fn-summary">Returns the program&#39;s command-line arguments — everything after the script path — as a <code><a href="List.html">List</a></code> of <code><a href="String.html">String</a></code>s. Empty when none were given.</span>
   </div>
   <div class="fn-row">
-    <a href="#get_arg/1" class="fn-sig"><code>fn get_arg(index)</code></a>
+    <a href="#get_arg/1" class="fn-sig"><code>function get_arg(index)</code></a>
     <span class="fn-summary">Returns the command-line argument at zero-based <code>index</code>, or <code>nil</code> if there is no argument at that position. Negative indexes are not supported.</span>
   </div>
   <div class="fn-row">
-    <a href="#sleep/1" class="fn-sig"><code>fn sleep(ms)</code></a>
+    <a href="#sleep/1" class="fn-sig"><code>function sleep(ms)</code></a>
     <span class="fn-summary">Suspends the program for <code>ms</code> milliseconds, then returns <code>nil</code>. A value of <code>0</code> or less returns immediately.</span>
   </div>
   <div class="fn-row">
-    <a href="#exit/1" class="fn-sig"><code>fn exit(code)</code></a>
+    <a href="#exit/1" class="fn-sig"><code>function exit(code)</code></a>
     <span class="fn-summary">Ends the program with <code>code</code> as its exit status — <code>0</code> for success, any other value for failure. Nothing after the call runs.</span>
   </div>
   <div class="fn-row">
-    <a href="#now/0" class="fn-sig"><code>fn now()</code></a>
+    <a href="#now/0" class="fn-sig"><code>function now()</code></a>
     <span class="fn-summary">The wall-clock time as milliseconds since the Unix epoch.</span>
   </div>
   <div class="fn-row">
-    <a href="#monotonic/0" class="fn-sig"><code>fn monotonic()</code></a>
+    <a href="#monotonic/0" class="fn-sig"><code>function monotonic()</code></a>
     <span class="fn-summary">Milliseconds from a fixed point in the program&#39;s life. The value only ever moves forward, which is what makes it the right clock for measuring how long something took.</span>
   </div>
   <div class="fn-row">
-    <a href="#random/0" class="fn-sig"><code>fn random()</code></a>
+    <a href="#random/0" class="fn-sig"><code>function random()</code></a>
     <span class="fn-summary">A random <code><a href="Float.html">Float</a></code> in <code>[0.0, 1.0)</code> — zero is possible, one is not.</span>
   </div>
   <div class="fn-row">
-    <a href="#random_int/2" class="fn-sig"><code>fn random_int(low, high)</code></a>
+    <a href="#random_int/2" class="fn-sig"><code>function random_int(low, high)</code></a>
     <span class="fn-summary">A random <code><a href="Integer.html">Integer</a></code> in <code>low..high</code>, <em></em>inclusive at both ends<em></em>. The bounds may be given either way round.</span>
   </div>
   <div class="fn-row">
-    <a href="#apply/2" class="fn-sig"><code>fn apply(f, args)</code></a>
+    <a href="#apply/2" class="fn-sig"><code>function apply(f, args)</code></a>
     <span class="fn-summary">Calls the lambda <code>f</code> with <code>args</code>, a list of its arguments. Use it when the arity is not known where the call is written — otherwise call <code>f</code> directly.</span>
   </div>
   <div class="fn-row">
-    <a href="#module_apply/3" class="fn-sig"><code>fn module_apply(m, fn_name, args)</code></a>
+    <a href="#module_apply/3" class="fn-sig"><code>function module_apply(m, fn_name, args)</code></a>
     <span class="fn-summary">Resolves <code>fn_name</code> on module <code>m</code> and calls it with <code>args</code>, a list. <code><a href="Module.html#apply">Module.apply</a></code> is the client-side name for this — prefer it.</span>
   </div>
   <div class="fn-row">
-    <a href="#start_actor/4" class="fn-sig"><code>fn start_actor(id, actor_module, initial_state, config)</code></a>
+    <a href="#start_actor/4" class="fn-sig"><code>function start_actor(id, actor_module, initial_state, config)</code></a>
     <span class="fn-summary">Starts an actor under <code>id</code>, handled by <code>module</code> — which must implement the <code><a href="Actor.html">Actor</a></code> trait — holding <code>initial_state</code>. <code>config</code> is fixed for the actor&#39;s lifetime and passed to every <code>call</code> and <code>cast</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#call_actor/4" class="fn-sig"><code>fn call_actor(id, actor_module, op, args)</code></a>
+    <a href="#call_actor/4" class="fn-sig"><code>function call_actor(id, actor_module, op, args)</code></a>
     <span class="fn-summary">Sends <code>op</code> to the actor registered under <code>id</code> and waits for the reply. The module&#39;s <code>call(f, args, state, config)</code> handles it and returns a <code>(reply, new_state)</code> tuple: the reply comes back here, and <code>new_state</code> is what the actor holds from then on.</span>
   </div>
   <div class="fn-row">
-    <a href="#cast_actor/4" class="fn-sig"><code>fn cast_actor(id, actor_module, op, args)</code></a>
+    <a href="#cast_actor/4" class="fn-sig"><code>function cast_actor(id, actor_module, op, args)</code></a>
     <span class="fn-summary">Sends <code>op</code> to the actor registered under <code>id</code> <em></em>without<em></em> waiting for it to be handled, and returns <code>:ok</code> at once. The message goes on the actor&#39;s mailbox and runs later: before the next <code>call_actor</code> on that actor, or when the program ends, whichever comes first.</span>
   </div>
   <div class="fn-row">
-    <a href="#list_actors/0" class="fn-sig"><code>fn list_actors()</code></a>
+    <a href="#list_actors/0" class="fn-sig"><code>function list_actors()</code></a>
     <span class="fn-summary">Every running actor as an <code>(id, module)</code> pair, sorted by id so the order is stable from one call to the next. The id is the value it was started with, and the module is the module itself — so a pair can be handed straight to <code>call_actor</code> or <code>cast_actor</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#actor_stats/1" class="fn-sig"><code>fn actor_stats(id)</code></a>
+    <a href="#actor_stats/1" class="fn-sig"><code>function actor_stats(id)</code></a>
     <span class="fn-summary">What is known about one running actor, as a <code><a href="Map.html">Map</a></code>:</span>
   </div>
   <div class="fn-row">
-    <a href="#is_actor_started/1" class="fn-sig"><code>fn is_actor_started(id)</code></a>
+    <a href="#is_actor_started/1" class="fn-sig"><code>function is_actor_started(id)</code></a>
     <span class="fn-summary">Whether <code>id</code> names a running actor. False for an id that was never started, and for one that has been stopped.</span>
   </div>
   <div class="fn-row">
-    <a href="#stop_actor/1" class="fn-sig"><code>fn stop_actor(id)</code></a>
+    <a href="#stop_actor/1" class="fn-sig"><code>function stop_actor(id)</code></a>
     <span class="fn-summary">Lets the actor finish everything already sent to it, then ends its thread and forgets the id. Nothing in flight is discarded: the stop is queued behind the messages already in the mailbox.</span>
   </div>
   <div class="fn-row">
-    <a href="#size/1" class="fn-sig"><code>fn size(collection)</code></a>
+    <a href="#size/1" class="fn-sig"><code>function size(collection)</code></a>
     <span class="fn-summary">Returns the number of elements in <code>collection</code> — the length of a <code><a href="List.html">List</a></code>, the arity of a <code><a href="Tuple.html">Tuple</a></code>, or the number of key/value pairs in a <code><a href="Map.html">Map</a></code>. Strings are not collections: <code>size</code> on a <code><a href="String.html">String</a></code> is an error — use <code><a href="String.html#length">String.length</a></code> instead.</span>
   </div>
   <div class="fn-row">
-    <a href="#at/2" class="fn-sig"><code>fn at(collection, index)</code></a>
+    <a href="#at/2" class="fn-sig"><code>function at(collection, index)</code></a>
     <span class="fn-summary">Returns the element of <code>collection</code> at zero-based <code>index</code> (<code><a href="List.html">List</a></code> or <code><a href="Tuple.html">Tuple</a></code>), or <code>nil</code> if out of range. Negative indexes are not supported. Strings are not collections: <code>at</code> on a <code><a href="String.html">String</a></code> is an error — use <code><a href="String.html#at">String.at</a></code> instead.</span>
   </div>
   <div class="fn-row">
-    <a href="#to_string/1" class="fn-sig"><code>fn to_string(value)</code></a>
+    <a href="#to_string/1" class="fn-sig"><code>function to_string(value)</code></a>
     <span class="fn-summary">Converts <code>value</code> to its <code><a href="String.html">String</a></code> representation — the same rendering that <code>print</code> uses. Numbers, symbols, tuples, lists, and maps all stringify; <code>nil</code> becomes <code>&quot;nil&quot;</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#to_integer/1" class="fn-sig"><code>fn to_integer(value)</code></a>
+    <a href="#to_integer/1" class="fn-sig"><code>function to_integer(value)</code></a>
     <span class="fn-summary">Converts <code>value</code> to an <code><a href="Integer.html">Integer</a></code>. A <code><a href="String.html">String</a></code> is parsed as a whole number; a <code><a href="Float.html">Float</a></code> is truncated toward zero. Returns <code>nil</code> if <code>value</code> can&#39;t be parsed.</span>
   </div>
   <div class="fn-row">
-    <a href="#to_float/1" class="fn-sig"><code>fn to_float(value)</code></a>
+    <a href="#to_float/1" class="fn-sig"><code>function to_float(value)</code></a>
     <span class="fn-summary">Converts <code>value</code> to a <code><a href="Float.html">Float</a></code>. An <code><a href="Integer.html">Integer</a></code> widens; a <code><a href="String.html">String</a></code> is parsed as a decimal number. Returns <code>nil</code> if <code>value</code> can&#39;t be parsed.</span>
   </div>
   <div class="fn-row">
-    <a href="#to_list/1" class="fn-sig"><code>fn to_list(value)</code></a>
+    <a href="#to_list/1" class="fn-sig"><code>function to_list(value)</code></a>
     <span class="fn-summary">Converts <code>value</code> to a <code><a href="List.html">List</a></code>. A <code><a href="Tuple.html">Tuple</a></code> yields its elements in order; a <code><a href="Map.html">Map</a></code> yields its <em>values</em> (keys are dropped — reach for the <code><a href="Map.html">Map</a></code> module when you need them). Already-list values are returned unchanged.</span>
   </div>
   <div class="fn-row">
-    <a href="#current_stacktrace/0" class="fn-sig"><code>fn current_stacktrace()</code></a>
+    <a href="#current_stacktrace/0" class="fn-sig"><code>function current_stacktrace()</code></a>
     <span class="fn-summary">Returns the current call stacktrace — the chain of Ramos calls leading to this point — as a list of frame strings, most recent first.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_integer/1" class="fn-sig"><code>fn is_integer(value)</code></a>
+    <a href="#is_integer/1" class="fn-sig"><code>function is_integer(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is an <code><a href="Integer.html">Integer</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_float/1" class="fn-sig"><code>fn is_float(value)</code></a>
+    <a href="#is_float/1" class="fn-sig"><code>function is_float(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code><a href="Float.html">Float</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_string/1" class="fn-sig"><code>fn is_string(value)</code></a>
+    <a href="#is_string/1" class="fn-sig"><code>function is_string(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code><a href="String.html">String</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_symbol/1" class="fn-sig"><code>fn is_symbol(value)</code></a>
+    <a href="#is_symbol/1" class="fn-sig"><code>function is_symbol(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code>Symbol</code> (e.g. <code>:ok</code>).</span>
   </div>
   <div class="fn-row">
-    <a href="#is_bool/1" class="fn-sig"><code>fn is_bool(value)</code></a>
+    <a href="#is_bool/1" class="fn-sig"><code>function is_bool(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code>Bool</code> (<code>true</code> or <code>false</code>).</span>
   </div>
   <div class="fn-row">
-    <a href="#is_nil/1" class="fn-sig"><code>fn is_nil(value)</code></a>
+    <a href="#is_nil/1" class="fn-sig"><code>function is_nil(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is <code>nil</code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_list/1" class="fn-sig"><code>fn is_list(value)</code></a>
+    <a href="#is_list/1" class="fn-sig"><code>function is_list(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code><a href="List.html">List</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_tuple/1" class="fn-sig"><code>fn is_tuple(value)</code></a>
+    <a href="#is_tuple/1" class="fn-sig"><code>function is_tuple(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code><a href="Tuple.html">Tuple</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_map/1" class="fn-sig"><code>fn is_map(value)</code></a>
+    <a href="#is_map/1" class="fn-sig"><code>function is_map(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code><a href="Map.html">Map</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_module/1" class="fn-sig"><code>fn is_module(value)</code></a>
+    <a href="#is_module/1" class="fn-sig"><code>function is_module(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code><a href="Module.html">Module</a></code>.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_struct/1" class="fn-sig"><code>fn is_struct(value)</code></a>
+    <a href="#is_struct/1" class="fn-sig"><code>function is_struct(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code><a href="Struct.html">Struct</a></code> instance.</span>
   </div>
   <div class="fn-row">
-    <a href="#inspect/1" class="fn-sig"><code>fn inspect(value)</code></a>
+    <a href="#inspect/1" class="fn-sig"><code>function inspect(value)</code></a>
     <span class="fn-summary">The <em>debug</em> rendering of <code>value</code>: strings keep their quotes and symbols their colon, so a value reads back as the source that would build it. This is what the REPL prints and what error messages quote.</span>
   </div>
   <div class="fn-row">
-    <a href="#type_of/1" class="fn-sig"><code>fn type_of(value)</code></a>
+    <a href="#type_of/1" class="fn-sig"><code>function type_of(value)</code></a>
     <span class="fn-summary">The module <code>value</code> belongs to — the one the README&#39;s Types table lists.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_empty/1" class="fn-sig"><code>fn is_empty(value)</code></a>
+    <a href="#is_empty/1" class="fn-sig"><code>function is_empty(value)</code></a>
     <span class="fn-summary">Whether <code>value</code> holds nothing — an empty list, map, tuple or string.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_truthy/1" class="fn-sig"><code>fn is_truthy(value)</code></a>
+    <a href="#is_truthy/1" class="fn-sig"><code>function is_truthy(value)</code></a>
     <span class="fn-summary">Whether <code>value</code> counts as true in a condition. Only <code>false</code> and <code>nil</code> are falsy — every other value, including <code>0</code>, <code>&quot;&quot;</code> and <code>[]</code>, is truthy. This is the rule <code>if</code>, <code>cond</code>, <code>and</code>, <code>or</code> and <code>not</code> all use.</span>
   </div>
   <div class="fn-row">
-    <a href="#is_lambda/1" class="fn-sig"><code>fn is_lambda(value)</code></a>
+    <a href="#is_lambda/1" class="fn-sig"><code>function is_lambda(value)</code></a>
     <span class="fn-summary">Returns <code>true</code> if <code>value</code> is a <code>Lambda</code> (an anonymous function).</span>
   </div>
 </section>
 <section class="functions-detail">
 <div class="fn-detail" id="native/2">
-  <h3 class="fn-title"><code>fn native(str, args)</code> <a class="anchor" href="#native/2">¶</a></h3>
+  <h3 class="fn-title"><code>function native(str, args)</code> <a class="anchor" href="#native/2">¶</a></h3>
 <p>Invokes a host-provided (native) function by name.</p>
 <p><code>str</code> is the name of the native function to call, and <code>args</code> is a list of arguments to forward to it. This function has no Ramos body — the interpreter intercepts the call and dispatches it to the corresponding native handler in the host runtime.</p>
 <pre><code>native(<span class="tok-str">&quot;print&quot;</span>, [<span class="tok-str">&quot;hello&quot;</span>])   <span class="tok-com"># handled by the interpreter</span></code></pre>
@@ -280,7 +280,7 @@ n = size([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span 
 <p class="returns"><strong>Returns:</strong> whatever the native handler returns</p>
 </div>
 <div class="fn-detail" id="print/1">
-  <h3 class="fn-title"><code>fn print(value)</code> <a class="anchor" href="#print/1">¶</a></h3>
+  <h3 class="fn-title"><code>function print(value)</code> <a class="anchor" href="#print/1">¶</a></h3>
 <p>Writes <code>value</code> to standard out <em>without</em> a trailing newline, then flushes. <code>value</code> is rendered with its <code><a href="String.html">String</a></code> representation.</p>
 <pre><code>print(<span class="tok-str">&quot;loading&quot;</span>)        <span class="tok-com"># -&gt; loading</span></code></pre>
 <dl class="params">
@@ -290,7 +290,7 @@ n = size([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span 
 <p class="returns"><strong>Returns:</strong> <code>nil</code></p>
 </div>
 <div class="fn-detail" id="println/1">
-  <h3 class="fn-title"><code>fn println(value)</code> <a class="anchor" href="#println/1">¶</a></h3>
+  <h3 class="fn-title"><code>function println(value)</code> <a class="anchor" href="#println/1">¶</a></h3>
 <p>Writes <code>value</code> to standard out <em>followed by a newline</em>. Like <code>print(value); new_line()</code>, but the text and its newline are written in a single call, so when threads print at once one line never lands inside another (see the <code><a href="Thread.html">Thread</a></code> module).</p>
 <pre><code>println(<span class="tok-str">&quot;done&quot;</span>)         <span class="tok-com"># -&gt; done\n</span></code></pre>
 <dl class="params">
@@ -300,7 +300,7 @@ n = size([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span 
 <p class="returns"><strong>Returns:</strong> <code>nil</code></p>
 </div>
 <div class="fn-detail" id="new_line/0">
-  <h3 class="fn-title"><code>fn new_line()</code> <a class="anchor" href="#new_line/0">¶</a></h3>
+  <h3 class="fn-title"><code>function new_line()</code> <a class="anchor" href="#new_line/0">¶</a></h3>
 <p>Writes a single newline (<code>\n</code>) to standard out and flushes. Useful for terminating a sequence of <code>print</code> calls.</p>
 <pre><code>print(<span class="tok-str">&quot;a&quot;</span>)
 print(<span class="tok-str">&quot;b&quot;</span>)
@@ -308,25 +308,25 @@ new_line()             <span class="tok-com"># -&gt; ab\n</span></code></pre>
 <p class="returns"><strong>Returns:</strong> <code>nil</code></p>
 </div>
 <div class="fn-detail" id="read/0">
-  <h3 class="fn-title"><code>fn read()</code> <a class="anchor" href="#read/0">¶</a></h3>
+  <h3 class="fn-title"><code>function read()</code> <a class="anchor" href="#read/0">¶</a></h3>
 <p>Reads a single line from standard in (up to and including the newline, which is stripped) and returns it as a <code><a href="String.html">String</a></code>. Blocks until a line is available; returns <code>nil</code> at end-of-input.</p>
 <pre><code>name = read()</code></pre>
 <p class="returns"><strong>Returns:</strong> the line read as a <code><a href="String.html">String</a></code>, or <code>nil</code> at end-of-input</p>
 </div>
 <div class="fn-detail" id="read_password/0">
-  <h3 class="fn-title"><code>fn read_password()</code> <a class="anchor" href="#read_password/0">¶</a></h3>
+  <h3 class="fn-title"><code>function read_password()</code> <a class="anchor" href="#read_password/0">¶</a></h3>
 <p>Reads a line from standard in <em>without echoing</em> it to the terminal, and returns it as a <code><a href="String.html">String</a></code>. Intended for secrets like passwords. Returns <code>nil</code> at end-of-input. Behavior falls back to plain echoing <code>read</code> when the input stream is not a TTY.</p>
 <pre><code>pw = read_password()</code></pre>
 <p class="returns"><strong>Returns:</strong> the line read as a <code><a href="String.html">String</a></code>, or <code>nil</code> at end-of-input</p>
 </div>
 <div class="fn-detail" id="read_all/0">
-  <h3 class="fn-title"><code>fn read_all()</code> <a class="anchor" href="#read_all/0">¶</a></h3>
+  <h3 class="fn-title"><code>function read_all()</code> <a class="anchor" href="#read_all/0">¶</a></h3>
 <p>Reads <em>all</em> of standard in, to end of input, as a single <code><a href="String.html">String</a></code> — the whole-pipe counterpart to <code>read</code>, which takes one line. Returns <code>&quot;&quot;</code> when the input is empty.</p>
 <pre><code>text = read_all()      <span class="tok-com"># `cat file | ramos run app.rmo`</span></code></pre>
 <p class="returns"><strong>Returns:</strong> everything on standard in as a <code><a href="String.html">String</a></code></p>
 </div>
 <div class="fn-detail" id="eprint/1">
-  <h3 class="fn-title"><code>fn eprint(value)</code> <a class="anchor" href="#eprint/1">¶</a></h3>
+  <h3 class="fn-title"><code>function eprint(value)</code> <a class="anchor" href="#eprint/1">¶</a></h3>
 <p>Writes <code>value</code> to standard <em>error</em> without a trailing newline. Use it for diagnostics, so a program&#39;s real output on standard out stays clean enough to pipe.</p>
 <p>Unlike <code>print</code>, standard error is never buffered — a message is on screen as soon as it is written.</p>
 <pre><code>eprint(<span class="tok-str">&quot;warning: &quot;</span>)</code></pre>
@@ -337,7 +337,7 @@ new_line()             <span class="tok-com"># -&gt; ab\n</span></code></pre>
 <p class="returns"><strong>Returns:</strong> <code>nil</code></p>
 </div>
 <div class="fn-detail" id="eprintln/1">
-  <h3 class="fn-title"><code>fn eprintln(value)</code> <a class="anchor" href="#eprintln/1">¶</a></h3>
+  <h3 class="fn-title"><code>function eprintln(value)</code> <a class="anchor" href="#eprintln/1">¶</a></h3>
 <p><code>eprint</code> with a trailing newline.</p>
 <pre><code>eprintln(<span class="tok-str">&quot;could not read config, using defaults&quot;</span>)</code></pre>
 <dl class="params">
@@ -347,7 +347,7 @@ new_line()             <span class="tok-com"># -&gt; ab\n</span></code></pre>
 <p class="returns"><strong>Returns:</strong> <code>nil</code></p>
 </div>
 <div class="fn-detail" id="get_env/1">
-  <h3 class="fn-title"><code>fn get_env(name)</code> <a class="anchor" href="#get_env/1">¶</a></h3>
+  <h3 class="fn-title"><code>function get_env(name)</code> <a class="anchor" href="#get_env/1">¶</a></h3>
 <p>Looks up an environment variable by <code>name</code> and returns its <code><a href="String.html">String</a></code> value, or <code>nil</code> if it is not set.</p>
 <pre><code>get_env(<span class="tok-str">&quot;HOME&quot;</span>)        <span class="tok-com"># == &quot;/home/andrew&quot;</span></code></pre>
 <dl class="params">
@@ -357,14 +357,14 @@ new_line()             <span class="tok-com"># -&gt; ab\n</span></code></pre>
 <p class="returns"><strong>Returns:</strong> the variable&#39;s <code><a href="String.html">String</a></code> value, or <code>nil</code> if unset</p>
 </div>
 <div class="fn-detail" id="get_args/0">
-  <h3 class="fn-title"><code>fn get_args()</code> <a class="anchor" href="#get_args/0">¶</a></h3>
+  <h3 class="fn-title"><code>function get_args()</code> <a class="anchor" href="#get_args/0">¶</a></h3>
 <p>Returns the program&#39;s command-line arguments — everything after the script path — as a <code><a href="List.html">List</a></code> of <code><a href="String.html">String</a></code>s. Empty when none were given.</p>
 <pre><code><span class="tok-com"># ramos run app.rmo alice 42</span>
 get_args()             <span class="tok-com"># == [&quot;alice&quot;, &quot;42&quot;]</span></code></pre>
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of the argument <code><a href="String.html">String</a></code>s (empty when none were given)</p>
 </div>
 <div class="fn-detail" id="get_arg/1">
-  <h3 class="fn-title"><code>fn get_arg(index)</code> <a class="anchor" href="#get_arg/1">¶</a></h3>
+  <h3 class="fn-title"><code>function get_arg(index)</code> <a class="anchor" href="#get_arg/1">¶</a></h3>
 <p>Returns the command-line argument at zero-based <code>index</code>, or <code>nil</code> if there is no argument at that position. Negative indexes are not supported.</p>
 <pre><code><span class="tok-com"># ramos run app.rmo alice 42</span>
 get_arg(<span class="tok-lit">0</span>)             <span class="tok-com"># == &quot;alice&quot;</span>
@@ -376,7 +376,7 @@ get_arg(<span class="tok-lit">9</span>)             <span class="tok-com"># == n
 <p class="returns"><strong>Returns:</strong> the argument <code><a href="String.html">String</a></code> at <code>index</code>, or <code>nil</code> if there is none</p>
 </div>
 <div class="fn-detail" id="sleep/1">
-  <h3 class="fn-title"><code>fn sleep(ms)</code> <a class="anchor" href="#sleep/1">¶</a></h3>
+  <h3 class="fn-title"><code>function sleep(ms)</code> <a class="anchor" href="#sleep/1">¶</a></h3>
 <p>Suspends the program for <code>ms</code> milliseconds, then returns <code>nil</code>. A value of <code>0</code> or less returns immediately.</p>
 <pre><code>sleep(<span class="tok-lit">250</span>)             <span class="tok-com"># pause for a quarter second</span></code></pre>
 <dl class="params">
@@ -386,7 +386,7 @@ get_arg(<span class="tok-lit">9</span>)             <span class="tok-com"># == n
 <p class="returns"><strong>Returns:</strong> <code>nil</code></p>
 </div>
 <div class="fn-detail" id="exit/1">
-  <h3 class="fn-title"><code>fn exit(code)</code> <a class="anchor" href="#exit/1">¶</a></h3>
+  <h3 class="fn-title"><code>function exit(code)</code> <a class="anchor" href="#exit/1">¶</a></h3>
 <p>Ends the program with <code>code</code> as its exit status — <code>0</code> for success, any other value for failure. Nothing after the call runs.</p>
 <p>Output written with <code>print</code> is flushed on the way out, so a program can print its result and exit in the next breath without losing it.</p>
 <pre><code>exit(<span class="tok-lit">0</span>)                <span class="tok-com"># success</span>
@@ -398,14 +398,14 @@ exit(<span class="tok-lit">1</span>)                <span class="tok-com"># fail
 <p class="returns"><strong>Returns:</strong> never returns</p>
 </div>
 <div class="fn-detail" id="now/0">
-  <h3 class="fn-title"><code>fn now()</code> <a class="anchor" href="#now/0">¶</a></h3>
+  <h3 class="fn-title"><code>function now()</code> <a class="anchor" href="#now/0">¶</a></h3>
 <p>The wall-clock time as milliseconds since the Unix epoch.</p>
 <p>This is the clock to <em>timestamp</em> with. It can jump backwards when the system clock is adjusted, so measure elapsed time with <code>monotonic</code>.</p>
 <pre><code>started = now()</code></pre>
 <p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> — milliseconds since 1970-01-01 UTC</p>
 </div>
 <div class="fn-detail" id="monotonic/0">
-  <h3 class="fn-title"><code>fn monotonic()</code> <a class="anchor" href="#monotonic/0">¶</a></h3>
+  <h3 class="fn-title"><code>function monotonic()</code> <a class="anchor" href="#monotonic/0">¶</a></h3>
 <p>Milliseconds from a fixed point in the program&#39;s life. The value only ever moves forward, which is what makes it the right clock for measuring how long something took.</p>
 <p>The origin is arbitrary, so a single reading means nothing on its own — only the difference between two does.</p>
 <pre><code>started = monotonic()
@@ -414,14 +414,14 @@ elapsed = monotonic() - started</code></pre>
 <p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> — milliseconds since an arbitrary fixed point</p>
 </div>
 <div class="fn-detail" id="random/0">
-  <h3 class="fn-title"><code>fn random()</code> <a class="anchor" href="#random/0">¶</a></h3>
+  <h3 class="fn-title"><code>function random()</code> <a class="anchor" href="#random/0">¶</a></h3>
 <p>A random <code><a href="Float.html">Float</a></code> in <code>[0.0, 1.0)</code> — zero is possible, one is not.</p>
 <p>Not cryptographic: this is for sampling, shuffling and test data, never for secrets or tokens.</p>
 <pre><code>chance = random()</code></pre>
 <p class="returns"><strong>Returns:</strong> a <code><a href="Float.html">Float</a></code> in <code>[0.0, 1.0)</code></p>
 </div>
 <div class="fn-detail" id="random_int/2">
-  <h3 class="fn-title"><code>fn random_int(low, high)</code> <a class="anchor" href="#random_int/2">¶</a></h3>
+  <h3 class="fn-title"><code>function random_int(low, high)</code> <a class="anchor" href="#random_int/2">¶</a></h3>
 <p>A random <code><a href="Integer.html">Integer</a></code> in <code>low..high</code>, <em></em>inclusive at both ends<em></em>. The bounds may be given either way round.</p>
 <p>Not cryptographic — see <code>random</code>.</p>
 <pre><code>roll = random_int(<span class="tok-lit">1</span>, <span class="tok-lit">6</span>)</code></pre>
@@ -434,7 +434,7 @@ elapsed = monotonic() - started</code></pre>
 <p class="returns"><strong>Returns:</strong> an <code><a href="Integer.html">Integer</a></code> between the two, inclusive</p>
 </div>
 <div class="fn-detail" id="apply/2">
-  <h3 class="fn-title"><code>fn apply(f, args)</code> <a class="anchor" href="#apply/2">¶</a></h3>
+  <h3 class="fn-title"><code>function apply(f, args)</code> <a class="anchor" href="#apply/2">¶</a></h3>
 <p>Calls the lambda <code>f</code> with <code>args</code>, a list of its arguments. Use it when the arity is not known where the call is written — otherwise call <code>f</code> directly.</p>
 <p>Like <code>native</code>, this function has no Ramos body: the interpreter intercepts the call, because running a lambda needs the evaluator and a native handler cannot reach back into it. Also like <code>native</code>, it is answered for the bare call <code>apply(...)</code>, not for <code><a href="Kernel.html#apply">Kernel.apply(...)</a></code>.</p>
 <pre><code>apply(<span class="tok-kw">do</span> x, y -&gt; x + y, [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>])   <span class="tok-com"># == 3</span>
@@ -448,9 +448,9 @@ apply(<span class="tok-kw">do</span> -&gt; <span class="tok-lit">42</span>, []) 
 <p class="returns"><strong>Returns:</strong> whatever <code>f</code> returns</p>
 </div>
 <div class="fn-detail" id="module_apply/3">
-  <h3 class="fn-title"><code>fn module_apply(m, fn_name, args)</code> <a class="anchor" href="#module_apply/3">¶</a></h3>
+  <h3 class="fn-title"><code>function module_apply(m, fn_name, args)</code> <a class="anchor" href="#module_apply/3">¶</a></h3>
 <p>Resolves <code>fn_name</code> on module <code>m</code> and calls it with <code>args</code>, a list. <code><a href="Module.html#apply">Module.apply</a></code> is the client-side name for this — prefer it.</p>
-<p>Enforces the same <code>fnp</code> visibility a written <code>m.fn_name(...)</code> call would: a private function is reachable only from inside its own module, so this cannot reach around that rule from the outside.</p>
+<p>Enforces the same <code>helper</code> visibility a written <code>m.fn_name(...)</code> call would: a private function is reachable only from inside its own module, so this cannot reach around that rule from the outside.</p>
 <p>Like <code>apply</code>, this function has no Ramos body: the interpreter intercepts the call, since resolving <code>fn_name</code> and running it needs the evaluator. Also like <code>apply</code>, it is answered for the bare call <code>module_apply(...)</code>, not for <code><a href="Kernel.html#module_apply">Kernel.module_apply(...)</a></code>.</p>
 <pre><code>module_apply(<span class="tok-type">Integer</span>, <span class="tok-str">&quot;abs&quot;</span>, [-<span class="tok-lit">7</span>])   <span class="tok-com"># == 7</span></code></pre>
 <dl class="params">
@@ -464,7 +464,7 @@ apply(<span class="tok-kw">do</span> -&gt; <span class="tok-lit">42</span>, []) 
 <p class="returns"><strong>Returns:</strong> whatever the resolved function returns</p>
 </div>
 <div class="fn-detail" id="start_actor/4">
-  <h3 class="fn-title"><code>fn start_actor(id, actor_module, initial_state, config)</code> <a class="anchor" href="#start_actor/4">¶</a></h3>
+  <h3 class="fn-title"><code>function start_actor(id, actor_module, initial_state, config)</code> <a class="anchor" href="#start_actor/4">¶</a></h3>
 <p>Starts an actor under <code>id</code>, handled by <code>module</code> — which must implement the <code><a href="Actor.html">Actor</a></code> trait — holding <code>initial_state</code>. <code>config</code> is fixed for the actor&#39;s lifetime and passed to every <code>call</code> and <code>cast</code>.</p>
 <p>The <code>id</code> is what identifies a running actor, so one module can back many of them, each with its own state. Starting the same <code>id</code> twice is an error.</p>
 <p>Like <code>apply</code>, this function has no Ramos body: the interpreter intercepts the call, because dispatching a message runs Ramos code and a native handler cannot reach back into the evaluator. Also like <code>apply</code>, it is answered for the bare call <code>start_actor(...)</code>, not <code><a href="Kernel.html#start_actor">Kernel.start_actor(...)</a></code>.</p>
@@ -482,7 +482,7 @@ apply(<span class="tok-kw">do</span> -&gt; <span class="tok-lit">42</span>, []) 
 <p class="returns"><strong>Returns:</strong> <code>:ok</code></p>
 </div>
 <div class="fn-detail" id="call_actor/4">
-  <h3 class="fn-title"><code>fn call_actor(id, actor_module, op, args)</code> <a class="anchor" href="#call_actor/4">¶</a></h3>
+  <h3 class="fn-title"><code>function call_actor(id, actor_module, op, args)</code> <a class="anchor" href="#call_actor/4">¶</a></h3>
 <p>Sends <code>op</code> to the actor registered under <code>id</code> and waits for the reply. The module&#39;s <code>call(f, args, state, config)</code> handles it and returns a <code>(reply, new_state)</code> tuple: the reply comes back here, and <code>new_state</code> is what the actor holds from then on.</p>
 <p>Any messages sent earlier with <code>cast_actor</code> are handled first, in the order they were sent, so a call always sees everything sent before it.</p>
 <p>Has no Ramos body, for the reason given on <code>start_actor</code>.</p>
@@ -500,7 +500,7 @@ apply(<span class="tok-kw">do</span> -&gt; <span class="tok-lit">42</span>, []) 
 <p class="returns"><strong>Returns:</strong> whatever the handler put in the reply position</p>
 </div>
 <div class="fn-detail" id="cast_actor/4">
-  <h3 class="fn-title"><code>fn cast_actor(id, actor_module, op, args)</code> <a class="anchor" href="#cast_actor/4">¶</a></h3>
+  <h3 class="fn-title"><code>function cast_actor(id, actor_module, op, args)</code> <a class="anchor" href="#cast_actor/4">¶</a></h3>
 <p>Sends <code>op</code> to the actor registered under <code>id</code> <em></em>without<em></em> waiting for it to be handled, and returns <code>:ok</code> at once. The message goes on the actor&#39;s mailbox and runs later: before the next <code>call_actor</code> on that actor, or when the program ends, whichever comes first.</p>
 <p>The module&#39;s <code>cast(f, args, state, config)</code> handles it and returns only the new state — a cast has no reply to send anywhere. Unless the module defines its own, the <code><a href="Actor.html">Actor</a></code> trait&#39;s default runs <code>call</code> and discards the reply.</p>
 <p>Because the handler runs later, a failure inside it surfaces later too: at the drain, after the statement that sent the message.</p>
@@ -519,7 +519,7 @@ apply(<span class="tok-kw">do</span> -&gt; <span class="tok-lit">42</span>, []) 
 <p class="returns"><strong>Returns:</strong> <code>:ok</code>, immediately</p>
 </div>
 <div class="fn-detail" id="list_actors/0">
-  <h3 class="fn-title"><code>fn list_actors()</code> <a class="anchor" href="#list_actors/0">¶</a></h3>
+  <h3 class="fn-title"><code>function list_actors()</code> <a class="anchor" href="#list_actors/0">¶</a></h3>
 <p>Every running actor as an <code>(id, module)</code> pair, sorted by id so the order is stable from one call to the next. The id is the value it was started with, and the module is the module itself — so a pair can be handed straight to <code>call_actor</code> or <code>cast_actor</code>.</p>
 <p>Has no Ramos body, for the reason given on <code>start_actor</code>.</p>
 <pre><code>list_actors()   <span class="tok-com"># == []</span></code></pre>
@@ -528,7 +528,7 @@ call_actor(id, mod, <span class="tok-lit">:ping</span>, [])</code></pre>
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of <code>(id, module)</code> tuples</p>
 </div>
 <div class="fn-detail" id="actor_stats/1">
-  <h3 class="fn-title"><code>fn actor_stats(id)</code> <a class="anchor" href="#actor_stats/1">¶</a></h3>
+  <h3 class="fn-title"><code>function actor_stats(id)</code> <a class="anchor" href="#actor_stats/1">¶</a></h3>
 <p>What is known about one running actor, as a <code><a href="Map.html">Map</a></code>:</p>
 <ul><li><code>id</code>      — the id it was started with</li><li><code>module</code>  — the name of the module handling it, as a <code><a href="String.html">String</a></code></li><li><code>calls</code>   — how many <code>call_actor</code> messages have been sent to it</li><li><code>casts</code>   — how many <code>cast_actor</code> messages have been sent to it</li><li><code>pending</code> — casts sent whose outcome has not been collected yet</li><li><code>alive</code>   — whether its thread is still running</li></ul>
 <p><code>calls</code> and <code>casts</code> count messages <em>sent</em>. A cast is asynchronous, so it may still be running: <code>pending</code> is the part not accounted for yet, and drops to zero once the handler has finished and its result been collected.</p>
@@ -541,7 +541,7 @@ call_actor(id, mod, <span class="tok-lit">:ping</span>, [])</code></pre>
 <p class="returns"><strong>Returns:</strong> a <code><a href="Map.html">Map</a></code> describing the actor</p>
 </div>
 <div class="fn-detail" id="is_actor_started/1">
-  <h3 class="fn-title"><code>fn is_actor_started(id)</code> <a class="anchor" href="#is_actor_started/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_actor_started(id)</code> <a class="anchor" href="#is_actor_started/1">¶</a></h3>
 <p>Whether <code>id</code> names a running actor. False for an id that was never started, and for one that has been stopped.</p>
 <p>Has no Ramos body, for the reason given on <code>start_actor</code>.</p>
 <pre><code>is_actor_started(<span class="tok-lit">:nobody</span>)   <span class="tok-com"># == false</span></code></pre>
@@ -552,7 +552,7 @@ call_actor(id, mod, <span class="tok-lit">:ping</span>, [])</code></pre>
 <p class="returns"><strong>Returns:</strong> <code>true</code> when an actor is running under <code>id</code></p>
 </div>
 <div class="fn-detail" id="stop_actor/1">
-  <h3 class="fn-title"><code>fn stop_actor(id)</code> <a class="anchor" href="#stop_actor/1">¶</a></h3>
+  <h3 class="fn-title"><code>function stop_actor(id)</code> <a class="anchor" href="#stop_actor/1">¶</a></h3>
 <p>Lets the actor finish everything already sent to it, then ends its thread and forgets the id. Nothing in flight is discarded: the stop is queued behind the messages already in the mailbox.</p>
 <p>Afterwards the id is free, so <code>start_actor</code> may reuse it. Sending to a stopped actor is an error, the same as sending to one never started.</p>
 <p>Has no Ramos body, for the reason given on <code>start_actor</code>.</p>
@@ -564,7 +564,7 @@ call_actor(id, mod, <span class="tok-lit">:ping</span>, [])</code></pre>
 <p class="returns"><strong>Returns:</strong> <code>:ok</code></p>
 </div>
 <div class="fn-detail" id="size/1">
-  <h3 class="fn-title"><code>fn size(collection)</code> <a class="anchor" href="#size/1">¶</a></h3>
+  <h3 class="fn-title"><code>function size(collection)</code> <a class="anchor" href="#size/1">¶</a></h3>
 <p>Returns the number of elements in <code>collection</code> — the length of a <code><a href="List.html">List</a></code>, the arity of a <code><a href="Tuple.html">Tuple</a></code>, or the number of key/value pairs in a <code><a href="Map.html">Map</a></code>. Strings are not collections: <code>size</code> on a <code><a href="String.html">String</a></code> is an error — use <code><a href="String.html#length">String.length</a></code> instead.</p>
 <pre><code>size([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])            <span class="tok-com"># == 3</span>
 size((<span class="tok-lit">:ok</span>, <span class="tok-lit">42</span>))            <span class="tok-com"># == 2</span>
@@ -576,7 +576,7 @@ size({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>})    
 <p class="returns"><strong>Returns:</strong> the <code><a href="Integer.html">Integer</a></code> element count</p>
 </div>
 <div class="fn-detail" id="at/2">
-  <h3 class="fn-title"><code>fn at(collection, index)</code> <a class="anchor" href="#at/2">¶</a></h3>
+  <h3 class="fn-title"><code>function at(collection, index)</code> <a class="anchor" href="#at/2">¶</a></h3>
 <p>Returns the element of <code>collection</code> at zero-based <code>index</code> (<code><a href="List.html">List</a></code> or <code><a href="Tuple.html">Tuple</a></code>), or <code>nil</code> if out of range. Negative indexes are not supported. Strings are not collections: <code>at</code> on a <code><a href="String.html">String</a></code> is an error — use <code><a href="String.html#at">String.at</a></code> instead.</p>
 <pre><code>at([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-lit">1</span>)      <span class="tok-com"># == 2</span>
 at((<span class="tok-lit">:ok</span>, <span class="tok-lit">42</span>), <span class="tok-lit">1</span>)      <span class="tok-com"># == 42</span>
@@ -590,7 +590,7 @@ at([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class=
 <p class="returns"><strong>Returns:</strong> the element at <code>index</code>, or <code>nil</code> if out of range</p>
 </div>
 <div class="fn-detail" id="to_string/1">
-  <h3 class="fn-title"><code>fn to_string(value)</code> <a class="anchor" href="#to_string/1">¶</a></h3>
+  <h3 class="fn-title"><code>function to_string(value)</code> <a class="anchor" href="#to_string/1">¶</a></h3>
 <p>Converts <code>value</code> to its <code><a href="String.html">String</a></code> representation — the same rendering that <code>print</code> uses. Numbers, symbols, tuples, lists, and maps all stringify; <code>nil</code> becomes <code>&quot;nil&quot;</code>.</p>
 <pre><code>to_string(<span class="tok-lit">42</span>)          <span class="tok-com"># == &quot;42&quot;</span>
 to_string(<span class="tok-lit">:ok</span>)         <span class="tok-com"># == &quot;:ok&quot;</span></code></pre>
@@ -601,7 +601,7 @@ to_string(<span class="tok-lit">:ok</span>)         <span class="tok-com"># == &
 <p class="returns"><strong>Returns:</strong> the <code><a href="String.html">String</a></code> representation of <code>value</code></p>
 </div>
 <div class="fn-detail" id="to_integer/1">
-  <h3 class="fn-title"><code>fn to_integer(value)</code> <a class="anchor" href="#to_integer/1">¶</a></h3>
+  <h3 class="fn-title"><code>function to_integer(value)</code> <a class="anchor" href="#to_integer/1">¶</a></h3>
 <p>Converts <code>value</code> to an <code><a href="Integer.html">Integer</a></code>. A <code><a href="String.html">String</a></code> is parsed as a whole number; a <code><a href="Float.html">Float</a></code> is truncated toward zero. Returns <code>nil</code> if <code>value</code> can&#39;t be parsed.</p>
 <pre><code>to_integer(<span class="tok-str">&quot;42&quot;</span>)     <span class="tok-com"># == 42</span>
 to_integer(<span class="tok-lit">3.9</span>)      <span class="tok-com"># == 3</span></code></pre>
@@ -612,7 +612,7 @@ to_integer(<span class="tok-lit">3.9</span>)      <span class="tok-com"># == 3</
 <p class="returns"><strong>Returns:</strong> the <code><a href="Integer.html">Integer</a></code> value, or <code>nil</code> if it can&#39;t be parsed</p>
 </div>
 <div class="fn-detail" id="to_float/1">
-  <h3 class="fn-title"><code>fn to_float(value)</code> <a class="anchor" href="#to_float/1">¶</a></h3>
+  <h3 class="fn-title"><code>function to_float(value)</code> <a class="anchor" href="#to_float/1">¶</a></h3>
 <p>Converts <code>value</code> to a <code><a href="Float.html">Float</a></code>. An <code><a href="Integer.html">Integer</a></code> widens; a <code><a href="String.html">String</a></code> is parsed as a decimal number. Returns <code>nil</code> if <code>value</code> can&#39;t be parsed.</p>
 <pre><code>to_float(<span class="tok-lit">3</span>)          <span class="tok-com"># == 3.0</span>
 to_float(<span class="tok-str">&quot;3.14&quot;</span>)     <span class="tok-com"># == 3.14</span></code></pre>
@@ -623,7 +623,7 @@ to_float(<span class="tok-str">&quot;3.14&quot;</span>)     <span class="tok-com
 <p class="returns"><strong>Returns:</strong> the <code><a href="Float.html">Float</a></code> value, or <code>nil</code> if it can&#39;t be parsed</p>
 </div>
 <div class="fn-detail" id="to_list/1">
-  <h3 class="fn-title"><code>fn to_list(value)</code> <a class="anchor" href="#to_list/1">¶</a></h3>
+  <h3 class="fn-title"><code>function to_list(value)</code> <a class="anchor" href="#to_list/1">¶</a></h3>
 <p>Converts <code>value</code> to a <code><a href="List.html">List</a></code>. A <code><a href="Tuple.html">Tuple</a></code> yields its elements in order; a <code><a href="Map.html">Map</a></code> yields its <em>values</em> (keys are dropped — reach for the <code><a href="Map.html">Map</a></code> module when you need them). Already-list values are returned unchanged.</p>
 <pre><code>to_list((<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>))         <span class="tok-com"># == [1, 2, 3]</span>
 to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>})      <span class="tok-com"># == [1, 2]</span></code></pre>
@@ -634,13 +634,13 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> — a tuple&#39;s elements, a map&#39;s values, or the list itself</p>
 </div>
 <div class="fn-detail" id="current_stacktrace/0">
-  <h3 class="fn-title"><code>fn current_stacktrace()</code> <a class="anchor" href="#current_stacktrace/0">¶</a></h3>
+  <h3 class="fn-title"><code>function current_stacktrace()</code> <a class="anchor" href="#current_stacktrace/0">¶</a></h3>
 <p>Returns the current call stacktrace — the chain of Ramos calls leading to this point — as a list of frame strings, most recent first.</p>
 <pre><code>print(current_stacktrace())</code></pre>
 <p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of frame <code><a href="String.html">String</a></code>s, most recent first</p>
 </div>
 <div class="fn-detail" id="is_integer/1">
-  <h3 class="fn-title"><code>fn is_integer(value)</code> <a class="anchor" href="#is_integer/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_integer(value)</code> <a class="anchor" href="#is_integer/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is an <code><a href="Integer.html">Integer</a></code>.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -649,7 +649,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is an <code><a href="Integer.html">Integer</a></code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_float/1">
-  <h3 class="fn-title"><code>fn is_float(value)</code> <a class="anchor" href="#is_float/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_float(value)</code> <a class="anchor" href="#is_float/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code><a href="Float.html">Float</a></code>.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -658,7 +658,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code><a href="Float.html">Float</a></code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_string/1">
-  <h3 class="fn-title"><code>fn is_string(value)</code> <a class="anchor" href="#is_string/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_string(value)</code> <a class="anchor" href="#is_string/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code><a href="String.html">String</a></code>.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -667,7 +667,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code><a href="String.html">String</a></code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_symbol/1">
-  <h3 class="fn-title"><code>fn is_symbol(value)</code> <a class="anchor" href="#is_symbol/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_symbol(value)</code> <a class="anchor" href="#is_symbol/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code>Symbol</code> (e.g. <code>:ok</code>).</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -676,7 +676,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code>Symbol</code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_bool/1">
-  <h3 class="fn-title"><code>fn is_bool(value)</code> <a class="anchor" href="#is_bool/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_bool(value)</code> <a class="anchor" href="#is_bool/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code>Bool</code> (<code>true</code> or <code>false</code>).</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -685,7 +685,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code>Bool</code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_nil/1">
-  <h3 class="fn-title"><code>fn is_nil(value)</code> <a class="anchor" href="#is_nil/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_nil(value)</code> <a class="anchor" href="#is_nil/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is <code>nil</code>.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -694,7 +694,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is <code>nil</code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_list/1">
-  <h3 class="fn-title"><code>fn is_list(value)</code> <a class="anchor" href="#is_list/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_list(value)</code> <a class="anchor" href="#is_list/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code><a href="List.html">List</a></code>.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -703,7 +703,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code><a href="List.html">List</a></code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_tuple/1">
-  <h3 class="fn-title"><code>fn is_tuple(value)</code> <a class="anchor" href="#is_tuple/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_tuple(value)</code> <a class="anchor" href="#is_tuple/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code><a href="Tuple.html">Tuple</a></code>.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -712,7 +712,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code><a href="Tuple.html">Tuple</a></code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_map/1">
-  <h3 class="fn-title"><code>fn is_map(value)</code> <a class="anchor" href="#is_map/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_map(value)</code> <a class="anchor" href="#is_map/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code><a href="Map.html">Map</a></code>.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -721,7 +721,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code><a href="Map.html">Map</a></code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_module/1">
-  <h3 class="fn-title"><code>fn is_module(value)</code> <a class="anchor" href="#is_module/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_module(value)</code> <a class="anchor" href="#is_module/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code><a href="Module.html">Module</a></code>.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -730,7 +730,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code><a href="Module.html">Module</a></code>, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="is_struct/1">
-  <h3 class="fn-title"><code>fn is_struct(value)</code> <a class="anchor" href="#is_struct/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_struct(value)</code> <a class="anchor" href="#is_struct/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code><a href="Struct.html">Struct</a></code> instance.</p>
 <dl class="params">
   <dt><code>value</code></dt>
@@ -739,7 +739,7 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 <p class="returns"><strong>Returns:</strong> <code>true</code> if <code>value</code> is a <code><a href="Struct.html">Struct</a></code> instance, else <code>false</code></p>
 </div>
 <div class="fn-detail" id="inspect/1">
-  <h3 class="fn-title"><code>fn inspect(value)</code> <a class="anchor" href="#inspect/1">¶</a></h3>
+  <h3 class="fn-title"><code>function inspect(value)</code> <a class="anchor" href="#inspect/1">¶</a></h3>
 <p>The <em>debug</em> rendering of <code>value</code>: strings keep their quotes and symbols their colon, so a value reads back as the source that would build it. This is what the REPL prints and what error messages quote.</p>
 <p><code>to_string</code> gives the <em>display</em> form instead, which renders a string bare. The two differ only at the top level — a string nested inside a list is quoted either way.</p>
 <pre><code>inspect(<span class="tok-str">&quot;hi&quot;</span>)        <span class="tok-com"># == &quot;\&quot;hi\&quot;&quot;</span>
@@ -753,7 +753,7 @@ inspect(<span class="tok-lit">:ok</span>)         <span class="tok-com"># == &qu
 <p class="returns"><strong>Returns:</strong> a <code><a href="String.html">String</a></code> — the debug rendering</p>
 </div>
 <div class="fn-detail" id="type_of/1">
-  <h3 class="fn-title"><code>fn type_of(value)</code> <a class="anchor" href="#type_of/1">¶</a></h3>
+  <h3 class="fn-title"><code>function type_of(value)</code> <a class="anchor" href="#type_of/1">¶</a></h3>
 <p>The module <code>value</code> belongs to — the one the README&#39;s Types table lists.</p>
 <p>A <code><a href="String.html">String</a></code> rather than a <code>Symbol</code>: module names are CamelCase and symbol names are snake_case, so <code>:Integer</code> is not a symbol you could write, and a value you cannot write is a poor thing to compare against.</p>
 <pre><code>type_of(<span class="tok-lit">42</span>)        <span class="tok-com"># == &quot;Integer&quot;</span>
@@ -768,7 +768,7 @@ type_of(<span class="tok-lit">nil</span>)       <span class="tok-com"># == &quot
 <p class="returns"><strong>Returns:</strong> a <code><a href="String.html">String</a></code> naming the value&#39;s module</p>
 </div>
 <div class="fn-detail" id="is_empty/1">
-  <h3 class="fn-title"><code>fn is_empty(value)</code> <a class="anchor" href="#is_empty/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_empty(value)</code> <a class="anchor" href="#is_empty/1">¶</a></h3>
 <p>Whether <code>value</code> holds nothing — an empty list, map, tuple or string.</p>
 <p><code>size</code> deliberately rejects strings (they count code points, not elements), so this is the one question that spans all four.</p>
 <pre><code>is_empty([])       <span class="tok-com"># == true</span>
@@ -783,7 +783,7 @@ is_empty(<span class="tok-str">&quot;hi&quot;</span>)     <span class="tok-com">
 <p class="returns"><strong>Returns:</strong> <code>true</code> when it holds no elements or characters</p>
 </div>
 <div class="fn-detail" id="is_truthy/1">
-  <h3 class="fn-title"><code>fn is_truthy(value)</code> <a class="anchor" href="#is_truthy/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_truthy(value)</code> <a class="anchor" href="#is_truthy/1">¶</a></h3>
 <p>Whether <code>value</code> counts as true in a condition. Only <code>false</code> and <code>nil</code> are falsy — every other value, including <code>0</code>, <code>&quot;&quot;</code> and <code>[]</code>, is truthy. This is the rule <code>if</code>, <code>cond</code>, <code>and</code>, <code>or</code> and <code>not</code> all use.</p>
 <p>There is no native behind this one: a <code>cond</code> arm already tests a value for truthiness, so the function is that rule written down.</p>
 <pre><code>is_truthy(<span class="tok-lit">0</span>)       <span class="tok-com"># == true</span>
@@ -798,7 +798,7 @@ is_truthy(<span class="tok-lit">false</span>)   <span class="tok-com"># == false
 <p class="returns"><strong>Returns:</strong> <code>true</code> when <code>value</code> is truthy, <code>false</code> when it is <code>false</code> or <code>nil</code></p>
 </div>
 <div class="fn-detail" id="is_lambda/1">
-  <h3 class="fn-title"><code>fn is_lambda(value)</code> <a class="anchor" href="#is_lambda/1">¶</a></h3>
+  <h3 class="fn-title"><code>function is_lambda(value)</code> <a class="anchor" href="#is_lambda/1">¶</a></h3>
 <p>Returns <code>true</code> if <code>value</code> is a <code>Lambda</code> (an anonymous function).</p>
 <dl class="params">
   <dt><code>value</code></dt>

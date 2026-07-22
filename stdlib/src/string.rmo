@@ -28,7 +28,7 @@ module String
   #   - `at` returns a single-character string; Ramos has no separate char type.
   #   - search functions that may miss return `nil`.
 
-  fn length(s)
+  function length(s)
     # @doc
     #
     # Returns the number of Unicode code points in `s`.
@@ -39,7 +39,7 @@ module String
     #   String.length("hello")   # == 5
     native("string_length", [s])
 
-  fn at(s, index)
+  function at(s, index)
     # @doc
     #
     # Returns the single-character string at zero-based `index`, or `nil` if
@@ -53,7 +53,7 @@ module String
     #   String.at("hello", 9)   # == nil
     native("string_at", [s, index])
 
-  fn slice(s, start, count)
+  function slice(s, start, count)
     # @doc
     #
     # Returns `count` characters of `s` starting at zero-based `start`. `start`
@@ -67,7 +67,7 @@ module String
     #   String.slice("hello world", 0, 5)   # == "hello"
     native("string_slice", [s, start, count])
 
-  fn contains(s, sub)
+  function contains(s, sub)
     # @doc
     #
     # Returns `true` if `sub` occurs anywhere within `s`, else `false`.
@@ -79,7 +79,7 @@ module String
     #   String.contains("hello world", "world")   # == true
     native("string_contains", [s, sub])
 
-  fn starts_with(s, prefix)
+  function starts_with(s, prefix)
     # @doc
     #
     # Returns `true` if `s` begins with `prefix`, else `false`.
@@ -91,7 +91,7 @@ module String
     #   String.starts_with("hello", "he")   # == true
     native("string_starts_with", [s, prefix])
 
-  fn ends_with(s, suffix)
+  function ends_with(s, suffix)
     # @doc
     #
     # Returns `true` if `s` ends with `suffix`, else `false`.
@@ -103,7 +103,7 @@ module String
     #   String.ends_with("hello", "lo")   # == true
     native("string_ends_with", [s, suffix])
 
-  fn find(s, sub)
+  function find(s, sub)
     # @doc
     #
     # Returns the zero-based index of the first occurrence of `sub` in `s`, or
@@ -117,7 +117,7 @@ module String
     #   String.find("hello", "z")             # == nil
     native("string_find", [s, sub])
 
-  fn replace(s, pattern, replacement)
+  function replace(s, pattern, replacement)
     # @doc
     #
     # Returns a copy of `s` with every (non-overlapping) occurrence of `pattern`
@@ -131,7 +131,7 @@ module String
     #   String.replace("a-b-c", "-", "_")   # == "a_b_c"
     native("string_replace", [s, pattern, replacement])
 
-  fn split(s, sep)
+  function split(s, sep)
     # @doc
     #
     # Splits `s` at each occurrence of `sep`, returning a list of parts. Empty
@@ -144,7 +144,7 @@ module String
     #   String.split("a,b,c", ",")   # == ["a", "b", "c"]
     native("string_split", [s, sep])
 
-  fn upcase(s)
+  function upcase(s)
     # @doc
     #
     # Returns `s` with each ASCII letter uppercased.
@@ -155,7 +155,7 @@ module String
     #   String.upcase("hello")   # == "HELLO"
     native("string_upcase", [s])
 
-  fn downcase(s)
+  function downcase(s)
     # @doc
     #
     # Returns `s` with each ASCII letter lowercased.
@@ -166,7 +166,7 @@ module String
     #   String.downcase("HELLO")   # == "hello"
     native("string_downcase", [s])
 
-  fn trim(s)
+  function trim(s)
     # @doc
     #
     # Returns `s` with leading and trailing whitespace removed.
@@ -177,7 +177,7 @@ module String
     #   String.trim("  hi  ")   # == "hi"
     native("string_trim", [s])
 
-  fn trim_left(s)
+  function trim_left(s)
     # @doc
     #
     # Returns `s` with leading whitespace removed.
@@ -188,7 +188,7 @@ module String
     #   String.trim_left("  hi  ")   # == "hi  "
     native("string_trim_left", [s])
 
-  fn trim_right(s)
+  function trim_right(s)
     # @doc
     #
     # Returns `s` with trailing whitespace removed.
@@ -199,7 +199,7 @@ module String
     #   String.trim_right("  hi  ")   # == "  hi"
     native("string_trim_right", [s])
 
-  fn reverse(s)
+  function reverse(s)
     # @doc
     #
     # Returns `s` with its characters in reverse order.
@@ -210,7 +210,7 @@ module String
     #   String.reverse("hello")   # == "olleh"
     native("string_reverse", [s])
 
-  fn repeat(s, n)
+  function repeat(s, n)
     # @doc
     #
     # Returns `s` concatenated with itself `n` times. `n <= 0` yields `""`.
@@ -222,7 +222,7 @@ module String
     #   String.repeat("ab", 3)   # == "ababab"
     native("string_repeat", [s, n])
 
-  fn to_list(s)
+  function to_list(s)
     # @doc
     #
     # Splits `s` into a list of single-character strings, one per Unicode code
@@ -234,7 +234,7 @@ module String
     #   String.to_list("abc")   # == ["a", "b", "c"]
     native("string_to_list", [s])
 
-  fn pad_left(s, width, pad_char)
+  function pad_left(s, width, pad_char)
     # @doc
     #
     # Returns `s` left-padded with `pad_char` until it reaches at least `width`
@@ -252,7 +252,7 @@ module String
       length(s) >= width -> s
       true -> pad_left(pad_char <> s, width, pad_char)
 
-  fn pad_right(s, width, pad_char)
+  function pad_right(s, width, pad_char)
     # @doc
     #
     # Returns `s` right-padded with `pad_char` until it reaches at least
@@ -270,7 +270,7 @@ module String
       length(s) >= width -> s
       true -> pad_right(s <> pad_char, width, pad_char)
 
-  fn capitalize(s)
+  function capitalize(s)
     # @doc
     #
     # Returns `s` with its first character uppercased and the rest
@@ -285,7 +285,7 @@ module String
       s == "" -> ""
       true -> upcase(at(s, 0)) <> downcase(slice(s, 1, length(s) - 1))
 
-  fn from_list(chars)
+  function from_list(chars)
     # @doc
     #
     # Concatenates a list of single-character strings into one string. The

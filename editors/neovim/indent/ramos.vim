@@ -4,7 +4,7 @@
 " increases the indent of the following line by `shiftwidth` (2). Blank lines
 " and lines that start a new block carry the indent forward via autoindent.
 "
-" Block-opening keywords: module / struct / trait / attributes / fn / fnp /
+" Block-opening keywords: module / struct / trait / attributes / function / helper /
 " case / cond / if / else / run / do / begin. A `rescue` clause dedents to its
 " `begin`. A trailing binary operator, comma, or `=` also continues onto an
 " indented line.
@@ -47,13 +47,13 @@ function! RamosIndent(lnum) abort
   let bare = substitute(pline, '\s*#.*$', '', '')
 
   " A line that opens an indented block: a definition head (`module Name`,
-  " `fn name(args)`, …), a control-flow head (`case x`, `cond`, `begin`), a
+  " `function name(args)`, …), a control-flow head (`case x`, `cond`, `begin`), a
   " `rescue` clause, a multi-line lambda (has `do` but no `->`), or an
   " arm/clause whose body is on the next line (a trailing `->`).
   let opens_block =
         \    bare =~# '\C^\s*\(module\|struct\|trait\)\>'
         \ || bare =~# '\C^\s*attributes\s*$'
-        \ || bare =~# '\C^\s*\(fn\|fnp\)\>'
+        \ || bare =~# '\C^\s*\(function\|helper\)\>'
         \ || bare =~# '\C^\s*\(case\|cond\|if\|else\|run\|begin\)\>'
         \ || bare =~# '\C^\s*rescue\>'
         \ || bare =~# '\C\<\(case\|cond\|run\|begin\)\s*$'

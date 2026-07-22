@@ -10,5 +10,5 @@ struct Person
     name: nil
     age: 0
 
-  fn is_over_eighteen(self)   # required by Helloable
+  function is_over_eighteen(self)   # required by Helloable
     self.age > 18

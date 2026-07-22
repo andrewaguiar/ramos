@@ -28,7 +28,7 @@ struct Time
     second: 0
     millisecond: 0
 
-  fn new(hour, minute, second)
+  function new(hour, minute, second)
     # @doc
     #
     # Builds a `Time` with `millisecond: 0`. Every field wraps at its own
@@ -44,7 +44,7 @@ struct Time
     #   Time.new(-1, 0, 0)     # == Time{hour: 23, minute: 0, second: 0, millisecond: 0}
     from_millis_of_day(raw_millis(hour, minute, second, 0))
 
-  fn now()
+  function now()
     # @doc
     #
     # The current time of day, read from the wall clock as UTC.
@@ -54,7 +54,7 @@ struct Time
     #   Time.now().hour < 24   # == true
     from_millis_of_day(Kernel.now() % 86400000)
 
-  fn from_millis_of_day(ms)
+  function from_millis_of_day(ms)
     # @doc
     #
     # The `Time` that is `ms` milliseconds after midnight, wrapping at a day
@@ -66,6 +66,13 @@ struct Time
     #   Time.from_millis_of_day(0)        # == Time{hour: 0, minute: 0, second: 0, millisecond: 0}
     #   Time.from_millis_of_day(-1)       # == Time{hour: 23, minute: 59, second: 59, millisecond: 999}
     #   Time.from_millis_of_day(86400000) # == Time{hour: 0, minute: 0, second: 0, millisecond: 0}
+    from_millis_of_day_raw(ms)
+
+  helper from_millis_of_day_raw(ms)
+    # @doc
+    #
+    # (private) `from_millis_of_day`'s own body, so `shift` can reach it
+    # without calling the public function.
     normalized = ms % 86400000
     Time{
       hour: normalized / 3600000,
@@ -74,7 +81,7 @@ struct Time
       millisecond: normalized % 1000
     }
 
-  fn parse(text)
+  function parse(text)
     # @doc
     #
     # Parses `"HH:MM:SS"` or `"HH:MM:SS.fraction"`, `fraction` any number of
@@ -96,7 +103,7 @@ struct Time
     [h, mi, s] = String.split(clock, ":")
     from_millis_of_day(raw_millis(to_integer(h), to_integer(mi), to_integer(s), millis_from_fraction(fraction)))
 
-  fn to_millis_of_day(self)
+  function to_millis_of_day(self)
     # @doc
     #
     # `self` as milliseconds since midnight.
@@ -105,9 +112,16 @@ struct Time
     # @return an `Integer` in `0`..`86399999`
     #
     #   Time.to_millis_of_day(Time{hour: 0, minute: 0, second: 1})   # == 1000
+    to_millis_of_day_raw(self)
+
+  helper to_millis_of_day_raw(self)
+    # @doc
+    #
+    # (private) `to_millis_of_day`'s own body, so `shift` can reach it without
+    # calling the public function.
     raw_millis(self.hour, self.minute, self.second, self.millisecond)
 
-  fn to_iso(self)
+  function to_iso(self)
     # @doc
     #
     # `self` rendered as `"HH:MM:SS.mmm"`, zero-padded.
@@ -118,7 +132,7 @@ struct Time
     #   Time.to_iso(Time{hour: 3, minute: 5, second: 9, millisecond: 7})   # == "03:05:09.007"
     "#{pad(self.hour, 2)}:#{pad(self.minute, 2)}:#{pad(self.second, 2)}.#{pad(self.millisecond, 3)}"
 
-  fn add_hours(self, n)
+  function add_hours(self, n)
     # @doc
     #
     # `self` shifted by `n` hours, wrapping at a day.
@@ -130,7 +144,7 @@ struct Time
     #   Time.add_hours(Time{hour: 23}, 2)   # == Time{hour: 1, minute: 0, second: 0, millisecond: 0}
     shift(self, n * 3600000)
 
-  fn add_minutes(self, n)
+  function add_minutes(self, n)
     # @doc
     #
     # `self` shifted by `n` minutes, wrapping at a day.
@@ -142,7 +156,7 @@ struct Time
     #   Time.add_minutes(Time{hour: 0, minute: 30}, 45)   # == Time{hour: 1, minute: 15, second: 0, millisecond: 0}
     shift(self, n * 60000)
 
-  fn add_seconds(self, n)
+  function add_seconds(self, n)
     # @doc
     #
     # `self` shifted by `n` seconds, wrapping at a day.
@@ -154,7 +168,7 @@ struct Time
     #   Time.add_seconds(Time{second: 45}, 30)   # == Time{hour: 0, minute: 1, second: 15, millisecond: 0}
     shift(self, n * 1000)
 
-  fn compare(self, other)
+  function compare(self, other)
     # @doc
     #
     # Orders two times as `-1`, `0` or `1` — the shape `Integer.compare` uses,
@@ -169,7 +183,7 @@ struct Time
     #   Time.compare(Time{hour: 1}, Time{hour: 1})   # == 0
     Integer.compare(to_millis_of_day(self), to_millis_of_day(other))
 
-  fn diff_millis(self, other)
+  function diff_millis(self, other)
     # @doc
     #
     # The number of milliseconds from `other` to `self` — positive when
@@ -183,21 +197,21 @@ struct Time
     #   Time.diff_millis(Time{second: 10}, Time{second: 1})   # == 9000
     to_millis_of_day(self) - to_millis_of_day(other)
 
-  fnp raw_millis(hour, minute, second, millisecond)
+  helper raw_millis(hour, minute, second, millisecond)
     # @doc
     #
     # (private) Milliseconds since midnight for the given fields, unwrapped —
     # shared arithmetic behind `new`, `parse` and `to_millis_of_day`.
     hour * 3600000 + minute * 60000 + second * 1000 + millisecond
 
-  fnp shift(self, millis)
+  helper shift(self, millis)
     # @doc
     #
     # (private) `self` moved by `millis` milliseconds, wrapping at a day.
     # Backs the `add_*` family.
-    from_millis_of_day(to_millis_of_day(self) + millis)
+    from_millis_of_day_raw(to_millis_of_day_raw(self) + millis)
 
-  fnp millis_from_fraction(digits)
+  helper millis_from_fraction(digits)
     # @doc
     #
     # (private) A fractional-second string of any length as milliseconds:
@@ -207,7 +221,7 @@ struct Time
     else
       to_integer(String.slice(String.pad_right(digits, 3, "0"), 0, 3))
 
-  fnp pad(n, width)
+  helper pad(n, width)
     # @doc
     #
     # (private) `n` rendered as decimal digits, left-padded with zeros to at

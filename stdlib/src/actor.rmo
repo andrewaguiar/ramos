@@ -11,15 +11,15 @@ trait Actor
   #   module Counter
   #     implements Actor
   #
-  #     fn call(f, args, state, config)
+  #     function call(f, args, state, config)
   #       case f
   #         :bump -> (state + 1, state + 1)
   #         :read -> (state, state)
   #
-  #     fn start()
+  #     function start()
   #       start_actor(:counter, Counter, 0, {})
   #
-  #     fn bump()
+  #     function bump()
   #       call_actor(:counter, Counter, :bump, [])
   #
   # The convention is to keep `call` as the server half and wrap each operation
@@ -34,7 +34,7 @@ trait Actor
   # That memory does not include the actor registry, so a handler cannot send
   # messages to another actor or to itself.
 
-  fn cast(f, args, state, config)
+  function cast(f, args, state, config)
     # @doc
     #
     # Handle one message sent with `cast_actor`, returning only the new state —
@@ -57,7 +57,7 @@ trait Actor
     (reply, new_state) = call(f, args, state, config)
     new_state
 
-  fn call(f, args, state, config)
+  function call(f, args, state, config)
     # @doc
     #
     # Handle one message. Required — every implementer defines it.
