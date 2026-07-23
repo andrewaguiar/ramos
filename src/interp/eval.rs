@@ -393,7 +393,8 @@ impl Interp {
         }
         for item in &program.items {
             if let Item::Module(m) = item {
-                let functions = self.with_trait_functions(&m.name, &m.implements, &m.functions)?;
+                let functions =
+                    self.with_trait_functions(&m.name, &m.implements, &m.functions, &m.aliases)?;
                 self.modules.insert(
                     m.name.to_string(),
                     Arc::new(ModuleDef {
@@ -406,7 +407,8 @@ impl Interp {
         for item in &program.items {
             if let Item::Struct(s) = item {
                 let name = s.name.to_string();
-                let functions = self.with_trait_functions(&s.name, &s.implements, &s.functions)?;
+                let functions =
+                    self.with_trait_functions(&s.name, &s.implements, &s.functions, &s.aliases)?;
                 self.structs.insert(name.clone(), Arc::new(s.clone()));
                 // The module view carries the struct's functions, so method
                 // dispatch, `helper` visibility and bare sibling calls all go
@@ -418,7 +420,7 @@ impl Interp {
                         // The struct's own `implements` is resolved into
                         // `functions` below, so the view carries none.
                         implements: Vec::new(),
-                        aliases: Vec::new(),
+                        aliases: s.aliases.clone(),
                         functions,
                         span: s.span,
                     }),
@@ -444,6 +446,7 @@ impl Interp {
         owner: &ModulePath,
         implements: &[ModulePath],
         own: &[FnDef],
+        aliases: &[(String, ModulePath)],
     ) -> Result<Vec<FnDef>, RuntimeError> {
         if implements.is_empty() {
             return Ok(own.to_vec());
@@ -453,7 +456,20 @@ impl Interp {
         let mut defaults: Vec<(FnDef, String)> = Vec::new();
 
         for path in implements {
-            let trait_name = path.to_string();
+            // `implements` may name a trait by its bare aliased name — and the
+            // `alias` line establishing it can appear anywhere in the same
+            // struct or module, including after `implements` — so it is
+            // resolved against this owner's own aliases before falling back
+            // to the written name.
+            let trait_name = if let [short] = path.0.as_slice() {
+                aliases
+                    .iter()
+                    .find(|(n, _)| n == short)
+                    .map(|(_, full)| full.to_string())
+                    .unwrap_or_else(|| path.to_string())
+            } else {
+                path.to_string()
+            };
             let Some(t) = self.traits.get(&trait_name) else {
                 return err(format!(
                     "`{owner}` implements `{trait_name}`, which is not a trait"

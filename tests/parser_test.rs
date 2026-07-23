@@ -374,6 +374,97 @@ f =
     assert!(matches!(&body[0], Stmt::Assign { .. }));
 }
 
+#[test]
+fn a_multiline_lambda_cannot_be_a_direct_call_argument() {
+    // Newlines inside `(` are whitespace, so this is a legal single-expression
+    // lambda (`do x -> print(x)`) laid out across lines — legal by the
+    // grammar, but exactly the shape this rule forbids: a `do` lambda that is
+    // itself a call argument must fit on one line.
+    let src = "\
+SomeProcess.process_and_call_back(
+  [1, 2, 3],
+  do x ->
+    print(x)
+)";
+    let err = parse_err(src);
+    assert!(
+        err.contains("must fit on one line"),
+        "unexpected message: {err}"
+    );
+
+    // The fix: bind it first, then pass the name.
+    let src = "\
+callback =
+  do x
+    print(x)
+
+SomeProcess.process_and_call_back([1, 2, 3], callback)";
+    let p = program(src);
+    assert_eq!(p.items.len(), 2);
+
+    // A single-line lambda passed inline is unaffected — this is the
+    // idiomatic, ubiquitous form (`List.map(do x -> x * 2)`).
+    assert!(matches!(
+        expr("List.map([1, 2], do x -> x * 2)"),
+        Expr::Call { .. }
+    ));
+}
+
+#[test]
+fn call_arguments_past_one_line_are_each_on_their_own_line() {
+    // The first argument cannot share the line with `(`.
+    let err = parse_err("SomeProcess.process([1, 2],\n  \"a\"\n)");
+    assert!(
+        err.contains("cannot share the line with `(`"),
+        "unexpected message: {err}"
+    );
+
+    // Nor can two arguments share a line with each other.
+    let err = parse_err("SomeProcess.process(\n  [1, 2], \"a\",\n  \"b\"\n)");
+    assert!(
+        err.contains("every argument is on its own line"),
+        "unexpected message: {err}"
+    );
+
+    // Both accepted forms: one line, or every argument on its own line.
+    assert!(matches!(
+        expr("SomeProcess.process([1, 2], \"a\")"),
+        Expr::Call { .. }
+    ));
+    assert!(matches!(
+        expr("SomeProcess.process(\n  [1, 2],\n  \"a\"\n)"),
+        Expr::Call { .. }
+    ));
+}
+
+#[test]
+fn actors_never_receive_a_lambda_literal() {
+    for src in [
+        "call_actor(:cache, Cache, :process, [do x -> x + 1])",
+        "cast_actor(:cache, Cache, :process, [do x -> x + 1])",
+        "start_actor(:cache, Cache, do -> 0, {})",
+    ] {
+        let err = parse_err(src);
+        assert!(
+            err.contains("cannot be passed to an actor"),
+            "should be rejected: {src}\ngot: {err}"
+        );
+    }
+
+    // A lambda bound to a name first is not caught — this is a shallow,
+    // syntactic check, not full dataflow, matching the rest of Ramos's strict
+    // rules.
+    let p = program("cb = do x -> x + 1\ncall_actor(:cache, Cache, :process, [cb])");
+    assert_eq!(p.items.len(), 2);
+
+    // Passing a lambda to an ordinary function is untouched — the rule is
+    // specific to the three actor-messaging Kernel functions.
+    assert!(matches!(
+        expr("List.each([do x -> x], do f -> f())"),
+        Expr::Call { .. }
+    ));
+}
+
 // ── control flow ─────────────────────────────────────────────────────────────
 
 #[test]
@@ -652,6 +743,75 @@ struct Bad
   implements Foo
 ";
     assert!(parse_err(below).contains("top of the struct"));
+}
+
+#[test]
+fn struct_with_alias() {
+    // Aliases work the same for struct modules as pure modules (README
+    // "Alias": "Aliases work the same for pure modules and struct modules").
+    let p = program(
+        "\
+struct Account
+  implements Reportable
+  alias Geometry.Shapes.Circle
+  alias Geometry.Shapes.Square as Sq
+
+  attributes
+    balance: 0
+
+  function ratio(self)
+    self.balance / Circle.area(1)
+",
+    );
+    let Item::Struct(s) = &p.items[0] else {
+        panic!("expected struct")
+    };
+    assert_eq!(
+        s.aliases,
+        vec![
+            ("Circle".to_string(), path(&["Geometry", "Shapes", "Circle"])),
+            ("Sq".to_string(), path(&["Geometry", "Shapes", "Square"])),
+        ]
+    );
+    // strict: same ordering rule as `implements` — top of the body only.
+    let below = "\
+struct Bad
+  attributes
+    balance: 0
+
+  alias Geometry.Circle
+";
+    assert!(parse_err(below).contains("`alias` must be at the top of the struct body"));
+}
+
+#[test]
+fn two_aliases_landing_on_the_same_name_require_as() {
+    // `MyApp.Business.Account` and `MyApp.System.Account` both default their
+    // local name to `Account` — silently picking the first would make the
+    // second unreachable, so this is refused unless one uses `as`.
+    for src in [
+        "module Cli\n  alias MyApp.Business.Account\n  alias MyApp.System.Account\n\n  function main()\n    1\n",
+        "struct Cli\n  alias MyApp.Business.Account\n  alias MyApp.System.Account\n\n  attributes\n    a: 1\n",
+    ] {
+        let err = parse_err(src);
+        assert!(
+            err.contains("aliases both `MyApp.Business.Account` and `MyApp.System.Account` as `Account`"),
+            "should be rejected: {src}\ngot: {err}"
+        );
+    }
+
+    // `as` on either one breaks the collision.
+    let p = program(
+        "\
+module Cli
+  alias MyApp.Business.Account
+  alias MyApp.System.Account as SystemAccount
+
+  function main()
+    1
+",
+    );
+    assert!(matches!(&p.items[0], Item::Module(_)));
 }
 
 #[test]

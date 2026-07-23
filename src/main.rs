@@ -420,6 +420,11 @@ fn run_cli() -> ExitCode {
     if args.first().map(String::as_str) == Some("doc") {
         return run_doc(&args[1..]);
     }
+    // `learn` takes no file — it prints a fixed crash course on the language.
+    if args.first().map(String::as_str) == Some("learn") {
+        print!("{}", ramos::learn::text());
+        return ExitCode::SUCCESS;
+    }
     // `repl` takes no file either — an interactive session on stdin.
     if args.first().map(String::as_str) == Some("repl") {
         return ramos::repl::run(stdlib);
@@ -440,6 +445,12 @@ fn run_cli() -> ExitCode {
             eprintln!();
             eprintln!(
                 "  run <file.rmo>             execute a Ramos program (top-level statements)"
+            );
+            eprintln!(
+                "  learn                      print a crash course on the language: every"
+            );
+            eprintln!(
+                "                             keyword, the syntax, and what not to do"
             );
             eprintln!("  repl                       start an interactive session (persists state)");
             eprintln!("  test [--quietly] [file.rmo]");
@@ -473,6 +484,10 @@ fn run_cli() -> ExitCode {
     };
     if !path.ends_with(".rmo") {
         eprintln!("error: Ramos source files must use the `.rmo` extension (got `{path}`)");
+        let mut renamed = std::path::PathBuf::from(path);
+        renamed.set_extension("rmo");
+        eprintln!("  wrong:   ramos run {path}");
+        eprintln!("  correct: ramos run {}", renamed.display());
         return ExitCode::FAILURE;
     }
     // `run` and `check` see a whole program — the stdlib plus every module the

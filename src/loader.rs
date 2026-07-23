@@ -219,7 +219,14 @@ impl Loaded {
         };
         let source = read(found)?;
         let program = parse_source(found, &source)?;
-        self.add_file(found, program)
+        self.add_file(found, program)?;
+        // `add_file` records the module under its own canonical declared name,
+        // which may differ from the bare aliased name we were asked for here
+        // (e.g. requested `WithdrawalError`, declared `Accounts.WithdrawalError`).
+        // Record the requested name too, or the next pass sees it as still
+        // missing and reloads the same file forever.
+        self.defined.insert(path.to_string(), ());
+        Ok(())
     }
 }
 
@@ -297,10 +304,12 @@ fn check_one_definition(path: &Path, program: &Program) -> Result<(), LoadError>
         let list: Vec<String> = names.iter().map(|n| n.to_string()).collect();
         return Err(LoadError(format!(
             "error: `{}` holds {} definitions ({}) — a file holds exactly one \
-             module, trait or struct",
+             module, trait or struct\n\
+             \x20 wrong:   account.rmo holding both `module Account` and `module Ledger`\n\
+             \x20 correct: `module Account` in account.rmo, `module Ledger` in ledger.rmo",
             path.display(),
             names.len(),
-            list.join(", ")
+            list.join(", "),
         )));
     }
     Ok(())
@@ -316,8 +325,11 @@ fn check_name_matches_file(path: &Path, name: &ModulePath) -> Result<(), LoadErr
     if stem != expected {
         return Err(LoadError(format!(
             "error: `{}` defines `{name}`, which belongs in `{expected}.rmo` \
-             — the file name must match the definition",
-            path.display()
+             — the file name must match the definition\n\
+             \x20 wrong:   `module {name}` in {}\n\
+             \x20 correct: `module {name}` in {expected}.rmo",
+            path.display(),
+            path.display(),
         )));
     }
     Ok(())
@@ -375,6 +387,9 @@ fn collect_module_refs(items: &[Item]) -> Vec<ModulePath> {
             }
             Item::Struct(s) => {
                 found.extend(s.implements.iter().cloned());
+                for (_, path) in &s.aliases {
+                    found.push(path.clone());
+                }
                 for (_, default) in &s.attributes {
                     expr_refs(default, &mut found);
                 }

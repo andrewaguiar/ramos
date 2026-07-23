@@ -50,6 +50,9 @@ pub struct ModuleDef {
 pub struct StructDef {
     pub name: ModulePath,
     pub implements: Vec<ModulePath>,
+    /// `alias Some.Module as Name` lines at the top of the body, as
+    /// (local name, full path) — same shape and purpose as [`ModuleDef::aliases`].
+    pub aliases: Vec<(String, ModulePath)>,
     pub attributes: Vec<(String, Expr)>,
     pub functions: Vec<FnDef>,
     pub span: Span,
@@ -405,6 +408,9 @@ impl Printer {
             Item::Struct(s) => self.node(Style::Keyword, &format!("struct {}", s.name), |p| {
                 for name in &s.implements {
                     p.line(Style::Keyword, &format!("implements {name}"));
+                }
+                for (name, path) in &s.aliases {
+                    p.line(Style::Keyword, &format!("alias {path} as {name}"));
                 }
                 if !s.attributes.is_empty() {
                     p.node(Style::Keyword, "attributes", |p| p.fields(&s.attributes));

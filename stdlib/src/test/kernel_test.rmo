@@ -1,0 +1,91 @@
+module KernelTest
+  # @module_doc
+  #
+  # `Kernel.exception` and `Kernel.error` — the two standard error tuples.
+  # There is no `raise` and no `catch`; a fallible function reports failure by
+  # returning one of these instead.
+  #
+  # `exception(type, message)` builds `(:error, (type, message))` — for an
+  # expected, business-logic failure handled a line or two away, where a
+  # stacktrace would only be noise.
+  #
+  # `error(type, message)` builds `(:error, (type, message, stacktrace))` — the
+  # same shape plus `current_stacktrace()`, for a lower-level or unexpected
+  # failure worth tracing back to where it happened.
+  implements Test
+
+  function withdraw(balance, amount)
+    # A business rule: an amount out of range is an ordinary, expected
+    # outcome, not a bug worth a stacktrace.
+    cond
+      amount <= 0 -> exception(:invalid_amount, "amount must be positive")
+      amount > balance -> exception(:insufficient_funds, "balance is too low")
+      true -> (:ok, balance - amount)
+
+  function parse_amount(text)
+    # A lower-level failure: malformed input reaching this far is worth
+    # tracing back to whoever produced it.
+    case to_integer(text)
+      nil -> error(:malformed_amount, "not a number: #{text}")
+      n -> (:ok, n)
+
+  # ── exception: business-logic failures, no stacktrace ────────────────────
+
+  function test_exception_builds_the_two_tuple()
+    # @doc
+    # `exception(type, message)` tags a symbol and a message, with no
+    # stacktrace in the tuple.
+    built = exception(:invalid_amount, "amount must be positive")
+    assert(built == (:error, (:invalid_amount, "amount must be positive")))
+
+  function test_exception_message_may_be_any_value()
+    # @doc
+    # A symbol and a string are not always enough detail — the message may be
+    # any value, including a `Map` or struct carrying further fields, which
+    # destructures in `case` exactly like a string message would.
+    detail = {code: 556, message: "too large"}
+    assert(exception(:declined, detail) == (:error, (:declined, detail)))
+
+  function test_exception_is_read_with_case_like_any_value()
+    # @doc
+    # The tuple `exception` builds is ordinary data: it destructures in
+    # `case` exactly like a hand-written tuple would.
+    case withdraw(100, 250)
+      (:ok, _) -> assert(false)
+      (:error, (:insufficient_funds, message)) ->
+        assert(message == "balance is too low")
+      (:error, (_, message)) -> assert(false)
+
+  function test_exception_passes_along_unhandled_through_run()
+    # @doc
+    # `run` treats the tuple `exception` builds like any failed match: the
+    # block stops at the first step that does not match `(:ok, _)`.
+    result =
+      run
+        (:ok, after_rent) = withdraw(1000, 1200)
+        after_rent
+    assert(result == exception(:insufficient_funds, "balance is too low"))
+
+  # ── error: the stacktrace-carrying twin ──────────────────────────────────
+
+  function test_error_builds_the_three_tuple()
+    # @doc
+    # `error(type, message)` tags a symbol and a message together with the
+    # current stacktrace, so a caller reads all three the same way every time.
+    built = error(:malformed_amount, "not a number: abc")
+    assert(built == (:error, (:malformed_amount, "not a number: abc", [])))
+
+  function test_error_message_may_be_any_value()
+    # @doc
+    # Just like `exception`, the message may be any value.
+    detail = {expected: "Integer", got: "abc"}
+    assert(error(:malformed_amount, detail) == (:error, (:malformed_amount, detail, [])))
+
+  function test_error_is_read_with_case_like_any_value()
+    # @doc
+    # The extra stacktrace position destructures like any other — a wildcard
+    # skips it when the test only cares about `type` and `message`.
+    case parse_amount("abc")
+      (:ok, _) -> assert(false)
+      (:error, (:malformed_amount, message, _)) ->
+        assert(message == "not a number: abc")

@@ -29,6 +29,9 @@ module Kernel
   #                        `list_actors`, `actor_stats`, `is_actor_started`,
   #                        `stop_actor`
   #   - diagnostics      — `current_stacktrace`
+  #   - errors           — `error(type, message)` (with a stacktrace) and
+  #                        `exception(type, message)` (without, for business
+  #                        logic) — see "Error handling" in the README
   #   - type predicates  — `is_integer`, `is_string`, `is_list`, …
   #   - truthiness       — `is_truthy` (pure Ramos, no native; `not` inverts it)
   #
@@ -573,6 +576,55 @@ module Kernel
     #
     #   print(current_stacktrace())
     native("current_stacktrace", [])
+
+  function error(type, message)
+    # @doc
+    #
+    # Builds the standard error tuple: `(:error, (type, message, stacktrace))`.
+    # This — together with `exception`, its stackless twin — is the one way
+    # Ramos code reports failure: there is no `raise` and no `catch`. A
+    # fallible function returns `(:ok, value)` on success and whatever this
+    # builds on failure, and the caller reads either with `case` like any
+    # other value.
+    #
+    # `type` is a lowercase symbol naming *what* went wrong — the part code
+    # matches on. `message` is for the human reading the output: a `String`,
+    # or a struct when a plain string is not enough detail. The stacktrace is
+    # `current_stacktrace()`, captured where `error` is called, so a failure
+    # carries where it came from without a caller having to ask for it.
+    #
+    # Reach for `error` where that trace earns its cost — a lower-level or
+    # unexpected failure worth tracing back. Ordinary business-rule failures
+    # (a bad request, a declined charge) happen too often and too
+    # predictably for a trace to be useful — use `exception` for those.
+    #
+    # @param type: a symbol naming what went wrong
+    # @param message: a `String`, or a struct carrying further detail
+    # @return `(:error, (type, message, stacktrace))`
+    #
+    #   error(:insufficient_funds, "balance is too low")
+    #   # == (:error, (:insufficient_funds, "balance is too low", []))
+    (:error, (type, message, current_stacktrace()))
+
+  function exception(type, message)
+    # @doc
+    #
+    # Builds the business-logic error tuple: `(:error, (type, message))` — the
+    # same shape as `error`, minus the stacktrace.
+    #
+    # An expected failure — a bad request, a declined charge, a value that
+    # fails validation — happens in the ordinary run of a program and is
+    # handled a line or two away, so a stacktrace would only be noise. Use
+    # `exception` for those, and save `error` (which captures one) for a
+    # failure worth tracing back to where it happened.
+    #
+    # @param type: a symbol naming what went wrong
+    # @param message: a `String`, or a struct carrying further detail
+    # @return `(:error, (type, message))`
+    #
+    #   exception(:insufficient_funds, "balance is too low")
+    #   # == (:error, (:insufficient_funds, "balance is too low"))
+    (:error, (type, message))
 
   function is_integer(value)
     # @doc

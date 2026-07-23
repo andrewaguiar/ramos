@@ -10,6 +10,7 @@
 //! — so the evaluator sees one pipe-free, one-assignment, sigil-free shape.
 
 use crate::ast::*;
+use crate::diagnostics::Example;
 use crate::lexer::{StrPart, Token, TokenKind as T};
 use crate::span::Span;
 
@@ -17,6 +18,10 @@ use crate::span::Span;
 pub struct ParseError {
     pub message: String,
     pub span: Span,
+    /// A wrong/correct snippet pair, for a violation of a named strict rule.
+    /// `None` for a plain syntax error, which has no "correct" alternative to
+    /// show — just a missing or unexpected token.
+    pub example: Option<Example>,
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<Program, ParseError> {
@@ -61,8 +66,13 @@ impl Parser {
             T::Struct => Ok(Item::Struct(self.parse_struct()?)),
             T::Trait => Ok(Item::Trait(self.parse_trait()?)),
             T::Function => Ok(Item::Function(self.parse_fn(false)?)),
-            T::Helper => Err(self
-                .err_here("helpers (`helper`) are only allowed inside a module or struct")),
+            T::Helper => Err(self.err_here_ex(
+                "helpers (`helper`) are only allowed inside a module or struct",
+                Example {
+                    wrong: "helper log(x)\n  x",
+                    correct: "module Payments\n  helper log(x)\n    x",
+                },
+            )),
             _ => Ok(Item::Statement(self.parse_stmt()?)),
         }
     }
@@ -81,20 +91,29 @@ impl Parser {
             implements.push(self.parse_module_path()?);
             self.expect(&T::Newline, "a newline after `implements`")?;
         }
-        let mut aliases = Vec::new();
-        while self.check(&T::Alias) {
-            aliases.push(self.parse_alias()?);
-        }
+        let aliases = self.parse_aliases(&name)?;
         let mut functions = Vec::new();
         while !self.check(&T::Dedent) {
             match self.peek() {
                 T::Function => functions.push(self.parse_fn(false)?),
                 T::Helper => functions.push(self.parse_fn(true)?),
                 T::Alias => {
-                    return Err(self.err_here("`alias` must be at the top of the module body"))
+                    return Err(self.err_here_ex(
+                        "`alias` must be at the top of the module body",
+                        Example {
+                            wrong: "module Payments\n  function charge()\n    1\n\n  alias Geometry.Circle",
+                            correct: "module Payments\n  alias Geometry.Circle\n\n  function charge()\n    1",
+                        },
+                    ))
                 }
                 T::Implements => {
-                    return Err(self.err_here("`implements` must be at the top of the module body"))
+                    return Err(self.err_here_ex(
+                        "`implements` must be at the top of the module body",
+                        Example {
+                            wrong: "module Payments\n  function charge()\n    1\n\n  implements Actor",
+                            correct: "module Payments\n  implements Actor\n\n  function charge()\n    1",
+                        },
+                    ))
                 }
                 _ => {
                     return Err(self.err_here(
@@ -128,6 +147,9 @@ impl Parser {
             implements.push(self.parse_module_path()?);
             self.expect(&T::Newline, "a newline after `implements`")?;
         }
+        // `implements` then `alias` sit at the top of the body, before any
+        // definition — the same order a module uses.
+        let aliases = self.parse_aliases(&name)?;
         let mut attributes = Vec::new();
         if self.check(&T::Attributes) {
             self.bump();
@@ -148,15 +170,34 @@ impl Parser {
                 T::Function => functions.push(self.parse_fn(false)?),
                 T::Helper => functions.push(self.parse_fn(true)?),
                 T::Implements => {
-                    return Err(self.err_here("`implements` must be at the top of the struct body"))
+                    return Err(self.err_here_ex(
+                        "`implements` must be at the top of the struct body",
+                        Example {
+                            wrong: "struct Account\n  attributes\n    balance: 0\n\n  implements Reportable",
+                            correct: "struct Account\n  implements Reportable\n\n  attributes\n    balance: 0",
+                        },
+                    ))
+                }
+                T::Alias => {
+                    return Err(self.err_here_ex(
+                        "`alias` must be at the top of the struct body",
+                        Example {
+                            wrong: "struct Account\n  attributes\n    balance: 0\n\n  alias Geometry.Circle",
+                            correct: "struct Account\n  alias Geometry.Circle\n\n  attributes\n    balance: 0",
+                        },
+                    ))
                 }
                 T::Attributes => {
-                    return Err(self.err_here(
+                    return Err(self.err_here_ex(
                         "`attributes` must appear once, before any function definitions",
+                        Example {
+                            wrong: "struct Account\n  function total(self)\n    self.balance\n\n  attributes\n    balance: 0",
+                            correct: "struct Account\n  attributes\n    balance: 0\n\n  function total(self)\n    self.balance",
+                        },
                     ))
                 }
                 _ => return Err(self.err_here(
-                    "only `implements`, `attributes`, `function` and `helper` are allowed inside a struct",
+                    "only `implements`, `alias`, `attributes`, `function` and `helper` are allowed inside a struct",
                 )),
             }
         }
@@ -166,6 +207,7 @@ impl Parser {
         Ok(StructDef {
             name,
             implements,
+            aliases,
             attributes,
             functions,
             span,
@@ -193,7 +235,15 @@ impl Parser {
         while !self.check(&T::Dedent) {
             match self.peek() {
                 T::Function => functions.push(self.parse_fn(false)?),
-                _ => return Err(self.err_here("only `function` definitions are allowed inside a trait")),
+                _ => {
+                    return Err(self.err_here_ex(
+                        "only `function` definitions are allowed inside a trait",
+                        Example {
+                            wrong: "trait Shape\n  helper area(self)",
+                            correct: "trait Shape\n  function area(self)",
+                        },
+                    ))
+                }
             }
         }
         self.bump(); // Dedent
@@ -234,6 +284,36 @@ impl Parser {
             private,
             span,
         })
+    }
+
+    /// Every `alias` line at the top of a module or struct body.
+    ///
+    /// Two aliases that land on the same local name would leave the first
+    /// silently shadowing the second everywhere it is used — the same kind of
+    /// quiet surprise a duplicate function name is refused for. `as` exists
+    /// precisely to give one of them a different name, so a collision without
+    /// it is a parse error rather than a silent pick.
+    fn parse_aliases(&mut self, owner: &ModulePath) -> Result<Vec<(String, ModulePath)>, ParseError> {
+        let mut aliases: Vec<(String, ModulePath)> = Vec::new();
+        while self.check(&T::Alias) {
+            let span = self.span();
+            let (name, module) = self.parse_alias()?;
+            if let Some((_, first)) = aliases.iter().find(|(n, _)| *n == name) {
+                return Err(self.err_at_ex(
+                    span,
+                    &format!(
+                        "`{owner}` aliases both `{first}` and `{module}` as `{name}` — \
+                         give one an `as` name to tell them apart"
+                    ),
+                    Example {
+                        wrong: "alias MyApp.Business.Account\nalias MyApp.System.Account",
+                        correct: "alias MyApp.Business.Account\nalias MyApp.System.Account as SystemAccount",
+                    },
+                ));
+            }
+            aliases.push((name, module));
+        }
+        Ok(aliases)
     }
 
     /// `alias Geometry.Shapes.Circle [as Name]` — returns (local name, path).
@@ -313,23 +393,30 @@ impl Parser {
             // *local* `self` and leave the caller's untouched — quietly doing
             // nothing — so name the form that does work instead.
             Expr::SelfRef => {
-                return Err(ParseError {
-                    message: format!(
+                return Err(self.err_at_ex(
+                    at,
+                    &format!(
                         "`self.{field} = ...` does not update the caller's instance — \
                          rebinding `self` is local to this function. Return a new instance \
                          instead, as in `self | Struct.put(:{field}, ...)`"
                     ),
-                    span: at,
-                });
+                    Example {
+                        wrong: "function withdraw(self, amount)\n  self.balance = self.balance - amount",
+                        correct: "function withdraw(self, amount)\n  self | Struct.put(:balance, self.balance - amount)",
+                    },
+                ));
             }
             _ => {
-                return Err(ParseError {
-                    message: "the left of a field assignment must be a variable — \
-                              `andrew.age = 41` rebinds `andrew`, so there has to be a name \
-                              to rebind"
-                        .to_string(),
-                    span: at,
-                });
+                return Err(self.err_at_ex(
+                    at,
+                    "the left of a field assignment must be a variable — \
+                     `andrew.age = 41` rebinds `andrew`, so there has to be a name \
+                     to rebind",
+                    Example {
+                        wrong: "find_user().age = 41",
+                        correct: "andrew = find_user()\nandrew.age = 41",
+                    },
+                ));
             }
         };
         Ok(Stmt::Assign {
@@ -365,12 +452,15 @@ impl Parser {
         }
         let at = self.span();
         if matches!(stmt, Stmt::Assign { .. }) {
-            return Err(ParseError {
-                message: "a trailing `when` cannot guard an assignment — the binding would not \
-                          escape the branch; use a block `if` around it"
-                    .to_string(),
-                span: at,
-            });
+            return Err(self.err_at_ex(
+                at,
+                "a trailing `when` cannot guard an assignment — the binding would not \
+                 escape the branch; use a block `if` around it",
+                Example {
+                    wrong: "x = 1 when ready",
+                    correct: "if ready\n  x = 1",
+                },
+            ));
         }
         self.bump();
         let condition = self.parse_expr()?;
@@ -429,12 +519,14 @@ impl Parser {
             if self.check(&T::Newline) && matches!(self.nth(1), T::Pipe) {
                 self.bump(); // the NEWLINE — `|` itself is consumed below
             } else if self.check(&T::Pipe) {
-                return Err(ParseError {
-                    message: "`|` cannot share a line with its left-hand side: \
-                              put it on the next line, at the same indentation"
-                        .to_string(),
-                    span: self.span(),
-                });
+                return Err(self.err_here_ex(
+                    "`|` cannot share a line with its left-hand side: \
+                     put it on the next line, at the same indentation",
+                    Example {
+                        wrong: "map | Map.get(:key, nil)",
+                        correct: "map\n| Map.get(:key, nil)",
+                    },
+                ));
             } else {
                 break;
             }
@@ -447,10 +539,14 @@ impl Parser {
                     Expr::Call { callee, args }
                 }
                 _ => {
-                    return Err(ParseError {
-                        message: "the right side of `|` must be a function call".to_string(),
-                        span: at,
-                    })
+                    return Err(self.err_at_ex(
+                        at,
+                        "the right side of `|` must be a function call",
+                        Example {
+                            wrong: "x\n| 1",
+                            correct: "x\n| Integer.abs()",
+                        },
+                    ))
                 }
             };
         }
@@ -577,7 +673,7 @@ impl Parser {
             self.bump();
             let name = self.expect_ident("a field or function name after `.`")?;
             if self.check(&T::LParen) {
-                let args = self.parse_call_args()?;
+                let args = self.parse_call_args(false)?;
                 expr = Expr::Call {
                     callee: Callee::Method {
                         target: Box::new(expr),
@@ -641,7 +737,7 @@ impl Parser {
             T::Ident(name) => {
                 self.bump();
                 if self.check(&T::LParen) {
-                    let args = self.parse_call_args()?;
+                    let args = self.parse_call_args(is_actor_message_fn(&name))?;
                     Ok(Expr::Call {
                         callee: Callee::Local(name),
                         args,
@@ -726,10 +822,16 @@ impl Parser {
                 self.bump();
                 Ok(MapKey::Symbol(name))
             }
-            T::Symbol(name) => Err(self.err_here(&format!(
-                "a map key writes its symbol without the leading `:` — \
-                 use `{name}: ...`, not `:{name}: ...`"
-            ))),
+            T::Symbol(name) => Err(self.err_here_ex(
+                &format!(
+                    "a map key writes its symbol without the leading `:` — \
+                     use `{name}: ...`, not `:{name}: ...`"
+                ),
+                Example {
+                    wrong: "{:name: 1}",
+                    correct: "{name: 1}",
+                },
+            )),
             T::Int(n) => {
                 self.bump();
                 Ok(MapKey::Int(n))
@@ -741,10 +843,13 @@ impl Parser {
                 match parts.as_slice() {
                     [] => Ok(MapKey::Str(String::new())),
                     [StrPart::Lit(text)] => Ok(MapKey::Str(text.clone())),
-                    _ => {
-                        Err(self
-                            .err_here("a map key string cannot interpolate — use a plain string"))
-                    }
+                    _ => Err(self.err_here_ex(
+                        "a map key string cannot interpolate — use a plain string",
+                        Example {
+                            wrong: "{\"#{key}\": 1}",
+                            correct: "{\"key\": 1}",
+                        },
+                    )),
                 }
             }
             _ => Err(self.err_here("a map key: a name, string, integer or symbol")),
@@ -787,18 +892,90 @@ impl Parser {
         Ok(fields)
     }
 
-    fn parse_call_args(&mut self) -> Result<Vec<Expr>, ParseError> {
-        self.expect(&T::LParen, "`(` — function calls require parentheses")?;
+    /// Strict layout rules for a call's arguments:
+    ///
+    /// - a `do` lambda passed directly as an argument must fit on one line —
+    ///   a multi-line one is written first as `callback = do ...`, then
+    ///   passed by name, so the call site stays scannable
+    /// - once the arguments spill past one line, every argument starts its
+    ///   own line — the first cannot share the line with `(`, and no two can
+    ///   share a line with each other
+    /// - `start_actor`/`call_actor`/`cast_actor` never take a `do` lambda,
+    ///   even nested in a list/tuple/map literal argument — an actor's
+    ///   handler runs on another thread with a fresh root scope, so a lambda
+    ///   sent to it could never reach the bindings it closed over
+    fn parse_call_args(&mut self, is_actor_call: bool) -> Result<Vec<Expr>, ParseError> {
+        let open = self.expect(&T::LParen, "`(` — function calls require parentheses")?;
         let mut args = Vec::new();
+        let mut arg_starts: Vec<Token> = Vec::new();
         if !self.check(&T::RParen) {
             loop {
-                args.push(self.parse_expr()?);
+                let start = self.tokens[self.pos].clone();
+                let arg = self.parse_expr()?;
+                if matches!(arg, Expr::Lambda { .. }) {
+                    let end_line = self.tokens[self.pos - 1].line;
+                    if end_line != start.line {
+                        return Err(self.err_at_ex(
+                            start.span,
+                            "a `do` lambda passed directly as a call argument must fit on \
+                             one line — bind it to a name first (`callback = do ...`), then \
+                             pass `callback`",
+                            Example {
+                                wrong: "SomeProcess.process_and_call_back(\n  [1, 2, 3],\n  do x ->\n    print(x)\n)",
+                                correct: "callback =\n  do x\n    print(x)\n\nSomeProcess.process_and_call_back([1, 2, 3], callback)",
+                            },
+                        ));
+                    }
+                }
+                if is_actor_call && expr_embeds_lambda(&arg) {
+                    return Err(self.err_at_ex(
+                        start.span,
+                        "a `do` lambda cannot be passed to an actor — its handler runs on \
+                         another thread with a fresh root scope, so it could never reach the \
+                         bindings the lambda closed over",
+                        Example {
+                            wrong: "call_actor(:cache, Cache, :process, [do x -> x + 1])",
+                            correct: "call_actor(:cache, Cache, :process, [x])\n\n# the actor's own `call` does the work:\n# function call(f, args, state, config)\n#   case f\n#     :process ->\n#       [x] = args\n#       (x + 1, state)",
+                        },
+                    ));
+                }
+                arg_starts.push(start);
+                args.push(arg);
                 if !self.eat(&T::Comma) {
                     break;
                 }
             }
         }
-        self.expect(&T::RParen, "`)` after the arguments")?;
+        let close = self.expect(&T::RParen, "`)` after the arguments")?;
+        if open.line != close.line {
+            if let Some(first) = arg_starts.first() {
+                if first.line == open.line {
+                    return Err(self.err_at_ex(
+                        first.span,
+                        "once a call's arguments spill past one line, the first argument \
+                         cannot share the line with `(` — give it its own line, or put the \
+                         whole call on one line",
+                        Example {
+                            wrong: "SomeProcess.process([1, 2],\n  \"a\"\n)",
+                            correct: "SomeProcess.process(\n  [1, 2],\n  \"a\"\n)",
+                        },
+                    ));
+                }
+            }
+            for pair in arg_starts.windows(2) {
+                if pair[0].line == pair[1].line {
+                    return Err(self.err_at_ex(
+                        pair[1].span,
+                        "once a call's arguments spill past one line, every argument is on \
+                         its own line",
+                        Example {
+                            wrong: "SomeProcess.process(\n  [1, 2], \"a\",\n  \"b\"\n)",
+                            correct: "SomeProcess.process(\n  [1, 2],\n  \"a\",\n  \"b\"\n)",
+                        },
+                    ));
+                }
+            }
+        }
         Ok(args)
     }
 
@@ -1008,10 +1185,14 @@ impl Parser {
                 self.bump();
                 match parts.as_slice() {
                     [StrPart::Lit(s)] => Ok(Pattern::Str(s.clone())),
-                    _ => Err(ParseError {
-                        message: "string patterns cannot contain interpolation".to_string(),
-                        span: at,
-                    }),
+                    _ => Err(self.err_at_ex(
+                        at,
+                        "string patterns cannot contain interpolation",
+                        Example {
+                            wrong: "case greeting\n  \"hi #{name}\" -> :ok",
+                            correct: "case greeting\n  \"hi\" -> :ok",
+                        },
+                    )),
                 }
             }
             T::LParen => {
@@ -1107,6 +1288,27 @@ impl Parser {
     }
 }
 
+/// The three `Kernel` functions that hand a message to an actor's thread.
+fn is_actor_message_fn(name: &str) -> bool {
+    matches!(name, "start_actor" | "call_actor" | "cast_actor")
+}
+
+/// Whether `e` is a `do` lambda, or a list/tuple/map literal that carries one
+/// as a value. Stops at a nested call: whatever that call returns is a new
+/// value, unrelated to any lambda that went into building it.
+fn expr_embeds_lambda(e: &Expr) -> bool {
+    match e {
+        Expr::Lambda { .. } => true,
+        Expr::List { elements, rest } => {
+            elements.iter().any(expr_embeds_lambda)
+                || rest.as_deref().is_some_and(expr_embeds_lambda)
+        }
+        Expr::Tuple(xs) => xs.iter().any(expr_embeds_lambda),
+        Expr::Map(entries) => entries.iter().any(|(_, v)| expr_embeds_lambda(v)),
+        _ => false,
+    }
+}
+
 /// Convert an already-parsed expression into an assignment pattern.
 /// Reject a body that defines the same function name twice.
 ///
@@ -1126,6 +1328,10 @@ fn check_unique_fn_names(owner: &ModulePath, functions: &[FnDef]) -> Result<(), 
                     f.name
                 ),
                 span: f.span,
+                example: Some(Example {
+                    wrong: "function twice(x)\n  x + x\n\nfunction twice(x, y)\n  x + y",
+                    correct: "function twice(x, y)\n  x + y",
+                }),
             });
         }
         seen.push(&f.name);
@@ -1161,6 +1367,10 @@ fn check_helpers_dont_call_functions(
                     f.name
                 ),
                 span: f.span,
+                example: Some(Example {
+                    wrong: "module Payments\n  function charge(amount)\n    1\n\n  helper log(amount)\n    charge(amount)",
+                    correct: "module Payments\n  function charge(amount)\n    log(amount)\n\n  helper log(amount)\n    amount",
+                }),
             });
         }
     }
@@ -1303,6 +1513,10 @@ fn check_bindings_are_unique(pattern: &Pattern, at: Span) -> Result<(), ParseErr
                  value, and there is no way to ask that the two be equal"
             ),
             span: at,
+            example: Some(Example {
+                wrong: "(p, p) = (1, 2)",
+                correct: "(p, q) = (1, 2)",
+            }),
         });
     }
     Ok(())
@@ -1338,9 +1552,10 @@ fn first_repeated_binding<'p>(pattern: &'p Pattern, seen: &mut Vec<&'p str>) -> 
 }
 
 fn expr_to_pattern(expr: Expr, at: Span) -> Result<Pattern, ParseError> {
-    let invalid = |what: &str| ParseError {
+    let invalid = |what: &str, example: Option<Example>| ParseError {
         message: format!("{what} cannot appear on the left side of `=`"),
         span: at,
+        example,
     };
     Ok(match expr {
         Expr::Var(name) => Pattern::Binding(name),
@@ -1352,7 +1567,15 @@ fn expr_to_pattern(expr: Expr, at: Span) -> Result<Pattern, ParseError> {
         Expr::Symbol(s) => Pattern::Symbol(s),
         Expr::Str(pieces) => match pieces.as_slice() {
             [StrPiece::Lit(s)] => Pattern::Str(s.clone()),
-            _ => return Err(invalid("a string with interpolation")),
+            _ => {
+                return Err(invalid(
+                    "a string with interpolation",
+                    Some(Example {
+                        wrong: "\"total: #{n}\" = line",
+                        correct: "\"total: \" = line",
+                    }),
+                ))
+            }
         },
         Expr::Tuple(elements) => Pattern::Tuple(
             elements
@@ -1389,9 +1612,25 @@ fn expr_to_pattern(expr: Expr, at: Span) -> Result<Pattern, ParseError> {
         } => match *operand {
             Expr::Int(n) => Pattern::Int(-n),
             Expr::Float(x) => Pattern::Float(-x),
-            _ => return Err(invalid("this expression")),
+            _ => {
+                return Err(invalid(
+                    "this expression",
+                    Some(Example {
+                        wrong: "-x = 5",
+                        correct: "x = -5",
+                    }),
+                ))
+            }
         },
-        _ => return Err(invalid("this expression")),
+        _ => {
+            return Err(invalid(
+                "this expression",
+                Some(Example {
+                    wrong: "f(x) = 1",
+                    correct: "x = f(1)",
+                }),
+            ))
+        }
     })
 }
 
@@ -1409,9 +1648,11 @@ impl Parser {
                 StrPart::Lit(s) => Ok(StrPiece::Lit(s)),
                 StrPart::Interp(mut tokens) => {
                     let end = tokens.last().map(|t| t.span).unwrap_or(at);
+                    let end_line = tokens.last().map(|t| t.line).unwrap_or(1);
                     tokens.push(Token {
                         kind: T::Eof,
                         span: end,
+                        line: end_line,
                     });
                     let mut sub = Parser::new(tokens);
                     let expr = sub.parse_expr()?;
@@ -1517,6 +1758,27 @@ impl Parser {
         ParseError {
             message: message.to_string(),
             span: self.span(),
+            example: None,
+        }
+    }
+
+    /// Like [`Self::err_here`], plus the wrong/correct snippet pair shown
+    /// under the diagnostic for a named strict rule.
+    fn err_here_ex(&self, message: &str, example: Example) -> ParseError {
+        ParseError {
+            message: message.to_string(),
+            span: self.span(),
+            example: Some(example),
+        }
+    }
+
+    /// Like [`Self::err_at`], plus the wrong/correct snippet pair shown under
+    /// the diagnostic for a named strict rule.
+    fn err_at_ex(&self, span: Span, message: &str, example: Example) -> ParseError {
+        ParseError {
+            message: message.to_string(),
+            span,
+            example: Some(example),
         }
     }
 }

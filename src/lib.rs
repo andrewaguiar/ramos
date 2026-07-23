@@ -4,6 +4,7 @@ pub mod diagnostics;
 pub mod doc;
 pub mod doctest;
 pub mod interp;
+pub mod learn;
 pub mod lexer;
 pub mod loader;
 pub mod parser;

@@ -28,6 +28,7 @@ cargo test                 # the real gate — ~279 tests across 14 files
 cargo fmt                  # formatting is enforced; run before committing
 cargo clippy --all-targets # keep it clean
 cargo run -- run examples/hello_world.rmo   # run a program
+cargo run -- learn                          # crash course: keywords, syntax, what not to do
 cargo run -- check examples/hello_world.rmo # strict rules only, no execution
 cargo run -- test                          # run every src/test/*Test module
 cargo run -- test --quietly                # the same, without the @doc lines
@@ -106,6 +107,18 @@ lexer (`src/lexer/rules.rs`) and parser (`src/parser/mod.rs`), each with its own
 error code `E0xxx`. If you add a language feature, ask whether a new strict rule
 should guard it.
 
+Every strict-rule violation renders with a wrong/correct snippet pair under the
+message (see `src/diagnostics.rs`'s `Example` type). A lexer rule gets one via
+`ErrorCode::example()` in `src/lexer/rules.rs` — one canonical pair per code,
+covering every message that code produces. A parser rule attaches one inline,
+either through `self.err_here_ex(message, example)` / `self.err_at_ex(span,
+message, example)`, or by setting `example: Some(Example { .. })` directly on
+a `ParseError` literal in a free function. A plain syntax error (`expect`,
+`err_here`, `err_at`) stays `example: None` — there is no "correct" version of
+a program missing a token. When adding a new strict rule, add its example
+alongside it; `tests/diagnostics_test.rs` asserts every lexer `ErrorCode` has
+one.
+
 The full list is in the README's "Strict rules" section; the load-bearing ones:
 
 - **2 spaces** per indent level, **never tabs**. Indentation must be a multiple
@@ -125,6 +138,15 @@ The full list is in the README's "Strict rules" section; the load-bearing ones:
   single-expression `f = do x -> x + 1` is fine — the `->` keeps the value on
   the `=` line, which is the whole point of the rule.
 - **A map key carries one `:`** — `{name: 1}`, never `{:name: 1}`.
+- **A `do` lambda passed straight into a call must fit on one line** — a
+  longer one is bound to a name first (`callback = do ...`), then passed by
+  name.
+- **Once a call's arguments spill past one line, every argument is on its own
+  line** — including the first, which cannot share the line with `(`.
+- **No `do` lambda reaches `start_actor` / `call_actor` / `cast_actor`**, even
+  nested in a list/tuple/map literal argument — an actor's handler runs on
+  another thread with a fresh root scope, so a captured closure could never
+  reach what it closed over.
 
 When you write a `.rmo` fixture or example, follow these or `ramos check` will
 reject it. The fixtures under `tests/fixtures/features/` are the canonical

@@ -177,6 +177,29 @@ module Cli
 }
 
 #[test]
+fn a_struct_aliases_others_inside_its_own_body() {
+    // Aliases work the same for struct modules as pure modules (README
+    // "Alias": "Aliases work the same for pure modules and struct modules").
+    let src = "\
+module Helper
+  function shout(s)
+    string_upcase(s)
+
+struct Cli
+  alias Helper as H
+
+  attributes
+    name: nil
+
+  function greet(self)
+    H.shout(self.name)
+
+Cli{name: \"hi\"}.greet()
+";
+    assert_eq!(eval(src), "\"HI\"");
+}
+
+#[test]
 fn self_refers_to_the_current_module() {
     let src = "\
 module Helper

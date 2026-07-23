@@ -147,6 +147,11 @@ impl TokenKind {
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
+    /// 1-based source line the token starts on. Tracked independently of
+    /// `Newline` tokens, which are suppressed inside `(` `[` `{` — so this is
+    /// the only way to tell whether two tokens sit on the same physical line
+    /// once bracket depth is nonzero (see the call-argument layout checks).
+    pub line: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -355,6 +360,10 @@ struct Lexer<'a> {
     tokens: Vec<Token>,
     indent_stack: Vec<usize>,
     bracket_depth: usize,
+    /// 1-based line the lexer's cursor is currently on. Advanced on every
+    /// `\n` consumed, including inside brackets (where `Newline` tokens are
+    /// suppressed) and inside multiline strings.
+    line: usize,
     at_line_start: bool,
     /// Last real (non-layout) token, used for unary-minus and map-key `:` decisions.
     prev_kind: Option<TokenKind>,
@@ -371,6 +380,7 @@ impl<'a> Lexer<'a> {
             tokens: Vec::new(),
             indent_stack: vec![0],
             bracket_depth: 0,
+            line: 1,
             at_line_start: true,
             prev_kind: None,
             had_space: true,
@@ -388,6 +398,7 @@ impl<'a> Lexer<'a> {
                 Some(b'\n') => {
                     let at = self.pos;
                     self.pos += 1;
+                    self.line += 1;
                     if self.bracket_depth == 0 {
                         self.push(TokenKind::Newline, Span::new(at, at + 1));
                         self.at_line_start = true;
@@ -459,6 +470,7 @@ impl<'a> Lexer<'a> {
                 None => return Ok(false),
                 Some(b'\n') => {
                     self.pos += 1;
+                    self.line += 1;
                     continue; // blank line
                 }
                 Some(b'\r') => {
@@ -517,6 +529,7 @@ impl<'a> Lexer<'a> {
     /// non-comment byte. Shared by the main loop and interpolation lexing.
     fn next_token(&mut self) -> Result<Token, LexError> {
         let start = self.pos;
+        let start_line = self.line;
         let kind = match self.bytes[self.pos] {
             b'"' => {
                 if self.peek_at(1) == Some(b'"') && self.peek_at(2) == Some(b'"') {
@@ -677,6 +690,7 @@ impl<'a> Lexer<'a> {
         Ok(Token {
             kind,
             span: Span::new(start, self.pos),
+            line: start_line,
         })
     }
 
@@ -1066,6 +1080,7 @@ impl<'a> Lexer<'a> {
                     // blank line: contributes a bare newline, indent not required
                     cur.push('\n');
                     self.pos += 1;
+                    self.line += 1;
                     continue;
                 }
                 _ => {}
@@ -1113,6 +1128,7 @@ impl<'a> Lexer<'a> {
                     '\n' => {
                         cur.push('\n');
                         self.pos += 1;
+                        self.line += 1;
                         break;
                     }
                     '\\' => {
@@ -1240,7 +1256,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn push(&mut self, kind: TokenKind, span: Span) {
-        self.tokens.push(Token { kind, span });
+        self.tokens.push(Token {
+            kind,
+            span,
+            line: self.line,
+        });
     }
 
     /// E0014 — `result = case x` puts a multi-line block on the tail of an

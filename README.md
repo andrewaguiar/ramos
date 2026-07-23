@@ -37,7 +37,9 @@ language, and no `RefCell`-style escape hatch back into one.
 
 These are not style suggestions: violating any of them is a hard error that
 stops the interpreter before your program runs. They exist so that all Ramos code
-looks the same, everywhere.
+looks the same, everywhere. `ramos check`/`run` prints a wrong/correct snippet
+under the message for every one of them, so the fix is visible right there in
+the terminal — the examples below are the same ones.
 
 **Layout**
 
@@ -93,6 +95,53 @@ looks the same, everywhere.
   inside `(` `[` `{` are just whitespace, this also means a pipe can never sit
   inside a call's arguments, a list, or a tuple — only as a complete
   statement or the value of an assignment
+- **A `do` lambda passed directly as a call argument fits on one line** —
+  newlines inside `(` are whitespace, so a multi-line, arrow-form lambda
+  written in place (as opposed to the indented-body form, which cannot appear
+  inside `(` at all — see [Lambdas](#lambdas)) would still parse, just not
+  where it visually looks like it does. Name it first instead:
+
+  ```
+  # error: the lambda is a call argument but spans more than one line
+  SomeProcess.process_and_call_back(
+    [1, 2, 3],
+    do processed_value ->
+      print("DONE #{processed_value * 100}")
+  )
+
+  # correct: bind it, then pass the name
+  callback =
+    do processed_value
+      print("DONE #{processed_value * 100}")
+
+  SomeProcess.process_and_call_back([1, 2, 3], callback)
+
+  # also correct: it already fits on one line
+  SomeProcess.process_and_call_back([1, 2, 3], do v -> print("DONE #{v * 100}"))
+  ```
+
+- **Once a call's arguments spill past one line, every argument is on its own
+  line** — the first cannot share the line with `(` either:
+
+  ```
+  # error: the first argument shares the line with `(`
+  SomeProcess.process([1, 2],
+    "a"
+  )
+
+  # correct
+  SomeProcess.process(
+    [1, 2],
+    "a"
+  )
+
+  # also correct — the whole call fits on one line
+  SomeProcess.process([1, 2], "a")
+  ```
+
+- **No `do` lambda reaches an actor** — `start_actor`, `call_actor` and
+  `cast_actor` never accept one as an argument, even nested in a list, tuple
+  or map literal. See [Actors](#actors) for why
 
 **Naming**
 
@@ -458,8 +507,9 @@ case andrew.is_over_eighteen()
 ```
 
 There is no built-in `Error` trait, because an error is not a special kind of
-value. When a symbol and a message are not enough detail, return a struct in the
-error slot — it destructures in `case` like any other pattern:
+value — see [Error handling](#error-handling). When a symbol and a message are
+not enough detail, pass a struct as `exception`'s message — it destructures in
+`case` like any other pattern:
 
 ```
 struct DeclineReason
@@ -469,14 +519,14 @@ struct DeclineReason
 
 function charge(amount)
   cond
-    amount <= 0 -> (:error, DeclineReason{code: 555, message: "must be positive"})
-    amount > 10000 -> (:error, DeclineReason{code: 556, message: "too large"})
+    amount <= 0 -> exception(:declined, DeclineReason{code: 555, message: "must be positive"})
+    amount > 10000 -> exception(:declined, DeclineReason{code: 556, message: "too large"})
     true -> (:ok, amount)
 
 case charge(50000)
   (:ok, charged) -> print("charged #{charged}")
-  (:error, DeclineReason{code: 556, message: message}) -> print("too large: #{message}")
-  (:error, DeclineReason{message: message}) -> print("declined: #{message}")
+  (:error, (:declined, DeclineReason{code: 556, message: message})) -> print("too large: #{message}")
+  (:error, (:declined, DeclineReason{message: message})) -> print("declined: #{message}")
 ```
 
 ### Pattern matching
@@ -787,13 +837,37 @@ Comparison (return a `bool`):
 ```
 
 Logical. There are **no symbolic** logical operators (`&&`, `||`, `!`); use the
-word forms. `and` / `or` short-circuit.
+word forms. `and` / `or` short-circuit, and — unlike a language where they
+coerce to `bool` — each returns whichever operand decided the result, not
+`true`/`false`.
 
 ```
 true and false   # and
 true or false    # or
 not true         # not
 ```
+
+That returned-operand behavior, combined with `and` binding tighter than `or`
+(see the precedence list at the top of this section), gives Ramos a working
+ternary even though it has no dedicated ternary syntax:
+
+```
+value = test and 1 or 100
+```
+
+`and` binds tighter than `or`, so this reads as `(test and 1) or 100`. When
+`test` is truthy, `test and 1` short-circuits to `1`, and `1 or 100` — `1`
+being truthy — short-circuits right back to `1`. When `test` is falsy,
+`test and 1` short-circuits to `test` itself (falsy), so the `or` falls
+through and evaluates its right side: `100`. Either way, `value` ends up
+`1` when `test` is truthy and `100` when it is not — a ternary.
+
+This has the one gap the same trick has in every language that offers it: it
+breaks if the "then" branch is itself falsy. Since only `false` and `nil` are
+falsy (see [Control flow](#control-flow)), `test and false or 100` evaluates
+to `100` even when `test` is truthy, because the `and` produced `false`,
+which is falsy, so the `or` overrides it. Reach for `if` instead whenever the
+"then" value might be `false` or `nil`.
 
 String:
 
@@ -983,7 +1057,9 @@ result =
 print(result) # (:error, (:invalid_string, "1 is not a valid string"))
 ```
 
-Here `validate_string(1)` returns an error tuple, which does not match `:ok`.
+Here `validate_string(1)` returns an error tuple (built with
+`exception(:invalid_string, "1 is not a valid string")` — see [Error
+handling](#error-handling)), which does not match `:ok`.
 The block stops — `validate_symbol` is never called — and that error tuple is
 `result`. Had all three returned `:ok`, `result` would be `:ok`, the last
 statement's value.
@@ -1033,16 +1109,27 @@ next.
 
 Ramos has no exceptions. Nothing interrupts execution, unwinds the stack, or
 jumps to a handler somewhere up the call chain. A function that can fail says so
-in what it **returns**: a tagged tuple, `(:ok, value)` on success and
-`(:error, (:type, message))` on failure.
+in what it **returns**: a tagged tuple, `(:ok, value)` on success and, on
+failure, whatever `exception` or `error` builds. There is no `raise` and no
+`catch` — these two are the standard way to report a failure, and every
+fallible function is expected to return through one of them rather than
+writing an error tuple by hand.
+
+Most failures are `exception`'s: an expected outcome in the ordinary run of a
+program — a bad request, a declined charge — handled a line or two away.
+`exception(type, message)` returns `(:error, (type, message))`:
 
 ```
 function withdraw(balance, amount)
   cond
-    amount <= 0 -> (:error, (:invalid_amount, "amount must be positive"))
-    amount > balance -> (:error, (:insufficient_funds, "balance is too low"))
+    amount <= 0 -> exception(:invalid_amount, "amount must be positive")
+    amount > balance -> exception(:insufficient_funds, "balance is too low")
     true -> (:ok, balance - amount)
 ```
+
+- `type` — a lowercase symbol naming *what* went wrong; the part code matches on.
+- `message` — a `String` for a human to read, or a struct when a string is not
+  enough detail (see [Traits](#traits) for a `DeclineReason` example).
 
 The error is an ordinary value, so it is read with the same `case` as anything
 else — and because the error carries its own tag, each failure is handled where
@@ -1056,11 +1143,31 @@ case withdraw(100, 250)
   (:error, (_, message)) -> print("failed: #{message}")
 ```
 
-The `(:type, message)` pair is the convention the standard library follows: a
-lowercase symbol naming *what* went wrong, and a string describing it. The tag
-is what you match on; the message is for the human reading the output. Where
-there is nothing useful to say, `(:error, reason)` with a bare symbol reason is
-enough — that is what `File` and `Dir` return (`:enoent`, `:eacces`, …).
+`error(type, message)` is `exception`'s twin for the rarer case where a
+stacktrace earns its cost: a lower-level or unexpected failure worth tracing
+back to where it happened, not a predictable business rule. It returns
+`(:error, (type, message, stacktrace))` — the same two fields, plus
+`current_stacktrace()` captured at the point of failure:
+
+```
+error(:insufficient_funds, "balance is too low")
+# == (:error, (:insufficient_funds, "balance is too low", []))
+```
+
+Matching it back out just carries the extra position:
+
+```
+case parse_document(text)
+  (:ok, doc) -> doc
+  (:error, (:malformed, message, _)) -> print("parse failed: #{message}")
+```
+
+`(type, message[, stacktrace])` is the convention the standard library
+follows: match on `type`, read `message`, and reach for `stacktrace` — when
+there is one — only while diagnosing. Where there is nothing useful to say
+beyond a bare tag, `(:error, reason)` with a symbol reason is enough — that is
+what `File` and `Dir` return (`:enoent`, `:eacces`, …), since those come
+straight from the OS rather than through `exception` or `error`.
 
 Because a failure is a value, a function that cannot handle one passes it along
 by returning it, and the choice is visible at every step rather than hidden in
@@ -1142,6 +1249,14 @@ double_then_add =
 
 double_then_add(2, 3)   # == 10
 ```
+
+Because newlines are whitespace inside `(`, the indented-body form has no
+line of its own to indent onto once it is written inline — it can only
+follow a `=`, an arm's `->`, or another spot where a real newline is
+possible, never sit directly inside a call's parentheses. A `do` lambda
+passed straight into a call is therefore always the single-expression form,
+and per the [Strict rules](#strict) it must still fit on one line — assign a
+longer one to a name first, then pass the name.
 
 Lambdas are values, so they pipe naturally:
 
@@ -1417,6 +1532,27 @@ before the outer call and have its write overwritten.
 > Actors are not yet a unit of failure isolation: an error in a handler
 > propagates to whoever collects the reply rather than restarting the actor.
 
+For the same reason, **`start_actor`, `call_actor` and `cast_actor` never
+accept a `do` lambda** — directly, or nested in a list, tuple or map literal
+argument:
+
+```
+# error: a lambda cannot be passed to an actor
+call_actor(:cache, Cache, :process, [do x -> x + 1])
+```
+
+A lambda closes over the scope it was written in, but a handler's thread
+cannot see that scope — the closure would carry bindings the actor could
+never actually reach. This check is a strict, syntactic one rather than full
+dataflow analysis, so it only catches a lambda written in place; it does not
+follow a lambda through a variable:
+
+```
+# not caught at parse time, but just as broken at runtime
+cb = do x -> x + 1
+call_actor(:cache, Cache, :process, [cb])
+```
+
 #### Global
 
 The stdlib ships one actor already written: `Global`, a single process-wide
@@ -1639,6 +1775,7 @@ The binary takes a subcommand and (except for the REPL) a single `.rmo` file:
 | Command                | What it does |
 | ---------------------- | ------------ |
 | `ramos run <file.rmo>`   | Execute a program — calls the file's [entrypoint](#entrypoints) `main()` |
+| `ramos learn`            | Print a crash course: every keyword, the syntax, and what not to do — no file needed, meant for a person or an AI agent to read cold |
 | `ramos repl`             | Start an interactive read-eval-print loop |
 | `ramos check <file.rmo>` | Enforce the strict rules and parse the file **without running it** |
 | `ramos ast <file.rmo>`   | Print the parsed abstract syntax tree |
