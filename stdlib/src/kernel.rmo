@@ -570,9 +570,15 @@ module Kernel
     # @doc
     #
     # Returns the current call stacktrace — the chain of Ramos calls leading to
-    # this point — as a list of frame strings, most recent first.
+    # this point — as a list of `(file, line)` tuples, most recent call first
+    # and the outermost caller (`main`, or wherever the trail runs out) last.
     #
-    # @return a `List` of frame `String`s, most recent first
+    # A self-recursive **tail** call is not a frame of its own: it loops in
+    # constant space rather than recursing, so however many times it has
+    # looped, it still contributes exactly one entry — the line the loop is
+    # currently at.
+    #
+    # @return a `List` of `(file, line)` tuples, most recent call first
     #
     #   print(current_stacktrace())
     native("current_stacktrace", [])
@@ -602,8 +608,9 @@ module Kernel
     # @param message: a `String`, or a struct carrying further detail
     # @return `(:error, (type, message, stacktrace))`
     #
-    #   error(:insufficient_funds, "balance is too low")
-    #   # == (:error, (:insufficient_funds, "balance is too low", []))
+    #   built = error(:insufficient_funds, "balance is too low")
+    #   (:error, (type, message, _)) = built
+    #   (type, message)   # == (:insufficient_funds, "balance is too low")
     (:error, (type, message, current_stacktrace()))
 
   function exception(type, message)

@@ -53,7 +53,7 @@
 <p>Kernel — the implicit, always-in-scope module of built-ins.</p>
 <p><code><a href="Kernel.html">Kernel</a></code> is auto-imported into every scope, so its functions are the only ones you call <em>bare</em> — <code>print(x)</code> is sugar for <code><a href="Kernel.html#print">Kernel.print(x)</a></code>, and no <code>alias</code> is ever needed for it. Every other module must be named or <code>alias</code>ed.</p>
 <p>It is the seam between Ramos code and the host runtime. Its functions have no Ramos bodies: each delegates to a native handler via <code>native(str, args)</code>, which the interpreter intercepts and dispatches. As a result <code><a href="Kernel.html">Kernel</a></code> collects the primitives that can&#39;t reasonably be expressed in Ramos itself:</p>
-<ul><li>console I/O      — <code>print</code>, <code>println</code>, <code>new_line</code>, <code>read</code>, <code>read_all</code>, <code>read_password</code>, <code>eprint</code>, <code>eprintln</code></li><li>process          — <code>get_args</code>, <code>get_arg</code>, <code>get_env</code>, <code>sleep</code>, <code>exit</code></li><li>time             — <code>now</code> (wall clock), <code>monotonic</code> (elapsed)</li><li>randomness       — <code>random</code>, <code>random_int</code> (not cryptographic)</li><li>collection ops   — <code>size</code> (List/Tuple/Map), <code>at</code> (List/Tuple), <code>to_list</code>, <code>is_empty</code> (also strings)</li><li>conversions      — <code>to_string</code> (display), <code>inspect</code> (debug), <code>to_integer</code>, <code>to_float</code>, <code>type_of</code> (there is deliberately no <code>to_symbol</code> — see below)</li><li>calling          — <code>apply(f, args)</code>, <code>module_apply(m, fn_name, args)</code> (see the <code><a href="Module.html">Module</a></code> module)</li><li>actors           — <code>start_actor</code>, <code>call_actor</code>, <code>cast_actor</code>, <code>list_actors</code>, <code>actor_stats</code>, <code>is_actor_started</code>, <code>stop_actor</code></li><li>diagnostics      — <code>current_stacktrace</code></li><li>type predicates  — <code>is_integer</code>, <code>is_string</code>, <code>is_list</code>, …</li><li>truthiness       — <code>is_truthy</code> (pure Ramos, no native; <code>not</code> inverts it)</li></ul>
+<ul><li>console I/O      — <code>print</code>, <code>println</code>, <code>new_line</code>, <code>read</code>, <code>read_all</code>, <code>read_password</code>, <code>eprint</code>, <code>eprintln</code></li><li>process          — <code>get_args</code>, <code>get_arg</code>, <code>get_env</code>, <code>sleep</code>, <code>exit</code></li><li>time             — <code>now</code> (wall clock), <code>monotonic</code> (elapsed)</li><li>randomness       — <code>random</code>, <code>random_int</code> (not cryptographic)</li><li>collection ops   — <code>size</code> (List/Tuple/Map), <code>at</code> (List/Tuple), <code>to_list</code>, <code>is_empty</code> (also strings)</li><li>conversions      — <code>to_string</code> (display), <code>inspect</code> (debug), <code>to_integer</code>, <code>to_float</code>, <code>type_of</code> (there is deliberately no <code>to_symbol</code> — see below)</li><li>calling          — <code>apply(f, args)</code>, <code>module_apply(m, fn_name, args)</code> (see the <code><a href="Module.html">Module</a></code> module)</li><li>actors           — <code>start_actor</code>, <code>call_actor</code>, <code>cast_actor</code>, <code>list_actors</code>, <code>actor_stats</code>, <code>is_actor_started</code>, <code>stop_actor</code></li><li>diagnostics      — <code>current_stacktrace</code></li><li>errors           — <code>error(type, message)</code> (with a stacktrace) and <code>exception(type, message)</code> (without, for business logic) — see &quot;Error handling&quot; in the README</li><li>type predicates  — <code>is_integer</code>, <code>is_string</code>, <code>is_list</code>, …</li><li>truthiness       — <code>is_truthy</code> (pure Ramos, no native; <code>not</code> inverts it)</li></ul>
 <p>Because <code><a href="Kernel.html">Kernel</a></code> is always in scope, these read as language-level built-ins rather than library calls:</p>
 <pre><code>print(<span class="tok-str">&quot;hi&quot;</span>)
 n = size([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>])
@@ -198,7 +198,15 @@ n = size([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span 
   </div>
   <div class="fn-row">
     <a href="#current_stacktrace/0" class="fn-sig"><code>function current_stacktrace()</code></a>
-    <span class="fn-summary">Returns the current call stacktrace — the chain of Ramos calls leading to this point — as a list of frame strings, most recent first.</span>
+    <span class="fn-summary">Returns the current call stacktrace — the chain of Ramos calls leading to this point — as a list of <code>(file, line)</code> tuples, most recent call first and the outermost caller (<code>main</code>, or wherever the trail runs out) last.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#error/2" class="fn-sig"><code>function error(type, message)</code></a>
+    <span class="fn-summary">Builds the standard error tuple: <code>(:error, (type, message, stacktrace))</code>. This — together with <code>exception</code>, its stackless twin — is the one way Ramos code reports failure: there is no <code>raise</code> and no <code>catch</code>. A fallible function returns <code>(:ok, value)</code> on success and whatever this builds on failure, and the caller reads either with <code>case</code> like any other value.</span>
+  </div>
+  <div class="fn-row">
+    <a href="#exception/2" class="fn-sig"><code>function exception(type, message)</code></a>
+    <span class="fn-summary">Builds the business-logic error tuple: <code>(:error, (type, message))</code> — the same shape as <code>error</code>, minus the stacktrace.</span>
   </div>
   <div class="fn-row">
     <a href="#is_integer/1" class="fn-sig"><code>function is_integer(value)</code></a>
@@ -635,9 +643,40 @@ to_list({a: <span class="tok-lit">1</span>, b: <span class="tok-lit">2</span>}) 
 </div>
 <div class="fn-detail" id="current_stacktrace/0">
   <h3 class="fn-title"><code>function current_stacktrace()</code> <a class="anchor" href="#current_stacktrace/0">¶</a></h3>
-<p>Returns the current call stacktrace — the chain of Ramos calls leading to this point — as a list of frame strings, most recent first.</p>
+<p>Returns the current call stacktrace — the chain of Ramos calls leading to this point — as a list of <code>(file, line)</code> tuples, most recent call first and the outermost caller (<code>main</code>, or wherever the trail runs out) last.</p>
+<p>A self-recursive <em></em>tail<em></em> call is not a frame of its own: it loops in constant space rather than recursing, so however many times it has looped, it still contributes exactly one entry — the line the loop is currently at.</p>
 <pre><code>print(current_stacktrace())</code></pre>
-<p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of frame <code><a href="String.html">String</a></code>s, most recent first</p>
+<p class="returns"><strong>Returns:</strong> a <code><a href="List.html">List</a></code> of <code>(file, line)</code> tuples, most recent call first</p>
+</div>
+<div class="fn-detail" id="error/2">
+  <h3 class="fn-title"><code>function error(type, message)</code> <a class="anchor" href="#error/2">¶</a></h3>
+<p>Builds the standard error tuple: <code>(:error, (type, message, stacktrace))</code>. This — together with <code>exception</code>, its stackless twin — is the one way Ramos code reports failure: there is no <code>raise</code> and no <code>catch</code>. A fallible function returns <code>(:ok, value)</code> on success and whatever this builds on failure, and the caller reads either with <code>case</code> like any other value.</p>
+<p><code>type</code> is a lowercase symbol naming <em>what</em> went wrong — the part code matches on. <code>message</code> is for the human reading the output: a <code><a href="String.html">String</a></code>, or a struct when a plain string is not enough detail. The stacktrace is <code>current_stacktrace()</code>, captured where <code>error</code> is called, so a failure carries where it came from without a caller having to ask for it.</p>
+<p>Reach for <code>error</code> where that trace earns its cost — a lower-level or unexpected failure worth tracing back. Ordinary business-rule failures (a bad request, a declined charge) happen too often and too predictably for a trace to be useful — use <code>exception</code> for those.</p>
+<pre><code>built = error(<span class="tok-lit">:insufficient_funds</span>, <span class="tok-str">&quot;balance is too low&quot;</span>)
+(<span class="tok-lit">:error</span>, (type, message, _)) = built
+(type, message)   <span class="tok-com"># == (:insufficient_funds, &quot;balance is too low&quot;)</span></code></pre>
+<dl class="params">
+  <dt><code>type</code></dt>
+  <dd>a symbol naming what went wrong</dd>
+  <dt><code>message</code></dt>
+  <dd>a <code><a href="String.html">String</a></code>, or a struct carrying further detail</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>(:error, (type, message, stacktrace))</code></p>
+</div>
+<div class="fn-detail" id="exception/2">
+  <h3 class="fn-title"><code>function exception(type, message)</code> <a class="anchor" href="#exception/2">¶</a></h3>
+<p>Builds the business-logic error tuple: <code>(:error, (type, message))</code> — the same shape as <code>error</code>, minus the stacktrace.</p>
+<p>An expected failure — a bad request, a declined charge, a value that fails validation — happens in the ordinary run of a program and is handled a line or two away, so a stacktrace would only be noise. Use <code>exception</code> for those, and save <code>error</code> (which captures one) for a failure worth tracing back to where it happened.</p>
+<pre><code>exception(<span class="tok-lit">:insufficient_funds</span>, <span class="tok-str">&quot;balance is too low&quot;</span>)
+<span class="tok-com"># == (:error, (:insufficient_funds, &quot;balance is too low&quot;))</span></code></pre>
+<dl class="params">
+  <dt><code>type</code></dt>
+  <dd>a symbol naming what went wrong</dd>
+  <dt><code>message</code></dt>
+  <dd>a <code><a href="String.html">String</a></code>, or a struct carrying further detail</dd>
+</dl>
+<p class="returns"><strong>Returns:</strong> <code>(:error, (type, message))</code></p>
 </div>
 <div class="fn-detail" id="is_integer/1">
   <h3 class="fn-title"><code>function is_integer(value)</code> <a class="anchor" href="#is_integer/1">¶</a></h3>

@@ -8,177 +8,118 @@
 </head>
 <body>
 <main class="layout">
-<nav class="sidebar">
-  <a class="brand" href="index.html"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
-  <h3>Guides</h3>
-  <ul>
-    <li><a href="guide.html">Language guide</a></li>
-    <li><a href="examples.html">Examples</a></li>
-    <li><a href="programs.html">Programs</a></li>
-  </ul>
-  <h3>Modules</h3>
-  <ul>
-    <li><a href="Actor.html">Actor</a></li>
-    <li><a href="Config.html">Config</a></li>
-    <li><a href="Date.html">Date</a></li>
-    <li><a href="DateTime.html">DateTime</a></li>
-    <li><a href="Dir.html">Dir</a></li>
-    <li><a href="File.html">File</a></li>
-    <li><a href="Float.html">Float</a></li>
-    <li><a href="Global.html">Global</a></li>
-    <li><a href="Integer.html">Integer</a></li>
-    <li><a href="Kernel.html">Kernel</a></li>
-    <li><a href="List.html">List</a></li>
-    <li><a href="Map.html">Map</a></li>
-    <li><a href="Module.html">Module</a></li>
-    <li><a href="NaiveDateTime.html">NaiveDateTime</a></li>
-    <li><a href="String.html">String</a></li>
-    <li><a href="Struct.html">Struct</a></li>
-    <li><a href="Test.html">Test</a></li>
-    <li><a href="Thread.html">Thread</a></li>
-    <li><a href="Time.html">Time</a></li>
-    <li><a href="TimeZone.html">TimeZone</a></li>
-    <li><a href="Tuple.html">Tuple</a></li>
-  </ul>
-</nav>
-<section class="content index">
-<h1>Ramos</h1>
-<p>A small, indentation-driven language that enforces a strict, opinionated style so Ramos code looks the same everywhere.</p>
-<h2 id="philosophy">Philosophy</h2>
-<p>Ramos (plant branches) is a small, indentation-driven language built around four ideas: values are <strong>immutable</strong>, the interpreter enforces a <strong>strict</strong> set of rules rather than leaving them to style guides, the language is deliberately <strong>limited</strong> in how many ways it lets you do the same thing, and where a choice remains, it is an <strong>opinionated</strong> one.</p>
-<p><a href="guide.html#philosophy">Read more in the language guide</a>.</p>
-<h2 id="quick-hello-world">Quick hello world</h2>
-<pre><code><span class="tok-com"># comments start with # and run to the end of the line</span>
-print(<span class="tok-str">&quot;Ola #{name}&quot;</span>)
-
-greet = <span class="tok-kw">do</span> name -&gt; <span class="tok-str">&quot;Ola #{name}&quot;</span>
-print(greet(<span class="tok-str">&quot;Andrew&quot;</span>))</code></pre>
-<p><code>print</code> lives in the <code><a href="Kernel.html">Kernel</a></code> module — and <code><a href="Kernel.html">Kernel</a></code> is the one module that is implicitly in scope everywhere, so <code>print(x)</code> is sugar for <code><a href="Kernel.html#print">Kernel.print(x)</a></code> and you never write the <code><a href="Kernel.html">Kernel.</a></code> prefix (or <code>alias</code> it). See the <a href="#standard-library">Standard library</a> section for the rest of what <code><a href="Kernel.html">Kernel</a></code> provides.</p>
-<h2 id="keywords">Keywords</h2>
-<p>Ramos has a small set of reserved keywords. Each serves a specific purpose; there are no redundant constructs.</p>
-<div class="table-wrap">
-<table>
-<thead>
-  <tr><th>Keyword</th><th>Purpose</th></tr>
-</thead>
-<tbody>
-  <tr><td><code>module</code></td><td>Define a namespace of functions</td></tr>
-  <tr><td><code>struct</code></td><td>Define a typed record with fields</td></tr>
-  <tr><td><code>trait</code></td><td>Define a contract of functions for structs to implement</td></tr>
-  <tr><td><code>implements</code></td><td>Declare that a struct implements a trait</td></tr>
-  <tr><td><code>attributes</code></td><td>Declare struct fields with default values</td></tr>
-  <tr><td><code>function</code></td><td>Define a public function</td></tr>
-  <tr><td><code>helper</code></td><td>Define a private function (module-scoped)</td></tr>
-  <tr><td><code>case</code></td><td>Pattern match a value against patterns</td></tr>
-  <tr><td><code>if</code></td><td>Branch two ways on a condition (no <code>else if</code> — use <code>cond</code>)</td></tr>
-  <tr><td><code>else</code></td><td>The other branch of an <code>if</code></td></tr>
-  <tr><td><code>cond</code></td><td>Branch on a sequence of boolean conditions</td></tr>
-  <tr><td><code>run</code></td><td>Run a block of matches, halting on the first that fails</td></tr>
-  <tr><td><code>do</code></td><td>Create an anonymous function (a lambda)</td></tr>
-  <tr><td><code>alias</code></td><td>Create a shorter name for a module</td></tr>
-  <tr><td><code>as</code></td><td>Rename a module in an <code>alias</code> statement (defaults to the last segment)</td></tr>
-  <tr><td><code>self</code></td><td>Reference the current struct instance or module</td></tr>
-  <tr><td><code>true</code></td><td>Boolean true value</td></tr>
-  <tr><td><code>false</code></td><td>Boolean false value</td></tr>
-  <tr><td><code>nil</code></td><td>Represents absence of value</td></tr>
-  <tr><td><code>when</code></td><td>Guard clause in a <code>case</code> pattern, or on a single trailing statement</td></tr>
-  <tr><td><code>and</code></td><td>Logical AND (short-circuits)</td></tr>
-  <tr><td><code>or</code></td><td>Logical OR (short-circuits)</td></tr>
-  <tr><td><code>not</code></td><td>Logical NOT</td></tr>
-  <tr><td><code>_</code></td><td>Wildcard pattern (matches anything)</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="standard-library">Standard library</h2>
-<p>This is the reference for the modules that ship with Ramos. <code>Kernel</code> is always in scope; everything else is reached via its module name or an <code>alias</code>.</p>
-<p>New to the language? Start with the <a href="guide.html">language guide</a>, then browse the <a href="examples.html">examples</a> — one small program per feature, or look at the <a href="programs.html">programs</a> page for several features working together.</p>
-<ul class="module-list">
-  <li>
-    <a href="Actor.html" class="module-name">Actor</a>
-    <p class="module-summary">Actor — a named process that holds state and answers messages.</p>
-  </li>
-  <li>
-    <a href="Config.html" class="module-name">Config</a>
-    <p class="module-summary">Config — the environment&#39;s <code>.env</code> file, read once and answered from memory.</p>
-  </li>
-  <li>
-    <a href="Date.html" class="module-name">Date</a>
-    <p class="module-summary">Date — a calendar date: year, month, and day, with no time-of-day or time zone. Built on the proleptic Gregorian calendar.</p>
-  </li>
-  <li>
-    <a href="DateTime.html" class="module-name">DateTime</a>
-    <p class="module-summary">DateTime — a <code><a href="NaiveDateTime.html">NaiveDateTime</a></code> plus a fixed offset from UTC, so it names a precise instant rather than just a wall-clock reading.</p>
-  </li>
-  <li>
-    <a href="Dir.html" class="module-name">Dir</a>
-    <p class="module-summary">Dir — inspecting and manipulating directories on the host filesystem.</p>
-  </li>
-  <li>
-    <a href="File.html" class="module-name">File</a>
-    <p class="module-summary">File — reading, writing, and managing files on the host filesystem.</p>
-  </li>
-  <li>
-    <a href="Float.html" class="module-name">Float</a>
-    <p class="module-summary">Float — operations on floating-point numbers.</p>
-  </li>
-  <li>
-    <a href="Global.html" class="module-name">Global</a>
-    <p class="module-summary">Global — one process-wide map, held by an actor.</p>
-  </li>
-  <li>
-    <a href="Integer.html" class="module-name">Integer</a>
-    <p class="module-summary">Integer — operations on whole numbers.</p>
-  </li>
-  <li>
-    <a href="Kernel.html" class="module-name">Kernel</a>
-    <p class="module-summary">Kernel — the implicit, always-in-scope module of built-ins.</p>
-  </li>
-  <li>
-    <a href="List.html" class="module-name">List</a>
-    <p class="module-summary">List — operations on persistent, immutable lists.</p>
-  </li>
-  <li>
-    <a href="Map.html" class="module-name">Map</a>
-    <p class="module-summary">Map — operations on key/value maps.</p>
-  </li>
-  <li>
-    <a href="Module.html" class="module-name">Module</a>
-    <p class="module-summary">Module — introspecting and calling into modules by value.</p>
-  </li>
-  <li>
-    <a href="NaiveDateTime.html" class="module-name">NaiveDateTime</a>
-    <p class="module-summary">NaiveDateTime — a calendar date and a time of day, with no time zone. <code><a href="Date.html">Date</a></code> plus <code>hour</code>/<code>minute</code>/<code>second</code>/<code>millisecond</code>.</p>
-  </li>
-  <li>
-    <a href="String.html" class="module-name">String</a>
-    <p class="module-summary">String — operations on immutable, UTF-8 text.</p>
-  </li>
-  <li>
-    <a href="Struct.html" class="module-name">Struct</a>
-    <p class="module-summary">Struct — reading and replacing the attributes of a struct instance.</p>
-  </li>
-  <li>
-    <a href="Test.html" class="module-name">Test</a>
-    <p class="module-summary">Test — the trait that marks a module as a test module.</p>
-  </li>
-  <li>
-    <a href="Thread.html" class="module-name">Thread</a>
-    <p class="module-summary">Thread — run a computation on another thread and collect its result.</p>
-  </li>
-  <li>
-    <a href="Time.html" class="module-name">Time</a>
-    <p class="module-summary">Time — a time of day: <code>hour</code>/<code>minute</code>/<code>second</code>/<code>millisecond</code>, with no date and no time zone.</p>
-  </li>
-  <li>
-    <a href="TimeZone.html" class="module-name">TimeZone</a>
-    <p class="module-summary">TimeZone — a name paired with a fixed offset from UTC.</p>
-  </li>
-  <li>
-    <a href="Tuple.html" class="module-name">Tuple</a>
-    <p class="module-summary">Tuple — operations on fixed-size, immutable tuples.</p>
-  </li>
-</ul>
-</section>
+  <nav class="sidebar" id="sidebar">
+    <a class="brand" href="#/"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+    <div id="sidebar-nav"></div>
+  </nav>
+  <section class="content" id="content">
+    <p>Loading…</p>
+  </section>
 </main>
+<script>
+(function () {
+  "use strict";
+  var content = document.getElementById("content");
+  var sidebarNav = document.getElementById("sidebar-nav");
+  var data = null;
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // "#/Kernel:print" -> {page: "Kernel", anchor: "print"}; "#/" -> {page: "", anchor: null}.
+  function parseHash() {
+    var h = location.hash;
+    if (h.indexOf("#/") !== 0) {
+      return null;
+    }
+    h = h.slice(2);
+    var sep = h.indexOf(":");
+    if (sep === -1) {
+      return { page: h, anchor: null };
+    }
+    return { page: h.slice(0, sep), anchor: h.slice(sep + 1) };
+  }
+
+  function buildSidebar() {
+    var html = "";
+    var guideLinks = [
+      ["guide", "Language guide", data.guides.guide],
+      ["examples", "Examples", data.guides.examples],
+      ["programs", "Programs", data.guides.programs],
+    ];
+    if (data.guides.guide || data.guides.examples || data.guides.programs) {
+      html += "<h3>Guides</h3>\n<ul>\n";
+      guideLinks.forEach(function (entry) {
+        if (!entry[2]) return;
+        html +=
+          '  <li><a href="#/' + entry[0] + '" data-page="' + entry[0] + '">' +
+          entry[1] + "</a></li>\n";
+      });
+      html += "</ul>\n";
+    }
+    html += "<h3>Modules</h3>\n<ul>\n";
+    data.modules.forEach(function (name) {
+      html +=
+        '  <li><a href="#/' + name + '" data-page="' + name + '">' + name + "</a></li>\n";
+    });
+    html += "</ul>\n";
+    sidebarNav.innerHTML = html;
+  }
+
+  function highlightSidebar(pageId) {
+    var links = document.querySelectorAll("#sidebar a[data-page]");
+    for (var i = 0; i < links.length; i++) {
+      var current = links[i].getAttribute("data-page") === pageId;
+      links[i].classList.toggle("current", current);
+    }
+  }
+
+  function render() {
+    if (!data) return;
+    var route = parseHash() || { page: "", anchor: null };
+    var page = data.pages[route.page];
+    if (!page) {
+      page = data.pages[""];
+      route = { page: "", anchor: null };
+    }
+    document.title = page.title;
+    content.className = "content" + (page.content_class ? " " + page.content_class : "");
+    var headingHtml = page.heading
+      ? '<h1 class="module-header">' + escapeHtml(page.heading) + "</h1>\n"
+      : "";
+    content.innerHTML = headingHtml + page.body;
+    highlightSidebar(route.page);
+    if (route.anchor) {
+      var el = document.getElementById(route.anchor);
+      if (el) el.scrollIntoView();
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }
+
+  window.addEventListener("hashchange", function () {
+    // A bare in-page anchor (no "#/" prefix) is the browser's own scroll —
+    // routing should leave it alone rather than re-rendering the page away
+    // out from under it.
+    if (parseHash() === null) return;
+    render();
+  });
+
+  fetch("docs.json")
+    .then(function (r) { return r.json(); })
+    .then(function (json) {
+      data = json;
+      buildSidebar();
+      render();
+    })
+    .catch(function (err) {
+      content.innerHTML =
+        "<p>Could not load <code>docs.json</code>: " + escapeHtml(String(err)) +
+        "</p><p>This page needs to be served over HTTP (not opened as a " +
+        "<code>file://</code> URL) for the fetch to succeed.</p>";
+    });
+})();
+</script>
 </body>
 </html>

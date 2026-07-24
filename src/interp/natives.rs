@@ -147,9 +147,10 @@ fn dispatch(
         "to_float" => one(name, args, to_float),
         // No `to_symbol`: a symbol lives as long as the program, so building
         // one from runtime data is an unbounded leak. Symbols are literals.
-
-        // ── diagnostics (real stacktraces arrive with phase 7) ───────────
-        "current_stacktrace" => arity_then(name, args, 0, |_| Ok(Value::List(List::nil()))),
+        //
+        // No `current_stacktrace` here: it needs `Interp::call_stack`, which
+        // this free function has no access to — `call_local` answers it
+        // directly instead, the same way it does `apply` and `start_actor`.
 
         // ── type predicates ──────────────────────────────────────────────
         "is_integer" => pred(name, args, |v| matches!(v, Value::Int(_))),

@@ -3,11 +3,13 @@
 //! Design notes:
 //! - `|` pipes are desugared at parse time (`a | M.f(b)` becomes `M.f(a, b)`),
 //!   so no pipe survives into the tree.
-//! - Spans live on definitions and errors, not on every expression; the
-//!   evaluator's stacktraces (phase 7) will add call-site spans where needed.
+//! - Spans live on definitions and errors, not on every expression; a call
+//!   site instead carries just the one `line` a stacktrace frame needs (see
+//!   `Expr::Call`).
 
 use crate::color::{Color, Style};
 use crate::span::Span;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModulePath(pub Vec<String>);
@@ -21,6 +23,11 @@ impl std::fmt::Display for ModulePath {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub items: Vec<Item>,
+    /// The file `run_top_level`'s statements belong to — the entry file, so a
+    /// stacktrace frame for a call made outside any function still names a
+    /// real file. Empty when there is no meaningful entry (a snippet parsed
+    /// directly, without going through the loader).
+    pub entry_file: Arc<str>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -75,6 +82,11 @@ pub struct FnDef {
     pub body: Block,
     pub private: bool, // helper
     pub span: Span,
+    /// The file this function was defined in, stamped by the loader after
+    /// parsing (empty until then). A stacktrace frame for a call made from
+    /// inside this function's body — or from a lambda it creates — names this
+    /// file.
+    pub file: Arc<str>,
 }
 
 pub type Block = Vec<Stmt>;
@@ -128,6 +140,10 @@ pub enum Expr {
     Call {
         callee: Callee,
         args: Vec<Expr>,
+        /// The 1-based source line the call is written on — a stacktrace
+        /// frame's other half is [`FnDef::file`], the file of whichever
+        /// function this call sits inside.
+        line: usize,
     },
     Unary {
         op: UnOp,
@@ -499,7 +515,7 @@ impl Printer {
             Expr::Access { target, name } => {
                 self.node(Style::Plain, &format!("Access .{name}"), |p| p.expr(target))
             }
-            Expr::Call { callee, args } => match callee {
+            Expr::Call { callee, args, .. } => match callee {
                 Callee::Local(name) => {
                     self.node(Style::Plain, &format!("Call {name}()"), |p| p.args(args))
                 }

@@ -223,7 +223,7 @@ The same patterns work in `=`, `case`, and function parameters.
 const PATTERNS_EXAMPLE: &str =
     "(a, b) = (1, 2)\n[first | rest] = [1, 2, 3]\n{name: n} = {name: \"andrew\"}\nAccount{balance: b} = account";
 
-const ERROR_HANDLING_AND_ACTORS: &str = "\
+const ERROR_HANDLING_INTRO: &str = "\
 ## Error handling
 
 No exceptions, no `raise`, no `catch`. A fallible call returns `(:ok, value)`
@@ -233,8 +233,22 @@ on success; on failure it returns whatever `exception` or `error` (both
 failure. `error(type, message)` gives `(:error, (type, message, stacktrace))`
 — the same, plus `current_stacktrace()`, for a failure worth tracing back to
 where it happened. `run` chains a sequence of fallible steps and stops at the
-first that doesn't match `(:ok, _)`.
+first that doesn't match `(:ok, _)` — the failing value becomes the block's
+result, so a `case` with **no subject** right after it handles both the
+success and the failure path at the same indentation:
 
+";
+
+const RUN_CASE_EXAMPLE: &str = "\
+run
+  (:ok, user)    = find_user(id)
+  (:ok, receipt) = charge(user)
+  (:ok, receipt)
+case
+  (:ok, receipt) -> print(\"charged #{receipt.amount}\")
+  err            -> print(\"failed: #{err}\")";
+
+const ACTORS: &str = "\
 ## Actors
 
 Stateful, message-passing concurrency, each on its own thread. A module
@@ -263,7 +277,9 @@ pub fn example_program() -> &'static str {
 fn example_section() -> String {
     let mut out = String::from(PATTERNS_INTRO);
     out.push_str(&code(PATTERNS_EXAMPLE));
-    out.push_str(ERROR_HANDLING_AND_ACTORS);
+    out.push_str(ERROR_HANDLING_INTRO);
+    out.push_str(&code(RUN_CASE_EXAMPLE));
+    out.push_str(ACTORS);
     out.push_str("## A complete program\n\n");
     out.push_str(&code(example_program().trim_end()));
     out

@@ -225,28 +225,52 @@ fn push_example(
     });
 }
 
-/// The `.rmo` sources of a stdlib-shaped directory: `<dir>/src/*.rmo`, sorted,
-/// as (file stem, source). Subdirectories are not walked, so a module's own
-/// `src/test/` is left to `ramos test`.
+/// The `.rmo` sources under `<dir>/src`, found recursively, sorted, as
+/// (path relative to `src` with `/` separators and no extension, source) —
+/// `list` for `src/list.rmo`, `pet_project/main` for a namespaced module at
+/// `src/pet_project/main.rmo`. Any directory named `test` (at any depth) is
+/// skipped, so a module's own `src/test/` is left to `ramos test`.
 pub fn sources(source_dir: &Path) -> Result<Vec<(String, String)>, String> {
     let dir = source_dir.join("src");
-    let mut entries: Vec<PathBuf> = fs::read_dir(&dir)
-        .map_err(|e| format!("cannot read `{}`: {e}", dir.display()))?
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.is_file() && p.extension().is_some_and(|x| x == "rmo"))
-        .collect();
-    entries.sort();
+    let mut paths = Vec::new();
+    collect_rmo_files(&dir, &mut paths)?;
+    paths.sort();
     let mut out = Vec::new();
-    for path in entries {
-        let stem = path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_default();
+    for path in paths {
+        let rel = path.strip_prefix(&dir).unwrap_or(&path).with_extension("");
+        let name = rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/");
         let source = fs::read_to_string(&path)
             .map_err(|e| format!("cannot read `{}`: {e}", path.display()))?;
-        out.push((stem, source));
+        out.push((name, source));
     }
     Ok(out)
+}
+
+/// Recursively collect every `.rmo` file under `current`, skipping hidden
+/// directories and any directory literally named `test`.
+fn collect_rmo_files(current: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+    let entries =
+        fs::read_dir(current).map_err(|e| format!("cannot read `{}`: {e}", current.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("cannot read `{}`: {e}", current.display()))?;
+        let path = entry.path();
+        if path.is_dir() {
+            let hidden_or_test = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n == "test" || n.starts_with('.'));
+            if !hidden_or_test {
+                collect_rmo_files(&path, out)?;
+            }
+        } else if path.extension().is_some_and(|x| x == "rmo") {
+            out.push(path);
+        }
+    }
+    Ok(())
 }
 
 /// Run every example in `source_dir`, reporting what did not hold.
@@ -394,9 +418,15 @@ impl Sandbox {
         let src = root.join("src");
         fs::create_dir_all(&src).map_err(|e| format!("cannot create `{}`: {e}", src.display()))?;
         // Copied rather than referenced: an example runs from its own directory,
-        // and the loader looks for modules relative to that.
-        for (stem, source) in sources(source_dir)? {
-            let path = src.join(format!("{stem}.rmo"));
+        // and the loader looks for modules relative to that. A namespaced
+        // module's directory structure is preserved, since that is what the
+        // loader's naming rule expects to find.
+        for (rel, source) in sources(source_dir)? {
+            let path = src.join(format!("{rel}.rmo"));
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|e| format!("cannot create `{}`: {e}", parent.display()))?;
+            }
             fs::write(&path, source)
                 .map_err(|e| format!("cannot write `{}`: {e}", path.display()))?;
         }

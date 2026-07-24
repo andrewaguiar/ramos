@@ -3,6 +3,7 @@
 
 # Release artifacts staged by release.sh
 /dist
+install-local.sh
 
 # rustfmt backups
 **/*.rs.bk

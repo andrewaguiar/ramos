@@ -13,6 +13,7 @@ module KernelTest
   # same shape plus `current_stacktrace()`, for a lower-level or unexpected
   # failure worth tracing back to where it happened.
   implements Test
+  alias String
 
   function withdraw(balance, amount)
     # A business rule: an amount out of range is an ordinary, expected
@@ -71,15 +72,23 @@ module KernelTest
   function test_error_builds_the_three_tuple()
     # @doc
     # `error(type, message)` tags a symbol and a message together with the
-    # current stacktrace, so a caller reads all three the same way every time.
+    # current stacktrace: `[(file, line), ...]`, most recent call first — here,
+    # just the one call to `error` itself, since nothing Ramos-level called
+    # this test.
     built = error(:malformed_amount, "not a number: abc")
-    assert(built == (:error, (:malformed_amount, "not a number: abc", [])))
+    (:error, (:malformed_amount, "not a number: abc", stacktrace)) = built
+    [(file, line)] = stacktrace
+    assert(String.ends_with(file, "kernel_test.rmo"))
+    assert(line > 0)
 
   function test_error_message_may_be_any_value()
     # @doc
     # Just like `exception`, the message may be any value.
     detail = {expected: "Integer", got: "abc"}
-    assert(error(:malformed_amount, detail) == (:error, (:malformed_amount, detail, [])))
+    built = error(:malformed_amount, detail)
+    (:error, (:malformed_amount, returned_detail, stacktrace)) = built
+    assert(returned_detail == detail)
+    assert(size(stacktrace) == 1)
 
   function test_error_is_read_with_case_like_any_value()
     # @doc

@@ -41,7 +41,7 @@ fn block_free(bound: &mut Vec<String>, block: &Block, out: &mut Vec<String>) {
 fn expr_free(bound: &mut Vec<String>, e: &Expr, out: &mut Vec<String>) {
     match e {
         Expr::Var(n) => push_free(n, bound, out),
-        Expr::Call { callee, args } => {
+        Expr::Call { callee, args, .. } => {
             match callee {
                 Callee::Local(n) => push_free(n, bound, out),
                 Callee::Method { target, .. } => expr_free(bound, target, out),

@@ -69,7 +69,7 @@
 <h3 id="immutable">Immutable</h3>
 <p>Every value in Ramos is persistent and immutable: a list, tuple, map, or struct instance handed to a function is exactly the value the caller has, unaffected by anything the function does with it. &quot;Changing&quot; something really means building a new value and rebinding a name to it — <code><a href="Map.html#put">Map.put</a></code>, <code><a href="List.html#insert">List.insert</a></code>, <code><a href="Struct.html#update">Struct.update</a></code> all return a new value rather than mutating their argument. There is no in-place update anywhere in the language, and no <code>RefCell</code>-style escape hatch back into one.</p>
 <h3 id="strict">Strict</h3>
-<p>These are not style suggestions: violating any of them is a hard error that stops the interpreter before your program runs. They exist so that all Ramos code looks the same, everywhere.</p>
+<p>These are not style suggestions: violating any of them is a hard error that stops the interpreter before your program runs. They exist so that all Ramos code looks the same, everywhere. <code>ramos check</code>/<code>run</code> prints a wrong/correct snippet under the message for every one of them, so the fix is visible right there in the terminal — the examples below are the same ones.</p>
 <p><strong>Layout</strong></p>
 <ul>
   <li><strong>2 space indentation</strong> — exactly 2 spaces per indentation level, never tabs</li>
@@ -105,6 +105,42 @@
   <li><strong>One <code>:</code> on a map key</strong> — a symbol key is <code>{name: 1}</code>; the leading colon of <code>{:name: 1}</code> writes the symbol twice over and is an error</li>
   <li><strong><code>end</code> is alone on its line, or not at all</strong> — it is an optional, purely decorative block-closing marker (see <a href="#indentation">Indentation</a>), never required and never a value, so <code>x = end</code> or <code>foo() end</code> is an error</li>
   <li><strong><code>|</code> starts its own line</strong> — never <code>x | f()</code>; write <code>x</code> then <code>| f()</code> on the next line, at the same indentation (see <a href="#pipes">Pipes</a>). Since newlines inside <code>(</code> <code>[</code> <code>{</code> are just whitespace, this also means a pipe can never sit inside a call&#39;s arguments, a list, or a tuple — only as a complete statement or the value of an assignment</li>
+  <li><strong>A <code>do</code> lambda passed directly as a call argument fits on one line</strong> — newlines inside <code>(</code> are whitespace, so a multi-line, arrow-form lambda written in place (as opposed to the indented-body form, which cannot appear inside <code>(</code> at all — see <a href="#lambdas">Lambdas</a>) would still parse, just not where it visually looks like it does. Name it first instead:</li>
+</ul>
+<pre><code>  <span class="tok-com"># error: the lambda is a call argument but spans more than one line</span>
+  <span class="tok-type">SomeProcess</span>.process_and_call_back(
+    [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>],
+    <span class="tok-kw">do</span> processed_value -&gt;
+      print(<span class="tok-str">&quot;DONE #{processed_value * 100}&quot;</span>)
+  )
+
+  <span class="tok-com"># correct: bind it, then pass the name</span>
+  callback =
+    <span class="tok-kw">do</span> processed_value
+      print(<span class="tok-str">&quot;DONE #{processed_value * 100}&quot;</span>)
+
+  <span class="tok-type">SomeProcess</span>.process_and_call_back([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], callback)
+
+  <span class="tok-com"># also correct: it already fits on one line</span>
+  <span class="tok-type">SomeProcess</span>.process_and_call_back([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>], <span class="tok-kw">do</span> v -&gt; print(<span class="tok-str">&quot;DONE #{v * 100}&quot;</span>))</code></pre>
+<ul>
+  <li><strong>Once a call&#39;s arguments spill past one line, every argument is on its own line</strong> — the first cannot share the line with <code>(</code> either:</li>
+</ul>
+<pre><code>  <span class="tok-com"># error: the first argument shares the line with `(`</span>
+  <span class="tok-type">SomeProcess</span>.process([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>],
+    <span class="tok-str">&quot;a&quot;</span>
+  )
+
+  <span class="tok-com"># correct</span>
+  <span class="tok-type">SomeProcess</span>.process(
+    [<span class="tok-lit">1</span>, <span class="tok-lit">2</span>],
+    <span class="tok-str">&quot;a&quot;</span>
+  )
+
+  <span class="tok-com"># also correct — the whole call fits on one line</span>
+  <span class="tok-type">SomeProcess</span>.process([<span class="tok-lit">1</span>, <span class="tok-lit">2</span>], <span class="tok-str">&quot;a&quot;</span>)</code></pre>
+<ul>
+  <li><strong>No <code>do</code> lambda reaches an actor</strong> — <code>start_actor</code>, <code>call_actor</code> and <code>cast_actor</code> never accept one as an argument, even nested in a list, tuple or map literal. See <a href="#actors">Actors</a> for why</li>
 </ul>
 <p><strong>Naming</strong></p>
 <ul>
@@ -334,7 +370,7 @@ andrew = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;
 <span class="tok-kw">case</span> andrew.is_over_eighteen()
   <span class="tok-lit">true</span>  -&gt; andrew.hello()         <span class="tok-com"># uses the trait&#39;s default hello</span>
   _     -&gt; <span class="tok-lit">:none</span></code></pre>
-<p>There is no built-in <code>Error</code> trait, because an error is not a special kind of value. When a symbol and a message are not enough detail, return a struct in the error slot — it destructures in <code>case</code> like any other pattern:</p>
+<p>There is no built-in <code>Error</code> trait, because an error is not a special kind of value — see <a href="#error-handling">Error handling</a>. When a symbol and a message are not enough detail, pass a struct as <code>exception</code>&#39;s message — it destructures in <code>case</code> like any other pattern:</p>
 <pre><code><span class="tok-kw">struct</span> <span class="tok-type">DeclineReason</span>
   <span class="tok-kw">attributes</span>
     code: <span class="tok-lit">0</span>
@@ -342,14 +378,14 @@ andrew = <span class="tok-type">Person</span>{name: <span class="tok-str">&quot;
 
 <span class="tok-kw">function</span> charge(amount)
   <span class="tok-kw">cond</span>
-    amount &lt;= <span class="tok-lit">0</span> -&gt; (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">555</span>, message: <span class="tok-str">&quot;must be positive&quot;</span>})
-    amount &gt; <span class="tok-lit">10000</span> -&gt; (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">556</span>, message: <span class="tok-str">&quot;too large&quot;</span>})
+    amount &lt;= <span class="tok-lit">0</span> -&gt; exception(<span class="tok-lit">:declined</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">555</span>, message: <span class="tok-str">&quot;must be positive&quot;</span>})
+    amount &gt; <span class="tok-lit">10000</span> -&gt; exception(<span class="tok-lit">:declined</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">556</span>, message: <span class="tok-str">&quot;too large&quot;</span>})
     <span class="tok-lit">true</span> -&gt; (<span class="tok-lit">:ok</span>, amount)
 
 <span class="tok-kw">case</span> charge(<span class="tok-lit">50000</span>)
   (<span class="tok-lit">:ok</span>, charged) -&gt; print(<span class="tok-str">&quot;charged #{charged}&quot;</span>)
-  (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">556</span>, message: message}) -&gt; print(<span class="tok-str">&quot;too large: #{message}&quot;</span>)
-  (<span class="tok-lit">:error</span>, <span class="tok-type">DeclineReason</span>{message: message}) -&gt; print(<span class="tok-str">&quot;declined: #{message}&quot;</span>)</code></pre>
+  (<span class="tok-lit">:error</span>, (<span class="tok-lit">:declined</span>, <span class="tok-type">DeclineReason</span>{code: <span class="tok-lit">556</span>, message: message})) -&gt; print(<span class="tok-str">&quot;too large: #{message}&quot;</span>)
+  (<span class="tok-lit">:error</span>, (<span class="tok-lit">:declined</span>, <span class="tok-type">DeclineReason</span>{message: message})) -&gt; print(<span class="tok-str">&quot;declined: #{message}&quot;</span>)</code></pre>
 <h3 id="pattern-matching">Pattern matching</h3>
 <p><code>case</code> matches a value against patterns left-to-right and runs the body of the first match. <code>_</code> is the wildcard. Patterns can bind variables and match tuples, structs, and lists:</p>
 <pre><code><span class="tok-kw">case</span> result
@@ -505,10 +541,14 @@ end</code></pre>
 <span class="tok-lit">1</span> &gt; <span class="tok-lit">2</span>       <span class="tok-com"># greater?</span>
 <span class="tok-lit">1</span> &lt;= <span class="tok-lit">2</span>      <span class="tok-com"># less or equal?</span>
 <span class="tok-lit">1</span> &gt;= <span class="tok-lit">2</span>      <span class="tok-com"># greater or equal?</span></code></pre>
-<p>Logical. There are <strong>no symbolic</strong> logical operators (<code>&amp;&amp;</code>, <code>||</code>, <code>!</code>); use the word forms. <code>and</code> / <code>or</code> short-circuit.</p>
+<p>Logical. There are <strong>no symbolic</strong> logical operators (<code>&amp;&amp;</code>, <code>||</code>, <code>!</code>); use the word forms. <code>and</code> / <code>or</code> short-circuit, and — unlike a language where they coerce to <code>bool</code> — each returns whichever operand decided the result, not <code>true</code>/<code>false</code>.</p>
 <pre><code><span class="tok-lit">true</span> <span class="tok-kw">and</span> <span class="tok-lit">false</span>   <span class="tok-com"># and</span>
 <span class="tok-lit">true</span> <span class="tok-kw">or</span> <span class="tok-lit">false</span>    <span class="tok-com"># or</span>
 <span class="tok-kw">not</span> <span class="tok-lit">true</span>         <span class="tok-com"># not</span></code></pre>
+<p>That returned-operand behavior, combined with <code>and</code> binding tighter than <code>or</code> (see the precedence list at the top of this section), gives Ramos a working ternary even though it has no dedicated ternary syntax:</p>
+<pre><code>value = test <span class="tok-kw">and</span> <span class="tok-lit">1</span> <span class="tok-kw">or</span> <span class="tok-lit">100</span></code></pre>
+<p><code>and</code> binds tighter than <code>or</code>, so this reads as <code>(test and 1) or 100</code>. When <code>test</code> is truthy, <code>test and 1</code> short-circuits to <code>1</code>, and <code>1 or 100</code> — <code>1</code> being truthy — short-circuits right back to <code>1</code>. When <code>test</code> is falsy, <code>test and 1</code> short-circuits to <code>test</code> itself (falsy), so the <code>or</code> falls through and evaluates its right side: <code>100</code>. Either way, <code>value</code> ends up <code>1</code> when <code>test</code> is truthy and <code>100</code> when it is not — a ternary.</p>
+<p>This has the one gap the same trick has in every language that offers it: it breaks if the &quot;then&quot; branch is itself falsy. Since only <code>false</code> and <code>nil</code> are falsy (see <a href="#control-flow">Control flow</a>), <code>test and false or 100</code> evaluates to <code>100</code> even when <code>test</code> is truthy, because the <code>and</code> produced <code>false</code>, which is falsy, so the <code>or</code> overrides it. Reach for <code>if</code> instead whenever the &quot;then&quot; value might be <code>false</code> or <code>nil</code>.</p>
 <p>String:</p>
 <pre><code><span class="tok-str">&quot;a&quot;</span> &lt;&gt; <span class="tok-str">&quot;b&quot;</span>   <span class="tok-com"># concatenate</span></code></pre>
 <p>List:</p>
@@ -606,7 +646,7 @@ is_truthy(<span class="tok-lit">false</span>)   <span class="tok-com"># == false
     <span class="tok-lit">:ok</span> = validate_symbol(<span class="tok-lit">1</span>)
 
 print(result) <span class="tok-com"># (:error, (:invalid_string, &quot;1 is not a valid string&quot;))</span></code></pre>
-<p>Here <code>validate_string(1)</code> returns an error tuple, which does not match <code>:ok</code>. The block stops — <code>validate_symbol</code> is never called — and that error tuple is <code>result</code>. Had all three returned <code>:ok</code>, <code>result</code> would be <code>:ok</code>, the last statement&#39;s value.</p>
+<p>Here <code>validate_string(1)</code> returns an error tuple (built with <code>exception(:invalid_string, &quot;1 is not a valid string&quot;)</code> — see <a href="#error-handling">Error handling</a>), which does not match <code>:ok</code>. The block stops — <code>validate_symbol</code> is never called — and that error tuple is <code>result</code>. Had all three returned <code>:ok</code>, <code>result</code> would be <code>:ok</code>, the last statement&#39;s value.</p>
 <p>Without <code>run</code>, the same logic needs a <code>case</code> nested inside a <code>case</code> inside a <code>case</code>, one level deeper per validation, with the error path repeated in every one of them. <code>run</code> is the flat version of that.</p>
 <p>A <code>run</code> may close with a <code>case</code> written <strong>without a subject</strong> — the block&#39;s result <em>is</em> the subject — so the happy path and the failure path sit side by side at the same indentation:</p>
 <pre><code><span class="tok-kw">run</span>
@@ -629,19 +669,31 @@ print(result) <span class="tok-com"># (:error, (:invalid_string, &quot;1 is not 
 <p>Those bindings do <strong>not</strong> escape the block. A <code>run</code> that halts part-way would otherwise leave some names bound and others not, depending on how far it got; keeping them inside means the code after a <code>run</code> never has to wonder.</p>
 <p><code>run</code> is how a chain of fallible steps stays flat. A failed match is an ordinary value, not an interruption — which is the whole model, described next.</p>
 <h3 id="error-handling">Error handling</h3>
-<p>Ramos has no exceptions. Nothing interrupts execution, unwinds the stack, or jumps to a handler somewhere up the call chain. A function that can fail says so in what it <strong>returns</strong>: a tagged tuple, <code>(:ok, value)</code> on success and <code>(:error, (:type, message))</code> on failure.</p>
+<p>Ramos has no exceptions. Nothing interrupts execution, unwinds the stack, or jumps to a handler somewhere up the call chain. A function that can fail says so in what it <strong>returns</strong>: a tagged tuple, <code>(:ok, value)</code> on success and, on failure, whatever <code>exception</code> or <code>error</code> builds. There is no <code>raise</code> and no <code>catch</code> — these two are the standard way to report a failure, and every fallible function is expected to return through one of them rather than writing an error tuple by hand.</p>
+<p>Most failures are <code>exception</code>&#39;s: an expected outcome in the ordinary run of a program — a bad request, a declined charge — handled a line or two away. <code>exception(type, message)</code> returns <code>(:error, (type, message))</code>:</p>
 <pre><code><span class="tok-kw">function</span> withdraw(balance, amount)
   <span class="tok-kw">cond</span>
-    amount &lt;= <span class="tok-lit">0</span> -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:invalid_amount</span>, <span class="tok-str">&quot;amount must be positive&quot;</span>))
-    amount &gt; balance -&gt; (<span class="tok-lit">:error</span>, (<span class="tok-lit">:insufficient_funds</span>, <span class="tok-str">&quot;balance is too low&quot;</span>))
+    amount &lt;= <span class="tok-lit">0</span> -&gt; exception(<span class="tok-lit">:invalid_amount</span>, <span class="tok-str">&quot;amount must be positive&quot;</span>)
+    amount &gt; balance -&gt; exception(<span class="tok-lit">:insufficient_funds</span>, <span class="tok-str">&quot;balance is too low&quot;</span>)
     <span class="tok-lit">true</span> -&gt; (<span class="tok-lit">:ok</span>, balance - amount)</code></pre>
+<ul>
+  <li><code>type</code> — a lowercase symbol naming <em>what</em> went wrong; the part code matches on.</li>
+  <li><code>message</code> — a <code><a href="String.html">String</a></code> for a human to read, or a struct when a string is not enough detail (see <a href="#traits">Traits</a> for a <code>DeclineReason</code> example).</li>
+</ul>
 <p>The error is an ordinary value, so it is read with the same <code>case</code> as anything else — and because the error carries its own tag, each failure is handled where it is named:</p>
 <pre><code><span class="tok-kw">case</span> withdraw(<span class="tok-lit">100</span>, <span class="tok-lit">250</span>)
   (<span class="tok-lit">:ok</span>, remaining) -&gt; print(<span class="tok-str">&quot;left: #{remaining}&quot;</span>)
   (<span class="tok-lit">:error</span>, (<span class="tok-lit">:invalid_amount</span>, message)) -&gt; print(<span class="tok-str">&quot;bad request: #{message}&quot;</span>)
   (<span class="tok-lit">:error</span>, (<span class="tok-lit">:insufficient_funds</span>, message)) -&gt; print(<span class="tok-str">&quot;declined: #{message}&quot;</span>)
   (<span class="tok-lit">:error</span>, (_, message)) -&gt; print(<span class="tok-str">&quot;failed: #{message}&quot;</span>)</code></pre>
-<p>The <code>(:type, message)</code> pair is the convention the standard library follows: a lowercase symbol naming <em>what</em> went wrong, and a string describing it. The tag is what you match on; the message is for the human reading the output. Where there is nothing useful to say, <code>(:error, reason)</code> with a bare symbol reason is enough — that is what <code><a href="File.html">File</a></code> and <code><a href="Dir.html">Dir</a></code> return (<code>:enoent</code>, <code>:eacces</code>, …).</p>
+<p><code>error(type, message)</code> is <code>exception</code>&#39;s twin for the rarer case where a stacktrace earns its cost: a lower-level or unexpected failure worth tracing back to where it happened, not a predictable business rule. It returns <code>(:error, (type, message, stacktrace))</code> — the same two fields, plus <code>current_stacktrace()</code> captured at the point of failure:</p>
+<pre><code>error(<span class="tok-lit">:insufficient_funds</span>, <span class="tok-str">&quot;balance is too low&quot;</span>)
+<span class="tok-com"># == (:error, (:insufficient_funds, &quot;balance is too low&quot;, []))</span></code></pre>
+<p>Matching it back out just carries the extra position:</p>
+<pre><code><span class="tok-kw">case</span> parse_document(text)
+  (<span class="tok-lit">:ok</span>, doc) -&gt; doc
+  (<span class="tok-lit">:error</span>, (<span class="tok-lit">:malformed</span>, message, _)) -&gt; print(<span class="tok-str">&quot;parse failed: #{message}&quot;</span>)</code></pre>
+<p><code>(type, message[, stacktrace])</code> is the convention the standard library follows: match on <code>type</code>, read <code>message</code>, and reach for <code>stacktrace</code> — when there is one — only while diagnosing. Where there is nothing useful to say beyond a bare tag, <code>(:error, reason)</code> with a symbol reason is enough — that is what <code><a href="File.html">File</a></code> and <code><a href="Dir.html">Dir</a></code> return (<code>:enoent</code>, <code>:eacces</code>, …), since those come straight from the OS rather than through <code>exception</code> or <code>error</code>.</p>
 <p>Because a failure is a value, a function that cannot handle one passes it along by returning it, and the choice is visible at every step rather than hidden in whether some caller installed a handler:</p>
 <pre><code><span class="tok-kw">module</span> <span class="tok-type">FileHandler</span>
   <span class="tok-kw">function</span> default_content()
@@ -683,6 +735,7 @@ add(<span class="tok-lit">1</span>, <span class="tok-lit">2</span>)          <sp
     z * <span class="tok-lit">2</span>
 
 double_then_add(<span class="tok-lit">2</span>, <span class="tok-lit">3</span>)   <span class="tok-com"># == 10</span></code></pre>
+<p>Because newlines are whitespace inside <code>(</code>, the indented-body form has no line of its own to indent onto once it is written inline — it can only follow a <code>=</code>, an arm&#39;s <code>-&gt;</code>, or another spot where a real newline is possible, never sit directly inside a call&#39;s parentheses. A <code>do</code> lambda passed straight into a call is therefore always the single-expression form, and per the <a href="#strict">Strict rules</a> it must still fit on one line — assign a longer one to a name first, then pass the name.</p>
 <p>Lambdas are values, so they pipe naturally:</p>
 <pre><code>[<span class="tok-lit">1</span>, <span class="tok-lit">2</span>, <span class="tok-lit">3</span>, <span class="tok-lit">4</span>]
 | <span class="tok-type">List</span>.filter(<span class="tok-kw">do</span> x -&gt; <span class="tok-type">Integer</span>.is_even(x))    <span class="tok-com"># == [2, 4]</span>
@@ -807,6 +860,13 @@ sleep(<span class="tok-lit">50</span>)</code></pre>
 <blockquote>
 <p><strong>Each actor owns its memory.</strong> An actor&#39;s thread gets a fresh root scope, so a handler cannot see the bindings around the call that started it, and its state is reachable only by sending a message. That memory does not include the actor registry either, so <strong>a handler cannot message another actor or itself</strong> — a self-call would block the actor waiting on a reply only it could produce. Actors are not yet a unit of failure isolation: an error in a handler propagates to whoever collects the reply rather than restarting the actor.</p>
 </blockquote>
+<p>For the same reason, <strong><code>start_actor</code>, <code>call_actor</code> and <code>cast_actor</code> never accept a <code>do</code> lambda</strong> — directly, or nested in a list, tuple or map literal argument:</p>
+<pre><code><span class="tok-com"># error: a lambda cannot be passed to an actor</span>
+call_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:process</span>, [<span class="tok-kw">do</span> x -&gt; x + <span class="tok-lit">1</span>])</code></pre>
+<p>A lambda closes over the scope it was written in, but a handler&#39;s thread cannot see that scope — the closure would carry bindings the actor could never actually reach. This check is a strict, syntactic one rather than full dataflow analysis, so it only catches a lambda written in place; it does not follow a lambda through a variable:</p>
+<pre><code><span class="tok-com"># not caught at parse time, but just as broken at runtime</span>
+cb = <span class="tok-kw">do</span> x -&gt; x + <span class="tok-lit">1</span>
+call_actor(<span class="tok-lit">:cache</span>, <span class="tok-type">Cache</span>, <span class="tok-lit">:process</span>, [cb])</code></pre>
 <h4 id="global">Global</h4>
 <p>The stdlib ships one actor already written: <code><a href="Global.html">Global</a></code>, a single process-wide <code><a href="Map.html">Map</a></code> behind the id <code>:global</code>.</p>
 <pre><code><span class="tok-type">Global</span>.start()
@@ -867,9 +927,11 @@ total = <span class="tok-type">Thread</span>.await(t)       <span class="tok-com
     <span class="tok-com"># @doc</span>
     <span class="tok-com"># A user built with no age is 18, not 0.</span>
     assert(<span class="tok-type">User</span>{}.age == <span class="tok-lit">0</span>)</code></pre>
-<pre><code>ramos test                              # everything under src/test/
-ramos test src/test/my_app/user_test.rmo   # one file
-ramos test --quietly                    # results only, no doc lines</code></pre>
+<pre><code>ramos test                # everything under the nearest src/test — found by
+                           # walking up from `.`, so this works from any
+                           # directory inside the project, not only its root
+ramos test user           # only the files whose name or path contains &quot;user&quot;
+ramos test --quietly      # results only, no doc lines</code></pre>
 <p>The report carries the <a href="#documentation-comments">documentation comments</a> along with the results, so it says what the suite covers and not only that it ran:</p>
 <pre><code>MyApp.UserTest
   The behaviour a User promises its callers.
@@ -905,19 +967,20 @@ assert(age &lt; <span class="tok-lit">18</span>)
 </thead>
 <tbody>
   <tr><td><code>ramos run &lt;file.rmo&gt;</code></td><td>Execute a program — calls the file&#39;s <a href="#entrypoints">entrypoint</a> <code>main()</code></td></tr>
+  <tr><td><code>ramos learn</code></td><td>Print a crash course: every keyword, the syntax, and what not to do — no file needed, meant for a person or an AI agent to read cold</td></tr>
   <tr><td><code>ramos repl</code></td><td>Start an interactive read-eval-print loop</td></tr>
   <tr><td><code>ramos check &lt;file.rmo&gt;</code></td><td>Enforce the strict rules and parse the file <strong>without running it</strong></td></tr>
   <tr><td><code>ramos ast &lt;file.rmo&gt;</code></td><td>Print the parsed abstract syntax tree</td></tr>
   <tr><td><code>ramos lexer &lt;file.rmo&gt;</code></td><td>Print the raw token stream</td></tr>
-  <tr><td><code>ramos test [--quietly] [file]</code></td><td>Run the tests under <code>src/test/</code>, or one file&#39;s — <code>--quietly</code> leaves the <code>@doc</code> lines out</td></tr>
+  <tr><td><code>ramos test [--quietly] [filter]</code></td><td>Run every test under the nearest <code>src/test</code> (found by walking up from <code>.</code>), or just the files whose name or path contains <code>filter</code> — <code>--quietly</code> leaves the <code>@doc</code> lines out</td></tr>
   <tr><td><code>ramos doctest [--stdlib DIR] [DIR]</code></td><td>Run the <code># ==</code> examples in <code>DIR/src/*.rmo</code>&#39;s doc comments</td></tr>
-  <tr><td><code>ramos doc</code></td><td>Generate Hexdocs-style HTML for <a href="https://github.com/andrewaguiar/ramos/src/branch/main/stdlib/"><code>stdlib/</code></a> into <code>docs/</code></td></tr>
+  <tr><td><code>ramos doc</code></td><td>Generate a Hexdocs-style reference for <a href="https://github.com/andrewaguiar/ramos/src/branch/main/stdlib/"><code>stdlib/</code></a> into <code>docs/</code></td></tr>
 </tbody>
 </table>
 </div>
 <blockquote>
 <p><code>run</code> loads the standard library (embedded in the binary), then the entry file and every module it reaches, then calls the entrypoint&#39;s <code>main()</code> — or runs top-level statements when the file has none. <code>--stdlib DIR</code> reads the stdlib from disk instead, which is how the stdlib itself is developed.</p>
-<p><code>ramos doc</code> reads the inline <a href="#documentation-comments"><code>@module_doc</code></a> / <code>@doc</code> comments out of every <code>.rmo</code> file under <a href="https://github.com/andrewaguiar/ramos/src/branch/main/stdlib/"><code>stdlib/</code></a> and writes a static site — one HTML page per module plus an <code>index.html</code> overview — into <code>docs/</code>, alongside an <code>examples.html</code> guide built from the feature fixtures in <a href="https://github.com/andrewaguiar/ramos/src/branch/main/tests/fixtures/features/"><code>tests/fixtures/features/</code></a> — each fixture&#39;s header comment becomes the prose, its code the snippets, so the guide can&#39;t drift from code that lexes and parses. Options: <code>--stdlib DIR</code> (source, default <code>./stdlib</code>), <code>--out DIR</code> (output, default <code>./docs</code>) and <code>--examples DIR</code> (fixtures, default <code>./tests/fixtures/features</code>; a missing dir just drops the page). Open <code>docs/index.html</code> to browse it.</p>
+<p><code>ramos doc</code> reads the inline <a href="#documentation-comments"><code>@module_doc</code></a> / <code>@doc</code> comments out of every <code>.rmo</code> file under <a href="https://github.com/andrewaguiar/ramos/src/branch/main/stdlib/"><code>stdlib/</code></a> and renders each module, plus a language guide built from the README, an examples guide built from the feature fixtures in <a href="https://github.com/andrewaguiar/ramos/src/branch/main/tests/fixtures/features/"><code>tests/fixtures/features/</code></a> (each fixture&#39;s header comment becomes the prose, its code the snippets, so it can&#39;t drift from code that lexes and parses), and a programs guide built from <a href="https://github.com/andrewaguiar/ramos/src/branch/main/examples/"><code>examples/</code></a>. Rather than one HTML file per page, it writes <code>docs/docs.json</code> — the rendered content, keyed by page — and a single static <code>docs/index.html</code> shell that fetches that JSON and presents it client-side, swapping pages in as the URL hash changes (<code>#/List</code>, <code>#/guide</code>, <code>#/examples</code>, <code>#/programs</code>). Options: <code>--stdlib DIR</code> (source, default <code>./stdlib</code>), <code>--out DIR</code> (output, default <code>./docs</code>), <code>--examples DIR</code> (fixtures, default <code>./tests/fixtures/features</code>), <code>--programs DIR</code> (default <code>./examples</code>) and <code>--readme FILE</code> (default <code>./README.md</code>) — a missing examples/programs dir or readme just drops that page. Serve <code>docs/</code> over HTTP and open <code>index.html</code> to browse it (the shell&#39;s <code>fetch(&quot;docs.json&quot;)</code> needs a real origin, so opening the file directly as <code>file://</code> won&#39;t load the data).</p>
 </blockquote>
 <h3 id="running-a-program">Running a program</h3>
 <pre><code>ramos <span class="tok-kw">run</span> app.rmo        <span class="tok-com"># loads the stdlib, then app.rmo, then calls App.main()</span></code></pre>

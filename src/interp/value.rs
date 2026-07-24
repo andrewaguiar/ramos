@@ -111,6 +111,10 @@ pub struct Closure {
     /// The module the lambda was defined in, if any — so bare calls in its body
     /// resolve against that module's functions, exactly as at its definition.
     pub module: Option<Arc<ModuleDef>>,
+    /// The file the lambda was written in — a stacktrace frame for a call made
+    /// from inside its body names this file, the same way one does for a named
+    /// function.
+    pub file: Arc<str>,
 }
 
 #[derive(Default)]

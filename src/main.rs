@@ -86,35 +86,118 @@ fn run_doc(args: &[String]) -> ExitCode {
     }
 }
 
+/// Split a project name like `pet-project` or `pet_project` into lowercase
+/// words, for building both the snake_case directory name and the CamelCase
+/// module name a `ramos new` project starts with.
+///
+/// Empty when `name` has no valid words: each `-`/`_`-separated part must be
+/// ASCII alphanumeric, and the first must start with a letter — a module name
+/// cannot start with a digit.
+fn project_words(name: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    for part in name.split(['-', '_']) {
+        if part.is_empty() || !part.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return Vec::new();
+        }
+        words.push(part.to_ascii_lowercase());
+    }
+    match words.first().and_then(|w| w.chars().next()) {
+        Some(c) if c.is_ascii_alphabetic() => words,
+        _ => Vec::new(),
+    }
+}
+
+/// `pet` -> `Pet`. Used to turn a project name's words into its CamelCase
+/// module name.
+fn capitalize(word: &str) -> String {
+    let mut chars = word.chars();
+    match chars.next() {
+        Some(first) => first.to_ascii_uppercase().to_string() + chars.as_str(),
+        None => String::new(),
+    }
+}
+
+/// `ramos new <name>` — scaffold a new project: `<name>/src/<snake>/main.rmo`
+/// defining `module <CamelCase>.Main` with a `function main()` that prints the
+/// project name. That module lives where the naming rule (see `loader`) says
+/// it must, and its file is named `main.rmo`, so `ramos run <name>` finds it
+/// straight away.
+fn run_new(args: &[String]) -> ExitCode {
+    let (name, rest) = match args.split_first() {
+        Some((name, rest)) => (name, rest),
+        None => {
+            eprintln!("usage: ramos new <project-name>");
+            return ExitCode::from(2);
+        }
+    };
+    if !rest.is_empty() {
+        eprintln!("usage: ramos new <project-name>");
+        return ExitCode::from(2);
+    }
+    let words = project_words(name);
+    if words.is_empty() {
+        eprintln!(
+            "error: `{name}` is not a valid project name — use letters, digits, `-` or `_`, \
+             starting with a letter"
+        );
+        return ExitCode::from(2);
+    }
+    let snake_name = words.join("_");
+    let module_name: String = words.iter().map(|w| capitalize(w)).collect();
+
+    let root = PathBuf::from(name);
+    if root.exists() {
+        eprintln!("error: `{}` already exists", root.display());
+        return ExitCode::FAILURE;
+    }
+    let src_dir = root.join("src").join(&snake_name);
+    if let Err(e) = fs::create_dir_all(&src_dir) {
+        eprintln!("error: cannot create `{}`: {e}", src_dir.display());
+        return ExitCode::FAILURE;
+    }
+    let main_path = src_dir.join("main.rmo");
+    let contents =
+        format!("module {module_name}.Main\n  function main()\n    println(\"{name}\")\n");
+    if let Err(e) = fs::write(&main_path, contents) {
+        eprintln!("error: cannot write `{}`: {e}", main_path.display());
+        return ExitCode::FAILURE;
+    }
+    println!("created `{}`", main_path.display());
+    ExitCode::SUCCESS
+}
+
 /// `ramos doctest [dir]` — run the `# ==` examples in a directory's `@doc`
 /// blocks.
 ///
 /// The directory is a project root, so its modules are `DIR/src/*.rmo` — the
-/// same shape `--stdlib` names and any Ramos project uses.
+/// same shape `--stdlib` names and any Ramos project uses. With no `DIR`, it
+/// is `.` — the same bare-means-current-directory default as `run` — except
+/// when `--stdlib DIR` is given alone, which names both the sources under
+/// test and what they load against: `ramos doctest --stdlib stdlib` documents
+/// the stdlib against itself without repeating the path.
 ///
 /// `--stdlib DIR` is what the examples load against, exactly as it is for `run`
 /// and `check`: without it they load against the copy embedded in this binary.
-/// Pointing it at the directory under test is how the stdlib documents itself
-/// against the sources in front of it: `ramos doctest --stdlib stdlib`. A
-/// project's *own* modules are reachable either way — they are copied in beside
-/// each example.
+/// A project's *own* modules are reachable either way — they are copied in
+/// beside each example.
 fn run_doctest(args: &[String], stdlib: Option<String>, quietly: bool) -> ExitCode {
     let args: Vec<String> = args.to_vec();
     if args.len() > 1 {
         eprintln!("usage: ramos doctest [--quietly] [--stdlib DIR] [DIR]");
         eprintln!("  DIR            project root, modules read from DIR/src");
-        eprintln!("                 (default: the --stdlib directory, else ./stdlib)");
+        eprintln!("                 (default: the --stdlib directory, else .)");
         eprintln!("  --stdlib DIR   the stdlib the examples load against (default: embedded)");
         return ExitCode::from(2);
     }
     let here = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let stdlib_dir = stdlib.map(PathBuf::from);
     // Documenting the stdlib is the common case, so `--stdlib` alone names both
-    // the sources under test and what they load against.
+    // the sources under test and what they load against. Otherwise bare
+    // `doctest` is `doctest .`, matching bare `run`.
     let root = match (args.first(), &stdlib_dir) {
         (Some(s), _) => PathBuf::from(s),
         (None, Some(dir)) => dir.clone(),
-        (None, None) => here.join("stdlib"),
+        (None, None) => here,
     };
     let report = match ramos::doctest::run(&root, stdlib_dir.as_deref()) {
         Ok(r) => r,
@@ -135,8 +218,9 @@ fn run_doctest(args: &[String], stdlib: Option<String>, quietly: bool) -> ExitCo
     }
 }
 
-/// `ramos test [file]` — run the tests in one file, or in every test module
-/// found under the current directory.
+/// `ramos test [filter]` — run every test module under the nearest `src/test`
+/// (walking up from the current directory), optionally narrowed to the files
+/// whose name or path contains `filter`.
 ///
 /// A file is a test file when it defines a module implementing `Test`. Each
 /// file is loaded and run on its own interpreter, so one file's definitions and
@@ -147,29 +231,32 @@ fn run_doctest(args: &[String], stdlib: Option<String>, quietly: bool) -> ExitCo
 /// the report says what a test is for and not only that it ran. `--quietly`
 /// leaves the docs out, for a run watched by a person who already knows them
 /// (or by a CI log that does not need them).
-fn run_tests(path: Option<&str>, stdlib: Option<String>, quietly: bool) -> ExitCode {
+fn run_tests(filter: Option<&str>, stdlib: Option<String>, quietly: bool) -> ExitCode {
     let stdlib_dir = stdlib.map(PathBuf::from);
-    let files: Vec<PathBuf> = match path {
-        Some(p) => vec![PathBuf::from(p)],
-        None => {
-            let root = Path::new(TEST_ROOT);
-            if !root.is_dir() {
-                println!("no `{TEST_ROOT}` directory — tests live there");
-                return ExitCode::SUCCESS;
-            }
-            match find_test_files(root) {
-                Ok(found) if found.is_empty() => {
-                    println!("no test modules found in `{TEST_ROOT}`");
-                    return ExitCode::SUCCESS;
-                }
-                Ok(found) => found,
-                Err(e) => {
-                    eprintln!("error: {e}");
-                    return ExitCode::FAILURE;
-                }
-            }
+    let Some(root) = find_test_root() else {
+        println!("no `{TEST_ROOT}` directory found in `.` or any parent — tests live there");
+        return ExitCode::SUCCESS;
+    };
+    let mut files = match find_test_files(&root) {
+        Ok(found) => found,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::FAILURE;
         }
     };
+    if let Some(needle) = filter {
+        files.retain(|f| f.to_string_lossy().contains(needle));
+    }
+    if files.is_empty() {
+        match filter {
+            Some(needle) => println!(
+                "no test file under `{}` has `{needle}` in its name or path",
+                root.display()
+            ),
+            None => println!("no test modules found in `{}`", root.display()),
+        }
+        return ExitCode::SUCCESS;
+    }
 
     let color = ramos::color::Color::for_stdout();
     let (mut passed, mut failed) = (0usize, 0usize);
@@ -258,6 +345,22 @@ fn run_tests(path: Option<&str>, stdlib: Option<String>, quietly: bool) -> ExitC
 /// its namespace is its path — rooted here rather than at `src/`.
 const TEST_ROOT: &str = "src/test";
 
+/// The nearest `src/test`, walking up from the current directory — so `ramos
+/// test` finds a project's tests from anywhere inside it, not only from its
+/// root. `None` when no ancestor (up to the filesystem root) has one.
+fn find_test_root() -> Option<PathBuf> {
+    let mut dir = env::current_dir().ok()?;
+    loop {
+        let candidate = dir.join(TEST_ROOT);
+        if candidate.is_dir() {
+            return Some(candidate);
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
+}
+
 /// Every `.rmo` file under `dir`, in path order.
 ///
 /// Everything here is expected to be a test, so a file that is not one is
@@ -283,6 +386,39 @@ fn find_test_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
     }
     found.sort();
     Ok(found)
+}
+
+/// The first `main.rmo` under `dir`, breadth-first — what `ramos run <dir>`
+/// runs when it is pointed at a directory rather than a `.rmo` file. A
+/// shallower `main.rmo` wins over a deeper one; among siblings, the
+/// alphabetically first wins, so the search is deterministic even though "the
+/// first one found" is otherwise a filesystem-order question.
+fn find_main_file(dir: &Path) -> Option<PathBuf> {
+    let mut queue = std::collections::VecDeque::new();
+    queue.push_back(dir.to_path_buf());
+    while let Some(current) = queue.pop_front() {
+        let Ok(entries) = std::fs::read_dir(&current) else {
+            continue;
+        };
+        let mut children: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
+        children.sort();
+        let mut subdirs = Vec::new();
+        for path in children {
+            if path.is_dir() {
+                let hidden = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| n.starts_with('.'));
+                if !hidden {
+                    subdirs.push(path);
+                }
+            } else if path.file_name().and_then(|n| n.to_str()) == Some("main.rmo") {
+                return Some(path);
+            }
+        }
+        queue.extend(subdirs);
+    }
+    None
 }
 
 /// The rules a test module is held to, beyond the ordinary file rules.
@@ -335,7 +471,10 @@ fn check_test_module(path: &Path, program: &ramos::ast::Program) -> Result<(), S
 /// rather than at the whole loaded program. A parse failure here has already
 /// been reported by the loader, so an empty program is enough.
 fn parse_only(path: &Path) -> ramos::ast::Program {
-    let empty = ramos::ast::Program { items: Vec::new() };
+    let empty = ramos::ast::Program {
+        items: Vec::new(),
+        entry_file: std::sync::Arc::from(""),
+    };
     let Ok(source) = std::fs::read_to_string(path) else {
         return empty;
     };
@@ -345,9 +484,32 @@ fn parse_only(path: &Path) -> ramos::ast::Program {
     ramos::parser::parse(tokens).unwrap_or(empty)
 }
 
+/// Whether `program` defines a module exposing a public `function main()` —
+/// the same definition of "entrypoint" `ramos::interp::run` itself uses.
+fn has_entrypoint(program: &ramos::ast::Program) -> bool {
+    program.items.iter().any(|item| match item {
+        ramos::ast::Item::Module(m) => m.functions.iter().any(|f| f.name == "main" && !f.private),
+        _ => false,
+    })
+}
+
 /// `ramos run` / `ramos check` — load the entry file with the stdlib and every
 /// module it reaches, then (for `run`) execute it.
-fn run_loaded(cmd: &str, path: &str, stdlib: Option<String>, prog_args: &[String]) -> ExitCode {
+///
+/// `require_main` is set when `path` was picked by finding a directory's
+/// `main.rmo` rather than named directly: that file is expected to *be* an
+/// entrypoint, so — unlike a file named on the command line, which is free to
+/// be a bare top-level script (see the README's "Entrypoints" section) — it
+/// is an error for it to define no module exposing a public `function
+/// main()`, rather than a silent fall-through to running its top-level
+/// statements.
+fn run_loaded(
+    cmd: &str,
+    path: &str,
+    stdlib: Option<String>,
+    prog_args: &[String],
+    require_main: bool,
+) -> ExitCode {
     let stdlib_dir = stdlib.map(PathBuf::from);
     let program = match ramos::loader::load(Path::new(path), stdlib_dir.as_deref()) {
         Ok(p) => p,
@@ -366,6 +528,14 @@ fn run_loaded(cmd: &str, path: &str, stdlib: Option<String>, prog_args: &[String
     if cmd == "check" {
         println!("{path}: ok ({} items loaded)", program.items.len());
         return ExitCode::SUCCESS;
+    }
+    if require_main && !has_entrypoint(&program) {
+        eprintln!(
+            "error: `{path}` defines no module exposing a public `function main()` — \
+             a directory is only run through its `main.rmo`, so that file has to be a \
+             real entrypoint"
+        );
+        return ExitCode::FAILURE;
     }
     // Line-buffered (the default `stdout()` behaviour), not block-buffered: a
     // `Thread.start`ed lambda writes to this same sink live, and its output must
@@ -420,6 +590,10 @@ fn run_cli() -> ExitCode {
     if args.first().map(String::as_str) == Some("doc") {
         return run_doc(&args[1..]);
     }
+    // `new` takes a project name, not a `.rmo` file.
+    if args.first().map(String::as_str) == Some("new") {
+        return run_new(&args[1..]);
+    }
     // `learn` takes no file — it prints a fixed crash course on the language.
     if args.first().map(String::as_str) == Some("learn") {
         print!("{}", ramos::learn::text());
@@ -440,6 +614,9 @@ fn run_cli() -> ExitCode {
     }
     let (cmd, path) = match (args.first().map(String::as_str), args.get(1)) {
         (Some(c @ ("run" | "check" | "lexer" | "ast")), Some(p)) => (c, p.as_str()),
+        // Bare `ramos run` is `ramos run .` — the directory-resolution below
+        // finds `.`'s `main.rmo` exactly as it would for any named directory.
+        (Some("run"), None) => ("run", "."),
         _ => {
             eprintln!("usage: ramos <command> [args]");
             eprintln!();
@@ -447,25 +624,34 @@ fn run_cli() -> ExitCode {
                 "  run <file.rmo>             execute a Ramos program (top-level statements)"
             );
             eprintln!(
-                "  learn                      print a crash course on the language: every"
+                "  run <dir>                  run that directory's `main.rmo` (the shallowest"
             );
+            eprintln!("                             one found, if there is more than one)");
+            eprintln!("  run                        same as `run .` — run the current directory's");
+            eprintln!("                             `main.rmo`");
             eprintln!(
-                "                             keyword, the syntax, and what not to do"
+                "  new <project-name>         scaffold a project: <name>/src/<snake>/main.rmo"
             );
+            eprintln!("                             defining `<CamelCase>.Main`");
+            eprintln!("  learn                      print a crash course on the language: every");
+            eprintln!("                             keyword, the syntax, and what not to do");
             eprintln!("  repl                       start an interactive session (persists state)");
-            eprintln!("  test [--quietly] [file.rmo]");
+            eprintln!("  test [--quietly] [filter]");
+            eprintln!("                             run every test under the nearest `src/test`");
             eprintln!(
-                "                             run tests (all test modules found, or just one"
+                "                             (walking up from `.`), or just the files whose"
             );
-            eprintln!(
-                "                             file); --quietly drops the @doc lines from the report"
-            );
+            eprintln!("                             name or path contains filter; --quietly drops");
+            eprintln!("                             the @doc lines from the report");
             eprintln!("  doctest [--quietly] [--stdlib DIR] [DIR]");
             eprintln!(
                 "                             run the `# ==` examples in DIR/src/*.rmo @doc blocks"
             );
             eprintln!(
-                "                             (default: ./stdlib, against the embedded stdlib)"
+                "                             (default: DIR is `.`, against the embedded stdlib;"
+            );
+            eprintln!(
+                "                             `ramos doctest --stdlib stdlib` documents the stdlib)"
             );
             eprintln!("  check <file.rmo>           verify the strict rules without running");
             eprintln!("  lexer [--dump] <file.rmo>  debug: print the token stream (--dump adds the raw code)");
@@ -482,6 +668,27 @@ fn run_cli() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    // `ramos run <dir>` runs that directory's `main.rmo` instead of naming the
+    // entrypoint file directly. Since the file was picked by the `main.rmo`
+    // name rather than named by the caller, it is held to what that name
+    // promises: an entrypoint, not just any runnable script.
+    let resolved;
+    let mut require_main = false;
+    let path = if cmd == "run" && Path::new(path).is_dir() {
+        match find_main_file(Path::new(path)) {
+            Some(found) => {
+                resolved = found.display().to_string();
+                require_main = true;
+                resolved.as_str()
+            }
+            None => {
+                eprintln!("error: no `main.rmo` found under `{path}`");
+                return ExitCode::FAILURE;
+            }
+        }
+    } else {
+        path
+    };
     if !path.ends_with(".rmo") {
         eprintln!("error: Ramos source files must use the `.rmo` extension (got `{path}`)");
         let mut renamed = std::path::PathBuf::from(path);
@@ -497,7 +704,7 @@ fn run_cli() -> ExitCode {
         // Anything after the script path is a program argument, exposed to the
         // program via `get_args` / `get_arg`.
         let prog_args: Vec<String> = args.iter().skip(2).cloned().collect();
-        return run_loaded(cmd, path, stdlib, &prog_args);
+        return run_loaded(cmd, path, stdlib, &prog_args, require_main);
     }
     let source = match fs::read_to_string(path) {
         Ok(s) => s,

@@ -1,10 +1,13 @@
-//! `ramos doc` — generate HTML documentation for the stdlib.
+//! `ramos doc` — generate documentation for the stdlib.
 //!
 //! Walks every `.rmo` file in a source directory (default `stdlib/src/`), pairs the
 //! authoritative AST (module name + function signatures) with the `@module_doc`
-//! and `@doc` comment blocks extracted from the raw text, and emits one
-//! Hexdocs-style HTML page per module plus an `index.html` overview into an
-//! output directory (default `docs/`).
+//! and `@doc` comment blocks extracted from the raw text, and renders each
+//! module (plus the guide/examples/programs narrative pages) to an HTML
+//! fragment. Those fragments are written as data — one `docs.json` — rather
+//! than one file per page; a single static `index.html` shell fetches that
+//! JSON and presents it, swapping in the right fragment as the URL hash
+//! changes. Everything is written into an output directory (default `docs/`).
 //!
 //! The doc-comment format is documented in the README; in short:
 //!
@@ -43,7 +46,8 @@ use std::path::{Path, PathBuf};
 /// `source_dir` holds the modules (`kernel.rmo`, `list.rmo`, …) — for the
 /// standard library that is `stdlib/src`. Subdirectories are not walked, so a
 /// project's `src/test/` is left out of its reference.
-/// `out_dir` is where `index.html`, `<Module>.html`, and `assets/` are written.
+/// `out_dir` is where `index.html` (the static shell), `docs.json` (the
+/// rendered content it presents), and `assets/` are written.
 /// Returns the number of modules documented.
 pub fn generate(source_dir: &Path, out_dir: &Path) -> Result<usize, String> {
     generate_with(source_dir, out_dir, &Options::default())
@@ -90,7 +94,7 @@ pub fn generate_with(source_dir: &Path, out_dir: &Path, opts: &Options) -> Resul
     }
     modules.sort_by(|a, b| a.name.cmp(&b.name));
 
-    // One shared stylesheet, linked from every page.
+    // One shared stylesheet, linked from the shell page.
     fs::create_dir_all(out_dir.join("assets")).map_err(|e| format!("create assets dir: {e}"))?;
     fs::write(out_dir.join("assets").join("style.css"), CSS)
         .map_err(|e| format!("write stylesheet: {e}"))?;
@@ -104,48 +108,77 @@ pub fn generate_with(source_dir: &Path, out_dir: &Path, opts: &Options) -> Resul
         guide: guide.is_some(),
     };
 
+    // Every page's content, keyed by the id the shell's router looks it up
+    // by (a module name, `"guide"`/`"examples"`/`"programs"`, or `""` for the
+    // index) — this *is* the site; the shell is just the template around it.
+    let mut pages: Vec<(String, Json)> = Vec::new();
+
     for m in &modules {
-        let html = render_module(m, &module_names, guides);
-        let path = out_dir.join(format!("{}.html", m.name));
-        fs::write(&path, html).map_err(|e| format!("write {}: {e}", path.display()))?;
+        let body = render_module(m, &module_names);
+        let title = format!("{} — Ramos", m.name);
+        pages.push((m.name.clone(), page_json(&title, Some(&m.name), "", body)));
     }
 
     if guides.examples {
-        let html = render_examples(&examples, &module_names, guides);
-        fs::write(out_dir.join("examples.html"), html)
-            .map_err(|e| format!("write examples.html: {e}"))?;
+        let body = render_examples(&examples, &module_names, guides);
+        pages.push((
+            "examples".to_string(),
+            page_json("Examples — Ramos", None, "examples", body),
+        ));
     }
 
     if guides.programs {
-        let html = render_programs(&programs, &module_names, guides);
-        fs::write(out_dir.join("programs.html"), html)
-            .map_err(|e| format!("write programs.html: {e}"))?;
+        let body = render_programs(&programs, &module_names, guides);
+        pages.push((
+            "programs".to_string(),
+            page_json("Programs — Ramos", None, "examples", body),
+        ));
     }
 
     if let Some(md) = &guide {
-        let html = render_guide(md, &module_names, guides);
-        fs::write(out_dir.join("guide.html"), html)
-            .map_err(|e| format!("write guide.html: {e}"))?;
+        let body = render_guide(md, &module_names);
+        pages.push((
+            "guide".to_string(),
+            page_json("Language guide — Ramos", None, "guide", body),
+        ));
     }
 
-    let index = render_index(&modules, guides, guide.as_deref());
-    fs::write(out_dir.join("index.html"), index).map_err(|e| format!("write index.html: {e}"))?;
+    let index_body = render_index(&modules, guides, guide.as_deref());
+    pages.push((String::new(), page_json("Ramos", None, "index", index_body)));
+
+    let doc_json = Json::Object(vec![
+        (
+            "modules".to_string(),
+            Json::Array(module_names.into_iter().map(Json::Str).collect()),
+        ),
+        (
+            "guides".to_string(),
+            Json::Object(vec![
+                ("guide".to_string(), Json::Bool(guides.guide)),
+                ("examples".to_string(), Json::Bool(guides.examples)),
+                ("programs".to_string(), Json::Bool(guides.programs)),
+            ]),
+        ),
+        ("pages".to_string(), Json::Object(pages)),
+    ]);
+    fs::write(out_dir.join("docs.json"), doc_json.to_string())
+        .map_err(|e| format!("write docs.json: {e}"))?;
+
+    // The shell is static — identical regardless of what's documented — so
+    // it's a fixed template rather than something built per module.
+    fs::write(out_dir.join("index.html"), SHELL_HTML)
+        .map_err(|e| format!("write index.html: {e}"))?;
 
     Ok(modules.len())
 }
 
-/// Which narrative pages exist, so every page's sidebar links the same set.
+/// Which narrative pages exist, so cross-page prose links (e.g. "see the
+/// language guide") only appear when the page they'd point to actually does.
 #[derive(Debug, Clone, Copy, Default)]
 struct Guides {
     guide: bool,
     examples: bool,
     programs: bool,
-}
-
-impl Guides {
-    fn any(&self) -> bool {
-        self.guide || self.examples || self.programs
-    }
 }
 
 /// Read a file that is allowed not to exist.
@@ -1028,8 +1061,10 @@ fn render_code_span(code: &str, modules: &[String]) -> String {
     }
 }
 
-/// `Mod` → `Mod.html`; `Mod.fn` → `Mod.html#fn/arity`. Only dotted forms link
-/// — bare lowercase names (`print(x)`-style) stay plain, since `Kernel` is
+/// `Mod` → `#/Mod`; `Mod.fn` → `#/Mod:fn` — a route the shell's client-side
+/// router resolves against `docs.json`, rather than a filename, since a
+/// module no longer has a page of its own on disk. Only dotted forms link —
+/// bare lowercase names (`print(x)`-style) stay plain, since `Kernel` is
 /// implicit and a bare name rarely names a module.
 fn link_target(code: &str, modules: &[String]) -> Option<String> {
     let code = code.trim();
@@ -1040,19 +1075,19 @@ fn link_target(code: &str, modules: &[String]) -> Option<String> {
         if modules.iter().any(|m| m == mod_name) {
             let member = rest.trim();
             if member.is_empty() {
-                return Some(format!("{mod_name}.html"));
+                return Some(format!("#/{mod_name}"));
             }
             let end = member
                 .find(|c: char| !c.is_alphanumeric() && c != '_')
                 .unwrap_or(member.len());
             let member_name = &member[..end];
-            return Some(format!("{mod_name}.html#{member_name}"));
+            return Some(format!("#/{mod_name}:{member_name}"));
         }
         return None;
     }
     // A bare capitalized name could be a module.
     if modules.iter().any(|m| m == code) {
-        return Some(format!("{code}.html"));
+        return Some(format!("#/{code}"));
     }
     None
 }
@@ -1490,9 +1525,7 @@ fn resolve_md_link(href: &str) -> String {
 
 // ── HTML rendering ───────────────────────────────────────────────────────
 
-fn render_module(m: &ModuleDoc, all_modules: &[String], guides: Guides) -> String {
-    let title = format!("{} — Ramos", m.name);
-    let sidebar = render_sidebar(Some(&m.name), all_modules, guides);
+fn render_module(m: &ModuleDoc, all_modules: &[String]) -> String {
     let modules = all_modules.to_vec();
 
     // Module summary — the first paragraph of the description.
@@ -1548,8 +1581,7 @@ fn render_module(m: &ModuleDoc, all_modules: &[String], guides: Guides) -> Strin
         fns_detail.push_str("</section>\n");
     }
 
-    let body = format!("{summary_block}{description}{fns_summary}{fns_detail}");
-    page(&title, &sidebar, Some(&m.name), "", &body)
+    format!("{summary_block}{description}{fns_summary}{fns_detail}")
 }
 
 fn render_function(f: &FunctionDoc, modules: &[String]) -> String {
@@ -1617,52 +1649,10 @@ fn render_block(block: &Block, modules: &[String]) -> String {
     }
 }
 
-/// The shared sidebar. `current` is the module page being rendered, or
-/// `"guide"` / `"examples"` for the narrative pages, so exactly one entry is
-/// highlighted.
-fn render_sidebar(current: Option<&str>, all_modules: &[String], guides: Guides) -> String {
-    let mut out = String::from(
-        "<nav class=\"sidebar\">\n  <a class=\"brand\" href=\"index.html\"><img src=\"assets/ramos-logo.png\" alt=\"\" class=\"brand-logo\"></a>\n",
-    );
-    if guides.any() {
-        out.push_str("  <h3>Guides</h3>\n  <ul>\n");
-        for (page, label, present) in [
-            ("guide", "Language guide", guides.guide),
-            ("examples", "Examples", guides.examples),
-            ("programs", "Programs", guides.programs),
-        ] {
-            if !present {
-                continue;
-            }
-            let class = if current == Some(page) {
-                " class=\"current\""
-            } else {
-                ""
-            };
-            out.push_str(&format!(
-                "    <li><a href=\"{page}.html\"{class}>{label}</a></li>\n"
-            ));
-        }
-        out.push_str("  </ul>\n");
-    }
-    out.push_str("  <h3>Modules</h3>\n  <ul>\n");
-    for name in all_modules {
-        let class = if Some(name.as_str()) == current {
-            " class=\"current\""
-        } else {
-            ""
-        };
-        out.push_str(&format!(
-            "    <li><a href=\"{name}.html\"{class}>{name}</a></li>\n"
-        ));
-    }
-    out.push_str("  </ul>\n</nav>\n");
-    out
-}
-
-/// The `guide.html` page: the README, with a contents list of its sections.
-fn render_guide(markdown: &str, module_names: &[String], guides: Guides) -> String {
-    let sidebar = render_sidebar(Some("guide"), module_names, guides);
+/// The `guide` page's body: the README, with a contents list of its sections.
+/// The sidebar itself is built client-side in the shell from `docs.json`'s
+/// `modules` and `guides` fields, rather than rendered per page here.
+fn render_guide(markdown: &str, module_names: &[String]) -> String {
     let (content, headings) = render_markdown(markdown, module_names);
 
     let mut body = String::from("<h1>Language guide</h1>\n");
@@ -1680,12 +1670,11 @@ fn render_guide(markdown: &str, module_names: &[String], guides: Guides) -> Stri
     }
     body.push_str(&content);
 
-    page("Language guide — Ramos", &sidebar, None, " guide", &body)
+    body
 }
 
-/// The `examples.html` page: a contents list, then one section per fixture.
+/// The `examples` page's body: a contents list, then one section per fixture.
 fn render_examples(examples: &[ExampleDoc], module_names: &[String], guides: Guides) -> String {
-    let sidebar = render_sidebar(Some("examples"), module_names, guides);
     let modules = module_names.to_vec();
 
     let mut body = String::new();
@@ -1698,7 +1687,7 @@ fn render_examples(examples: &[ExampleDoc], module_names: &[String], guides: Gui
     if guides.guide {
         body.push_str(
             "<p>For the prose version of the same ground, see the \
-             <a href=\"guide.html\">language guide</a>.</p>\n",
+             <a href=\"#/guide\">language guide</a>.</p>\n",
         );
     }
 
@@ -1733,16 +1722,15 @@ fn render_examples(examples: &[ExampleDoc], module_names: &[String], guides: Gui
         body.push_str("</section>\n");
     }
 
-    page("Examples — Ramos", &sidebar, None, " examples", &body)
+    body
 }
 
-/// The `programs.html` page: a contents list, then one section per runnable
+/// The `programs` page's body: a contents list, then one section per runnable
 /// program under `examples/`. Shares the Examples page's markup and CSS
 /// classes (`example`/`example-toc`/`example-summary`) — the only structural
 /// difference is a multi-file program's `Block::FileHeading` labels between
 /// its files' code.
 fn render_programs(programs: &[ExampleDoc], module_names: &[String], guides: Guides) -> String {
-    let sidebar = render_sidebar(Some("programs"), module_names, guides);
     let modules = module_names.to_vec();
 
     let mut body = String::new();
@@ -1755,13 +1743,13 @@ fn render_programs(programs: &[ExampleDoc], module_names: &[String], guides: Gui
     if guides.examples {
         body.push_str(
             "<p>For one small program per language feature instead, see the \
-             <a href=\"examples.html\">Examples</a> page.</p>\n",
+             <a href=\"#/examples\">Examples</a> page.</p>\n",
         );
     }
     if guides.guide {
         body.push_str(
             "<p>New to the language? Start with the \
-             <a href=\"guide.html\">language guide</a>.</p>\n",
+             <a href=\"#/guide\">language guide</a>.</p>\n",
         );
     }
 
@@ -1796,12 +1784,11 @@ fn render_programs(programs: &[ExampleDoc], module_names: &[String], guides: Gui
         body.push_str("</section>\n");
     }
 
-    page("Programs — Ramos", &sidebar, None, " examples", &body)
+    body
 }
 
 fn render_index(modules: &[ModuleDoc], guides: Guides, guide_md: Option<&str>) -> String {
     let names: Vec<String> = modules.iter().map(|m| m.name.clone()).collect();
-    let sidebar = render_sidebar(None, &names, guides);
 
     let mut body = String::new();
     body.push_str("<h1>Ramos</h1>\n");
@@ -1815,7 +1802,7 @@ fn render_index(modules: &[ModuleDoc], guides: Guides, guide_md: Option<&str>) -
         body.push_str(&render_markdown(markdown_section(md, "## Philosophy"), &names).0);
         if guides.guide {
             body.push_str(
-                "<p><a href=\"guide.html#philosophy\">Read more in the language guide</a>.</p>\n",
+                "<p><a href=\"#/guide:philosophy\">Read more in the language guide</a>.</p>\n",
             );
         }
 
@@ -1837,18 +1824,18 @@ fn render_index(modules: &[ModuleDoc], guides: Guides, guide_md: Option<&str>) -
     // 2^3 combination.
     let mut steps: Vec<String> = Vec::new();
     if guides.guide {
-        steps.push("start with the <a href=\"guide.html\">language guide</a>".to_string());
+        steps.push("start with the <a href=\"#/guide\">language guide</a>".to_string());
     }
     if guides.examples {
         steps.push(
-            "browse the <a href=\"examples.html\">examples</a> — one small program \
+            "browse the <a href=\"#/examples\">examples</a> — one small program \
              per feature"
                 .to_string(),
         );
     }
     if guides.programs {
         steps.push(
-            "look at the <a href=\"programs.html\">programs</a> page for several \
+            "look at the <a href=\"#/programs\">programs</a> page for several \
              features working together"
                 .to_string(),
         );
@@ -1870,7 +1857,7 @@ fn render_index(modules: &[ModuleDoc], guides: Guides, guide_md: Option<&str>) -
     body.push_str("<ul class=\"module-list\">\n");
     for m in modules {
         body.push_str(&format!(
-            "  <li>\n    <a href=\"{name}.html\" class=\"module-name\">{name}</a>\n    \
+            "  <li>\n    <a href=\"#/{name}\" class=\"module-name\">{name}</a>\n    \
              <p class=\"module-summary\">{summary}</p>\n  </li>\n",
             name = html_escape(&m.name),
             summary = render_inline(&m.summary, &names),
@@ -1878,48 +1865,247 @@ fn render_index(modules: &[ModuleDoc], guides: Guides, guide_md: Option<&str>) -
     }
     body.push_str("</ul>\n");
 
-    page("Ramos", &sidebar, None, " index", &body)
+    body
 }
 
-/// One HTML page. `heading` is the big `<h1>` (usually the module name);
-/// `None` skips it (used by the index, which carries its own `<h1>`).
-/// `content_class` is appended to the content section's class list.
-fn page(
-    title: &str,
-    sidebar: &str,
-    heading: Option<&str>,
-    content_class: &str,
-    body: &str,
-) -> String {
-    let heading_html = match heading {
-        Some(h) => format!("\n  <h1 class=\"module-header\">{}</h1>\n", html_escape(h)),
-        None => String::new(),
-    };
-    format!(
-        "<!DOCTYPE html>\n\
-         <html lang=\"en\">\n\
-         <head>\n  \
-         <meta charset=\"utf-8\">\n  \
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  \
-         <title>{title}</title>\n  \
-         <link rel=\"stylesheet\" href=\"assets/style.css\">\n\
-         </head>\n\
-         <body>\n\
-         <main class=\"layout\">\n\
-         {sidebar}\
-         <section class=\"content{content_class}\">{heading_html}\n\
-         {body}\
-         </section>\n\
-         </main>\n\
-         </body>\n\
-         </html>\n",
-        title = html_escape(title),
-    )
+/// One page's rendered content, ready to embed in `docs.json`. `heading`
+/// becomes the shell's `<h1 class="module-header">` — used only by module
+/// pages; the narrative pages (guide/examples/programs/index) carry their own
+/// `<h1>` inline in `body` and pass `None` here. `content_class` is added to
+/// the shell's content section so the stylesheet's per-page rules still apply.
+fn page_json(title: &str, heading: Option<&str>, content_class: &str, body: String) -> Json {
+    Json::Object(vec![
+        ("title".to_string(), Json::Str(title.to_string())),
+        (
+            "heading".to_string(),
+            match heading {
+                Some(h) => Json::Str(h.to_string()),
+                None => Json::Null,
+            },
+        ),
+        (
+            "content_class".to_string(),
+            Json::Str(content_class.to_string()),
+        ),
+        ("body".to_string(), Json::Str(body)),
+    ])
 }
 
 fn anchor(name: &str, arity: usize) -> String {
     format!("{name}/{arity}")
 }
+
+// ── JSON ─────────────────────────────────────────────────────────────────
+
+/// The crate carries no dependencies, and `docs.json`'s shape is small and
+/// fixed, so this hand-rolls just enough JSON to write it rather than pulling
+/// in a serializer crate for one file.
+enum Json {
+    Null,
+    Bool(bool),
+    Str(String),
+    Array(Vec<Json>),
+    Object(Vec<(String, Json)>),
+}
+
+impl Json {
+    fn write(&self, out: &mut String) {
+        match self {
+            Json::Null => out.push_str("null"),
+            Json::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
+            Json::Str(s) => {
+                out.push('"');
+                json_escape_into(s, out);
+                out.push('"');
+            }
+            Json::Array(items) => {
+                out.push('[');
+                for (i, item) in items.iter().enumerate() {
+                    if i > 0 {
+                        out.push(',');
+                    }
+                    item.write(out);
+                }
+                out.push(']');
+            }
+            Json::Object(fields) => {
+                out.push('{');
+                for (i, (key, value)) in fields.iter().enumerate() {
+                    if i > 0 {
+                        out.push(',');
+                    }
+                    out.push('"');
+                    json_escape_into(key, out);
+                    out.push_str("\":");
+                    value.write(out);
+                }
+                out.push('}');
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for Json {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut out = String::new();
+        self.write(&mut out);
+        f.write_str(&out)
+    }
+}
+
+fn json_escape_into(s: &str, out: &mut String) {
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+}
+
+// ── the static shell ────────────────────────────────────────────────────
+
+/// The single HTML page every generated site ships: identical regardless of
+/// what's documented, since the actual content lives in `docs.json` and this
+/// just fetches it, builds the sidebar from its `modules`/`guides` fields,
+/// and swaps the content section's markup in as the URL hash changes.
+///
+/// Route format: `#/<page>` navigates, where `<page>` is a module name,
+/// `guide`/`examples`/`programs`, or empty for the index; `#/<page>:<anchor>`
+/// additionally scrolls to an element by id once the page has loaded. A bare
+/// `#<anchor>` (no leading slash) is left alone — that's an in-page jump to a
+/// heading or function anchor on the page already showing, and the browser
+/// handles it natively.
+const SHELL_HTML: &str = r##"<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ramos</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="layout">
+  <nav class="sidebar" id="sidebar">
+    <a class="brand" href="#/"><img src="assets/ramos-logo.png" alt="" class="brand-logo"></a>
+    <div id="sidebar-nav"></div>
+  </nav>
+  <section class="content" id="content">
+    <p>Loading…</p>
+  </section>
+</main>
+<script>
+(function () {
+  "use strict";
+  var content = document.getElementById("content");
+  var sidebarNav = document.getElementById("sidebar-nav");
+  var data = null;
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // "#/Kernel:print" -> {page: "Kernel", anchor: "print"}; "#/" -> {page: "", anchor: null}.
+  function parseHash() {
+    var h = location.hash;
+    if (h.indexOf("#/") !== 0) {
+      return null;
+    }
+    h = h.slice(2);
+    var sep = h.indexOf(":");
+    if (sep === -1) {
+      return { page: h, anchor: null };
+    }
+    return { page: h.slice(0, sep), anchor: h.slice(sep + 1) };
+  }
+
+  function buildSidebar() {
+    var html = "";
+    var guideLinks = [
+      ["guide", "Language guide", data.guides.guide],
+      ["examples", "Examples", data.guides.examples],
+      ["programs", "Programs", data.guides.programs],
+    ];
+    if (data.guides.guide || data.guides.examples || data.guides.programs) {
+      html += "<h3>Guides</h3>\n<ul>\n";
+      guideLinks.forEach(function (entry) {
+        if (!entry[2]) return;
+        html +=
+          '  <li><a href="#/' + entry[0] + '" data-page="' + entry[0] + '">' +
+          entry[1] + "</a></li>\n";
+      });
+      html += "</ul>\n";
+    }
+    html += "<h3>Modules</h3>\n<ul>\n";
+    data.modules.forEach(function (name) {
+      html +=
+        '  <li><a href="#/' + name + '" data-page="' + name + '">' + name + "</a></li>\n";
+    });
+    html += "</ul>\n";
+    sidebarNav.innerHTML = html;
+  }
+
+  function highlightSidebar(pageId) {
+    var links = document.querySelectorAll("#sidebar a[data-page]");
+    for (var i = 0; i < links.length; i++) {
+      var current = links[i].getAttribute("data-page") === pageId;
+      links[i].classList.toggle("current", current);
+    }
+  }
+
+  function render() {
+    if (!data) return;
+    var route = parseHash() || { page: "", anchor: null };
+    var page = data.pages[route.page];
+    if (!page) {
+      page = data.pages[""];
+      route = { page: "", anchor: null };
+    }
+    document.title = page.title;
+    content.className = "content" + (page.content_class ? " " + page.content_class : "");
+    var headingHtml = page.heading
+      ? '<h1 class="module-header">' + escapeHtml(page.heading) + "</h1>\n"
+      : "";
+    content.innerHTML = headingHtml + page.body;
+    highlightSidebar(route.page);
+    if (route.anchor) {
+      var el = document.getElementById(route.anchor);
+      if (el) el.scrollIntoView();
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }
+
+  window.addEventListener("hashchange", function () {
+    // A bare in-page anchor (no "#/" prefix) is the browser's own scroll —
+    // routing should leave it alone rather than re-rendering the page away
+    // out from under it.
+    if (parseHash() === null) return;
+    render();
+  });
+
+  fetch("docs.json")
+    .then(function (r) { return r.json(); })
+    .then(function (json) {
+      data = json;
+      buildSidebar();
+      render();
+    })
+    .catch(function (err) {
+      content.innerHTML =
+        "<p>Could not load <code>docs.json</code>: " + escapeHtml(String(err)) +
+        "</p><p>This page needs to be served over HTTP (not opened as a " +
+        "<code>file://</code> URL) for the fetch to succeed.</p>";
+    });
+})();
+</script>
+</body>
+</html>
+"##;
 
 // ── stylesheet ───────────────────────────────────────────────────────────
 

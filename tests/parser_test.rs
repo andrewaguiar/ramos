@@ -142,6 +142,7 @@ fn calls_local_module_and_method() {
         Expr::Call {
             callee: Callee::Local("print".into()),
             args: vec![var("x")],
+            line: 1,
         }
     );
     assert_eq!(
@@ -152,6 +153,7 @@ fn calls_local_module_and_method() {
                 name: "map".into(),
             },
             args: vec![var("xs"), var("f")],
+            line: 1,
         }
     );
     assert_eq!(
@@ -162,6 +164,7 @@ fn calls_local_module_and_method() {
                 name: "hello".into(),
             },
             args: vec![],
+            line: 1,
         }
     );
     // dot access without parens is field/const access, not a call
@@ -181,6 +184,7 @@ fn calls_local_module_and_method() {
                 name: "create".into(),
             },
             args: vec![],
+            line: 1,
         }
     );
 }
@@ -202,9 +206,11 @@ fn pipe_desugars_to_first_argument() {
                         name: "map".into(),
                     },
                     args: vec![var("a"), var("f")],
+                    line: 2,
                 },
                 var("s"),
             ],
+            line: 3,
         }
     );
     assert_eq!(
@@ -230,6 +236,7 @@ fn pipe_must_start_its_own_line() {
                 name: "get".into(),
             },
             args: vec![var("map"), Expr::Symbol("key".into()), Expr::Nil],
+            line: 2,
         }
     );
 }
@@ -604,6 +611,7 @@ fn field_assignment_desugars_to_struct_put() {
     let Expr::Call {
         callee: Callee::Method { name, .. },
         args,
+        ..
     } = value
     else {
         panic!("expected a Struct.put call");
@@ -769,7 +777,10 @@ struct Account
     assert_eq!(
         s.aliases,
         vec![
-            ("Circle".to_string(), path(&["Geometry", "Shapes", "Circle"])),
+            (
+                "Circle".to_string(),
+                path(&["Geometry", "Shapes", "Circle"])
+            ),
             ("Sq".to_string(), path(&["Geometry", "Shapes", "Square"])),
         ]
     );
@@ -1037,20 +1048,24 @@ fn a_helper_cannot_call_a_function_in_its_own_module() {
     let err = parse_err(
         "module Payments\n  function charge(amount)\n    1\n\n  helper log(amount)\n    self.charge(amount)\n",
     );
-    assert!(err.contains("is a `helper` and calls `Payments.charge`"), "{err}");
+    assert!(
+        err.contains("is a `helper` and calls `Payments.charge`"),
+        "{err}"
+    );
     // The same restriction applies inside a struct.
     let err = parse_err(
         "struct Account\n  attributes\n    balance: 0\n\n  function charge(self, amount)\n    1\n\n  helper log(self, amount)\n    charge(amount)\n",
     );
-    assert!(err.contains("is a `helper` and calls `Account.charge`"), "{err}");
+    assert!(
+        err.contains("is a `helper` and calls `Account.charge`"),
+        "{err}"
+    );
 }
 
 #[test]
 fn a_helper_may_call_other_helpers_and_functions_may_call_helpers() {
     // A helper calling another helper is fine...
-    let p = program(
-        "module Payments\n  helper a(x)\n    b(x)\n\n  helper b(x)\n    x\n",
-    );
+    let p = program("module Payments\n  helper a(x)\n    b(x)\n\n  helper b(x)\n    x\n");
     assert_eq!(p.items.len(), 1);
     // ...and so is a function calling a helper, the usual direction.
     let p = program(

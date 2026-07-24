@@ -30,6 +30,7 @@ use crate::ast::*;
 use crate::parser::parse;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// The embedded standard library, as (file stem, source).
 const STDLIB: &[(&str, &str)] = &[
@@ -80,6 +81,7 @@ pub fn stdlib(stdlib_dir: Option<&Path>) -> Result<Program, LoadError> {
     loaded.add_stdlib(stdlib_dir)?;
     Ok(Program {
         items: loaded.items,
+        entry_file: Arc::from(""),
     })
 }
 
@@ -96,11 +98,12 @@ pub fn load(entry: &Path, stdlib_dir: Option<&Path>) -> Result<Program, LoadErro
     // the one-definition rule, but not to the naming one, so a scratch file or
     // a demo may be called whatever its author likes.
     let source = read(entry)?;
-    let program = parse_source(entry, &source)?;
+    let mut program = parse_source(entry, &source)?;
     check_one_definition(entry, &program)?;
     // Roots depend on the entry's own namespace, so read them before the items
     // are moved into the bundle.
     let roots = search_roots(entry, &program);
+    stamp_file(&mut program.items, entry);
     loaded.items.extend(program.items);
 
     // Resolve what the program refers to, then what *those* modules refer to,
@@ -108,6 +111,7 @@ pub fn load(entry: &Path, stdlib_dir: Option<&Path>) -> Result<Program, LoadErro
     loaded.resolve_references(&roots)?;
     Ok(Program {
         items: loaded.items,
+        entry_file: entry.display().to_string().into(),
     })
 }
 
@@ -153,7 +157,7 @@ impl Loaded {
     }
 
     /// Add a file that must hold exactly one definition, named after the file.
-    fn add_file(&mut self, path: &Path, program: Program) -> Result<(), LoadError> {
+    fn add_file(&mut self, path: &Path, mut program: Program) -> Result<(), LoadError> {
         check_one_definition(path, &program)?;
         let Some(name) = definition_name(&program) else {
             return Err(LoadError(format!(
@@ -163,6 +167,7 @@ impl Loaded {
         };
         check_name_matches_file(path, name)?;
         self.defined.insert(name.to_string(), ());
+        stamp_file(&mut program.items, path);
         self.items.extend(program.items);
         Ok(())
     }
@@ -278,6 +283,35 @@ fn parse_source(path: &Path, source: &str) -> Result<Program, LoadError> {
     let tokens = crate::lexer::lex(source)
         .map_err(|e| LoadError(crate::diagnostics::render(&shown, source, &e)))?;
     parse(tokens).map_err(|e| LoadError(crate::diagnostics::render_parse(&shown, source, &e)))
+}
+
+/// Record `path` as the file every function in `items` was defined in — what a
+/// stacktrace frame names for a call made from inside one of them, or from a
+/// lambda one of them creates (a lambda inherits the file of whatever
+/// function is running when it is built; see `Interp::current_file`).
+fn stamp_file(items: &mut [Item], path: &Path) {
+    let file: Arc<str> = path.display().to_string().into();
+    for item in items {
+        match item {
+            Item::Module(m) => {
+                for f in &mut m.functions {
+                    f.file = file.clone();
+                }
+            }
+            Item::Struct(s) => {
+                for f in &mut s.functions {
+                    f.file = file.clone();
+                }
+            }
+            Item::Trait(t) => {
+                for f in &mut t.functions {
+                    f.file = file.clone();
+                }
+            }
+            Item::Function(f) => f.file = file.clone(),
+            Item::Statement(_) => {}
+        }
+    }
 }
 
 /// The name of a program's single definition, if it has one.
@@ -430,7 +464,7 @@ fn expr_refs(e: &Expr, out: &mut Vec<ModulePath>) {
             out.push(path.clone());
             fields.iter().for_each(|(_, v)| expr_refs(v, out));
         }
-        Expr::Call { callee, args } => {
+        Expr::Call { callee, args, .. } => {
             if let Callee::Method { target, .. } = callee {
                 expr_refs(target, out);
             }

@@ -259,6 +259,9 @@ A codebase can have **as many entrypoints as it needs** — one per runnable
 program — each in its own file, following the same naming rules as any other
 module (`App` → `app.rmo`, `MyApp.Cli` → `src/my_app/cli.rmo`).
 
+`ramos new <name>` scaffolds one of these for you — see [Starting a
+project](#starting-a-project).
+
 Bare top-level code, like the [Hello, world](#hello-world) snippet above, still
 runs for quick experiments — `ramos run` executes a file's top-level statements
 when it has no entrypoint module. But a real program you ship is structured as
@@ -653,7 +656,15 @@ the standard library.
 ```
 ramos doctest --stdlib stdlib     # the standard library documents itself
 ramos doctest ./mylib             # a project, against the embedded stdlib
+ramos doctest                     # same as `ramos doctest .` — the current
+                                   # project, against the embedded stdlib
 ```
+
+`DIR/src` is searched recursively (its own `src/test/` is skipped — that's
+`ramos test`'s), so a namespaced module's examples run too. An example has no
+`alias` in scope, though, so it calls a namespaced module by its full path:
+`MyApp.Business.Greeter.greet(...)`, not the short name a real caller would
+get from `alias`ing it.
 
 Each example runs as its own program, in its own empty directory, with the
 project's modules beside it — so an example must be self-contained. Write the
@@ -1697,9 +1708,11 @@ module MyApp.UserTest
 ```
 
 ```
-ramos test                              # everything under src/test/
-ramos test src/test/my_app/user_test.rmo   # one file
-ramos test --quietly                    # results only, no doc lines
+ramos test                # everything under the nearest src/test — found by
+                           # walking up from `.`, so this works from any
+                           # directory inside the project, not only its root
+ramos test user           # only the files whose name or path contains "user"
+ramos test --quietly      # results only, no doc lines
 ```
 
 The report carries the [documentation comments](#documentation-comments) along
@@ -1774,15 +1787,18 @@ The binary takes a subcommand and (except for the REPL) a single `.rmo` file:
 
 | Command                | What it does |
 | ---------------------- | ------------ |
+| `ramos new <name>`      | Scaffold a project: `<name>/src/<snake_case>/main.rmo` defining `<CamelCase>.Main` |
 | `ramos run <file.rmo>`   | Execute a program — calls the file's [entrypoint](#entrypoints) `main()` |
+| `ramos run <dir>`        | Run that directory's `main.rmo` (the shallowest one found) |
+| `ramos run`               | Same as `ramos run .` — run the current directory's `main.rmo` |
 | `ramos learn`            | Print a crash course: every keyword, the syntax, and what not to do — no file needed, meant for a person or an AI agent to read cold |
 | `ramos repl`             | Start an interactive read-eval-print loop |
 | `ramos check <file.rmo>` | Enforce the strict rules and parse the file **without running it** |
 | `ramos ast <file.rmo>`   | Print the parsed abstract syntax tree |
 | `ramos lexer <file.rmo>` | Print the raw token stream |
-| `ramos test [--quietly] [file]` | Run the tests under `src/test/`, or one file's — `--quietly` leaves the `@doc` lines out |
-| `ramos doctest [--stdlib DIR] [DIR]` | Run the `# ==` examples in `DIR/src/*.rmo`'s doc comments |
-| `ramos doc`              | Generate Hexdocs-style HTML for [`stdlib/`](stdlib/) into `docs/` |
+| `ramos test [--quietly] [filter]` | Run every test under the nearest `src/test` (found by walking up from `.`), or just the files whose name or path contains `filter` — `--quietly` leaves the `@doc` lines out |
+| `ramos doctest [--stdlib DIR] [DIR]` | Run the `# ==` examples in `DIR/src/*.rmo`'s doc comments — `DIR` defaults to `.` |
+| `ramos doc`              | Generate a Hexdocs-style reference for [`stdlib/`](stdlib/) into `docs/` |
 
 > `run` loads the standard library (embedded in the binary), then the entry
 > file and every module it reaches, then calls the entrypoint's `main()` — or
@@ -1790,15 +1806,54 @@ The binary takes a subcommand and (except for the REPL) a single `.rmo` file:
 > stdlib from disk instead, which is how the stdlib itself is developed.
 >
 > `ramos doc` reads the inline [`@module_doc`](#documentation-comments) / `@doc`
-> comments out of every `.rmo` file under [`stdlib/`](stdlib/) and writes a
-> static site — one HTML page per module plus an `index.html` overview — into
-> `docs/`, alongside an `examples.html` guide built from the feature fixtures in
-> [`tests/fixtures/features/`](tests/fixtures/features/) — each fixture's header
-> comment becomes the prose, its code the snippets, so the guide can't drift
-> from code that lexes and parses. Options: `--stdlib DIR` (source, default
-> `./stdlib`), `--out DIR` (output, default `./docs`) and `--examples DIR`
-> (fixtures, default `./tests/fixtures/features`; a missing dir just drops the
-> page). Open `docs/index.html` to browse it.
+> comments out of every `.rmo` file under [`stdlib/`](stdlib/) and renders each
+> module, plus a language guide built from the README, an examples guide built
+> from the feature fixtures in [`tests/fixtures/features/`](tests/fixtures/features/)
+> (each fixture's header comment becomes the prose, its code the snippets, so
+> it can't drift from code that lexes and parses), and a programs guide built
+> from [`examples/`](examples/). Rather than one HTML file per page, it writes
+> `docs/docs.json` — the rendered content, keyed by page — and a single static
+> `docs/index.html` shell that fetches that JSON and presents it client-side,
+> swapping pages in as the URL hash changes (`#/List`, `#/guide`, `#/examples`,
+> `#/programs`). Options: `--stdlib DIR` (source, default `./stdlib`), `--out
+> DIR` (output, default `./docs`), `--examples DIR` (fixtures, default
+> `./tests/fixtures/features`), `--programs DIR` (default `./examples`) and
+> `--readme FILE` (default `./README.md`) — a missing examples/programs dir or
+> readme just drops that page. Serve `docs/` over HTTP and open `index.html`
+> to browse it (the shell's `fetch("docs.json")` needs a real origin, so
+> opening the file directly as `file://` won't load the data).
+
+### Starting a project
+
+```
+ramos new pet-project
+```
+
+creates:
+
+```
+pet-project/
+└── src/
+    └── pet_project/
+        └── main.rmo
+```
+
+with an [entrypoint](#entrypoints) already in place:
+
+```
+# pet-project/src/pet_project/main.rmo
+module PetProject.Main
+  function main()
+    println("pet-project")
+```
+
+The project name (`-` or `_` separated) becomes both a snake_case directory —
+following the same file-naming rule the module system uses everywhere else —
+and a CamelCase module name, so the project is runnable as soon as it exists:
+
+```
+ramos run pet-project    # finds and runs src/pet_project/main.rmo
+```
 
 ### Running a program
 
@@ -1808,6 +1863,15 @@ ramos run app.rmo        # loads the stdlib, then app.rmo, then calls App.main()
 
 `run` calls the entrypoint's `main()` (see [Entrypoints](#entrypoints)); a file
 of bare top-level statements runs top-to-bottom instead.
+
+Point it at a directory and it runs that directory's `main.rmo` instead — and
+with no argument at all, `ramos run` is `ramos run .`, so the project a
+[`ramos new`](#starting-a-project) scaffold produces is runnable from its own
+root with nothing more than:
+
+```
+ramos run
+```
 
 ### Checking without running
 

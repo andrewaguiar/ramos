@@ -13,6 +13,7 @@ use crate::ast::*;
 use crate::diagnostics::Example;
 use crate::lexer::{StrPart, Token, TokenKind as T};
 use crate::span::Span;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParseError {
@@ -57,7 +58,10 @@ impl Parser {
         while !self.check(&T::Eof) {
             items.push(self.parse_item()?);
         }
-        Ok(Program { items })
+        Ok(Program {
+            items,
+            entry_file: Arc::from(""),
+        })
     }
 
     fn parse_item(&mut self) -> Result<Item, ParseError> {
@@ -283,6 +287,9 @@ impl Parser {
             body,
             private,
             span,
+            // Stamped for real by the loader, which knows the file; a
+            // snippet parsed directly (a test, the REPL) leaves it empty.
+            file: Arc::from(""),
         })
     }
 
@@ -293,7 +300,10 @@ impl Parser {
     /// quiet surprise a duplicate function name is refused for. `as` exists
     /// precisely to give one of them a different name, so a collision without
     /// it is a parse error rather than a silent pick.
-    fn parse_aliases(&mut self, owner: &ModulePath) -> Result<Vec<(String, ModulePath)>, ParseError> {
+    fn parse_aliases(
+        &mut self,
+        owner: &ModulePath,
+    ) -> Result<Vec<(String, ModulePath)>, ParseError> {
         let mut aliases: Vec<(String, ModulePath)> = Vec::new();
         while self.check(&T::Alias) {
             let span = self.span();
@@ -354,11 +364,12 @@ impl Parser {
         let expr = self.parse_expr()?;
         let stmt = if self.check(&T::Assign) {
             let at = self.span();
+            let line = self.line();
             self.bump();
             // `andrew.age = 41` is field-assignment sugar, not a pattern.
             if let Expr::Access { target, name } = expr {
                 let value = self.parse_assign_rhs()?;
-                self.field_assign(*target, name, value, at)?
+                self.field_assign(*target, name, value, at, line)?
             } else {
                 let pattern = self.expr_to_pattern(expr, at)?;
                 check_bindings_are_unique(&pattern, at)?;
@@ -385,6 +396,7 @@ impl Parser {
         field: String,
         value: Expr,
         at: Span,
+        line: usize,
     ) -> Result<Stmt, ParseError> {
         let binding = match target {
             Expr::Var(binding) => binding,
@@ -427,6 +439,7 @@ impl Parser {
                     name: "put".to_string(),
                 },
                 args: vec![Expr::Var(binding), Expr::Symbol(field), value],
+                line,
             },
         })
     }
@@ -534,9 +547,13 @@ impl Parser {
             self.bump(); // the Pipe
             let rhs = self.parse_or()?;
             left = match rhs {
-                Expr::Call { callee, mut args } => {
+                Expr::Call {
+                    callee,
+                    mut args,
+                    line,
+                } => {
                     args.insert(0, left);
-                    Expr::Call { callee, args }
+                    Expr::Call { callee, args, line }
                 }
                 _ => {
                     return Err(self.err_at_ex(
@@ -670,6 +687,7 @@ impl Parser {
     fn parse_postfix(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.parse_primary()?;
         while self.check(&T::Dot) {
+            let line = self.line();
             self.bump();
             let name = self.expect_ident("a field or function name after `.`")?;
             if self.check(&T::LParen) {
@@ -680,6 +698,7 @@ impl Parser {
                         name,
                     },
                     args,
+                    line,
                 };
             } else {
                 expr = Expr::Access {
@@ -723,8 +742,9 @@ impl Parser {
                 Ok(Expr::Str(self.convert_str_parts(parts, at)?))
             }
             T::Sigil(letter, text) => {
+                let line = self.line();
                 self.bump();
-                Ok(sigil_call(letter, text))
+                Ok(sigil_call(letter, text, line))
             }
             T::Underscore => {
                 self.bump();
@@ -735,12 +755,14 @@ impl Parser {
                 Ok(Expr::SelfRef)
             }
             T::Ident(name) => {
+                let line = self.line();
                 self.bump();
                 if self.check(&T::LParen) {
                     let args = self.parse_call_args(is_actor_message_fn(&name))?;
                     Ok(Expr::Call {
                         callee: Callee::Local(name),
                         args,
+                        line,
                     })
                 } else {
                     Ok(Expr::Var(name))
@@ -1404,12 +1426,11 @@ fn block_calls_public(block: &Block, bound: &mut Vec<String>, public: &[&str]) -
 
 fn expr_calls_public(e: &Expr, bound: &mut Vec<String>, public: &[&str]) -> Option<String> {
     match e {
-        Expr::Call { callee, args } => {
+        Expr::Call { callee, args, .. } => {
             let hit = match callee {
-                Callee::Local(name) => {
-                    (!bound.iter().any(|b| b == name) && public.contains(&name.as_str()))
-                        .then(|| name.clone())
-                }
+                Callee::Local(name) => (!bound.iter().any(|b| b == name)
+                    && public.contains(&name.as_str()))
+                .then(|| name.clone()),
                 Callee::Method { target, name } => {
                     let self_call = matches!(target.as_ref(), Expr::SelfRef);
                     if self_call && public.contains(&name.as_str()) {
@@ -1419,7 +1440,10 @@ fn expr_calls_public(e: &Expr, bound: &mut Vec<String>, public: &[&str]) -> Opti
                     }
                 }
             };
-            hit.or_else(|| args.iter().find_map(|a| expr_calls_public(a, bound, public)))
+            hit.or_else(|| {
+                args.iter()
+                    .find_map(|a| expr_calls_public(a, bound, public))
+            })
         }
         Expr::Access { target, .. } => expr_calls_public(target, bound, public),
         Expr::Unary { operand, .. } => expr_calls_public(operand, bound, public),
@@ -1428,7 +1452,10 @@ fn expr_calls_public(e: &Expr, bound: &mut Vec<String>, public: &[&str]) -> Opti
         Expr::List { elements, rest } => elements
             .iter()
             .find_map(|x| expr_calls_public(x, bound, public))
-            .or_else(|| rest.as_deref().and_then(|r| expr_calls_public(r, bound, public))),
+            .or_else(|| {
+                rest.as_deref()
+                    .and_then(|r| expr_calls_public(r, bound, public))
+            }),
         Expr::Tuple(xs) => xs.iter().find_map(|x| expr_calls_public(x, bound, public)),
         Expr::Map(entries) => entries
             .iter()
@@ -1447,8 +1474,10 @@ fn expr_calls_public(e: &Expr, bound: &mut Vec<String>, public: &[&str]) -> Opti
             bound.truncate(base);
             hit
         }
-        Expr::Case { subject, arms } => expr_calls_public(subject, bound, public)
-            .or_else(|| arms.iter().find_map(|arm| case_arm_calls_public(arm, bound, public))),
+        Expr::Case { subject, arms } => expr_calls_public(subject, bound, public).or_else(|| {
+            arms.iter()
+                .find_map(|arm| case_arm_calls_public(arm, bound, public))
+        }),
         Expr::Cond { arms } => arms.iter().find_map(|arm| {
             expr_calls_public(&arm.condition, bound, public)
                 .or_else(|| block_calls_public(&arm.body, bound, public))
@@ -1459,14 +1488,24 @@ fn expr_calls_public(e: &Expr, bound: &mut Vec<String>, public: &[&str]) -> Opti
             else_body,
         } => expr_calls_public(condition, bound, public)
             .or_else(|| block_calls_public(then_body, bound, public))
-            .or_else(|| else_body.as_ref().and_then(|b| block_calls_public(b, bound, public))),
-        Expr::Run { body, arms } => block_calls_public(body, bound, public)
-            .or_else(|| arms.iter().find_map(|arm| case_arm_calls_public(arm, bound, public))),
+            .or_else(|| {
+                else_body
+                    .as_ref()
+                    .and_then(|b| block_calls_public(b, bound, public))
+            }),
+        Expr::Run { body, arms } => block_calls_public(body, bound, public).or_else(|| {
+            arms.iter()
+                .find_map(|arm| case_arm_calls_public(arm, bound, public))
+        }),
         _ => None,
     }
 }
 
-fn case_arm_calls_public(arm: &CaseArm, bound: &mut Vec<String>, public: &[&str]) -> Option<String> {
+fn case_arm_calls_public(
+    arm: &CaseArm,
+    bound: &mut Vec<String>,
+    public: &[&str],
+) -> Option<String> {
     let base = bound.len();
     collect_pattern_names(&arm.pattern, bound);
     let hit = arm
@@ -1483,7 +1522,9 @@ fn collect_pattern_names(pattern: &Pattern, bound: &mut Vec<String>) {
         Pattern::Binding(n) => bound.push(n.clone()),
         Pattern::Tuple(ps) => ps.iter().for_each(|p| collect_pattern_names(p, bound)),
         Pattern::List { elements, rest } => {
-            elements.iter().for_each(|p| collect_pattern_names(p, bound));
+            elements
+                .iter()
+                .for_each(|p| collect_pattern_names(p, bound));
             if let Some(r) = rest {
                 collect_pattern_names(r, bound);
             }
@@ -1492,7 +1533,9 @@ fn collect_pattern_names(pattern: &Pattern, bound: &mut Vec<String>) {
             .iter()
             .for_each(|(_, p)| collect_pattern_names(p, bound)),
         Pattern::Struct { fields, .. } => {
-            fields.iter().for_each(|(_, p)| collect_pattern_names(p, bound));
+            fields
+                .iter()
+                .for_each(|(_, p)| collect_pattern_names(p, bound));
         }
         _ => {}
     }
@@ -1689,6 +1732,12 @@ impl Parser {
         self.tokens[self.pos].span
     }
 
+    /// The 1-based source line the current token starts on — what a
+    /// stacktrace frame records for a call site.
+    fn line(&self) -> usize {
+        self.tokens[self.pos].line
+    }
+
     fn bump(&mut self) -> Token {
         let tok = self.tokens[self.pos].clone();
         if self.pos + 1 < self.tokens.len() {
@@ -1793,7 +1842,7 @@ fn bin(op: BinOp, left: Expr, right: Expr) -> Expr {
 
 /// `N"..."` → `NaiveDateTime.parse("...")`. The lexer already checked
 /// `letter` against this same set, so every other value is unreachable.
-fn sigil_call(letter: char, text: String) -> Expr {
+fn sigil_call(letter: char, text: String, line: usize) -> Expr {
     let module = match letter {
         'D' => "Date",
         'T' => "Time",
@@ -1807,5 +1856,6 @@ fn sigil_call(letter: char, text: String) -> Expr {
             name: "parse".to_string(),
         },
         args: vec![Expr::Str(vec![StrPiece::Lit(text)])],
+        line,
     }
 }

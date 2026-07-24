@@ -114,6 +114,8 @@ pub fn run_with_streams(
         actors: HashMap::new(),
         aliases: HashMap::new(),
         current_module: None,
+        current_file: program.entry_file.clone(),
+        call_stack: Vec::new(),
         argv: argv.to_vec(),
     };
     interp.run_program(program)
@@ -149,6 +151,8 @@ pub fn run_tests(
         actors: HashMap::new(),
         aliases: HashMap::new(),
         current_module: None,
+        current_file: program.entry_file.clone(),
+        call_stack: Vec::new(),
         argv: argv.to_vec(),
     };
     interp.register_items(program)?;
@@ -240,6 +244,8 @@ impl Session {
             actors: std::mem::take(&mut self.actors),
             aliases: std::mem::take(&mut self.aliases),
             current_module: None,
+            current_file: program.entry_file.clone(),
+            call_stack: Vec::new(),
             argv: self.argv.clone(),
         };
         let result = interp
@@ -289,8 +295,25 @@ struct Interp {
     /// The module whose function is currently executing, so bare calls resolve
     /// to that module's own `function`/`helper` before falling back to Kernel.
     current_module: Option<Arc<ModuleDef>>,
+    /// The file whose code is currently executing — a fresh lambda captures
+    /// this into its own `Closure::file`, and entering a named function sets
+    /// it to that function's `FnDef::file`, restored on return.
+    current_file: Arc<str>,
+    /// The call sites active right now, oldest first. Pushed and popped around
+    /// every ordinary call; a self-recursive **tail** call updates the top
+    /// frame in place instead of pushing, so a trampolined loop's stacktrace
+    /// stays one frame deep no matter how many iterations it runs.
+    call_stack: Vec<StackFrame>,
     /// The program's command-line arguments (after the script path).
     argv: Vec<String>,
+}
+
+/// One entry in [`Interp::call_stack`]: a call site, as the file it is
+/// written in and the line it is written on.
+#[derive(Clone)]
+struct StackFrame {
+    file: Arc<str>,
+    line: usize,
 }
 
 /// One message for an actor's mailbox.
@@ -663,17 +686,18 @@ impl Interp {
                 body: body.clone(),
                 env: env.clone(),
                 module: self.current_module.clone(),
+                file: self.current_file.clone(),
             }))),
             Expr::Unary { op, operand } => {
                 let v = self.eval_expr(operand, env)?;
                 eval_unary(*op, v)
             }
             Expr::Binary { op, left, right } => self.eval_binary(*op, left, right, env),
-            Expr::Call { callee, args } => match callee {
+            Expr::Call { callee, args, line } => match callee {
                 Callee::Local(name) if name == "assert" => self.eval_assert(args, env),
                 Callee::Local(name) => {
                     let arg_vals = self.eval_args(args, env)?;
-                    self.call_local(name, arg_vals, env)
+                    self.with_frame(*line, |me| me.call_local(name, arg_vals, env))
                 }
                 Callee::Method { target, name } => {
                     // The receiver is evaluated before the arguments, so a
@@ -686,7 +710,9 @@ impl Interp {
                         arg_vals.push(instance.clone());
                     }
                     arg_vals.extend(self.eval_args(args, env)?);
-                    self.call_module_method(receiver.module(), name, arg_vals)
+                    self.with_frame(*line, |me| {
+                        me.call_module_method(receiver.module(), name, arg_vals)
+                    })
                 }
             },
             Expr::Case { subject, arms } => self.eval_case(subject, arms, env),
@@ -854,6 +880,10 @@ impl Interp {
                 match native_name.as_ref() {
                     "start_thread" => return self.start_thread(inner_args),
                     "await_thread" => return self.await_thread(inner_args),
+                    // `natives::dispatch` has no access to `self.call_stack`
+                    // (it only gets the shared sinks), so this is answered
+                    // here instead — same reason as the two above.
+                    "current_stacktrace" => return Ok(self.stacktrace_value()),
                     _ => {}
                 }
             }
@@ -936,6 +966,25 @@ impl Interp {
     /// (`sleep`, `read`) never holds the sink and threads still run in parallel.
     fn call_native(&self, name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
         natives::call(&self.out, &self.errs, &self.argv, name, args)
+    }
+
+    /// `current_stacktrace()`'s value: `self.call_stack`, most recent call
+    /// first, main (or wherever the trail runs out) last. The two innermost
+    /// frames are always `current_stacktrace`'s own — the call into it, and
+    /// the call it makes in turn into `native(...)` — neither is a call
+    /// anyone wrote to learn where they are; both are dropped so the first
+    /// entry is the real call site the trace is about.
+    fn stacktrace_value(&self) -> Value {
+        let frames = self
+            .call_stack
+            .iter()
+            .rev()
+            .skip(2)
+            .map(|f| {
+                Value::Tuple(vec![Value::Str(f.file.clone()), Value::Int(f.line as i64)].into())
+            })
+            .collect();
+        Value::List(List::from_vec(frames))
     }
 
     /// `native("name", [args])` — dispatch to the host handler behind a Kernel
@@ -1031,6 +1080,11 @@ impl Interp {
                         actors: HashMap::new(),
                         aliases: aliases.clone(),
                         current_module: None,
+                        // Overwritten the instant `call_module_method` enters
+                        // the handler function; the actor's own thread has no
+                        // Ramos caller of its own to record here.
+                        current_file: Arc::from(""),
+                        call_stack: Vec::new(),
                         argv: argv.clone(),
                     };
                     interp.call_module_method(
@@ -1486,6 +1540,11 @@ impl Interp {
                     actors: HashMap::new(),
                     aliases,
                     current_module: None,
+                    // Overwritten the instant `apply_lambda` enters the
+                    // closure's body; the spawned thread has no Ramos caller
+                    // of its own to record here.
+                    current_file: Arc::from(""),
+                    call_stack: Vec::new(),
                     argv,
                 };
                 interp.apply_lambda(&closure, vec![])
@@ -1621,8 +1680,13 @@ impl Interp {
         for (param, arg) in c.params.iter().zip(args) {
             scope.set(param.clone(), arg);
         }
-        // A lambda resolves bare calls against the module it was defined in.
-        self.in_module(c.module.clone(), |me| me.eval_block(&c.body, &scope))
+        // A lambda resolves bare calls against the module it was defined in,
+        // and any call inside its body is a call from the file it was
+        // written in.
+        let saved_file = std::mem::replace(&mut self.current_file, c.file.clone());
+        let result = self.in_module(c.module.clone(), |me| me.eval_block(&c.body, &scope));
+        self.current_file = saved_file;
+        result
     }
 
     fn apply_fn(&mut self, f: &Arc<FnDef>, args: Vec<Value>) -> Result<Value, RuntimeError> {
@@ -1661,7 +1725,10 @@ impl Interp {
             name: f.name.clone(),
             module: module.clone(),
         };
-        self.in_module(module, move |me| loop {
+        // Any call inside this body — including one a lambda it creates goes
+        // on to make — is a call from this function's own file.
+        let saved_file = std::mem::replace(&mut self.current_file, f.file.clone());
+        let result = self.in_module(module, move |me| loop {
             if args.len() != f.params.len() {
                 return err(format!(
                     "{display_name} expects {} argument(s), got {}",
@@ -1679,7 +1746,9 @@ impl Interp {
                 Flow::Return(value) => return Ok(value),
                 Flow::TailCall(next) => args = next,
             }
-        })
+        });
+        self.current_file = saved_file;
+        result
     }
 
     /// Resolve a written module path to its definition. A single-segment path
@@ -1768,6 +1837,24 @@ impl Interp {
         result
     }
 
+    /// Run `body` with a call-stack frame pushed for `line` (in the file
+    /// currently executing), popped afterward regardless of how `body` ends.
+    /// This is what every ordinary call — not a self-recursive tail call,
+    /// which reuses the frame already on top instead — wraps itself in.
+    fn with_frame<T>(
+        &mut self,
+        line: usize,
+        body: impl FnOnce(&mut Self) -> Result<T, RuntimeError>,
+    ) -> Result<T, RuntimeError> {
+        self.call_stack.push(StackFrame {
+            file: self.current_file.clone(),
+            line,
+        });
+        let result = body(self);
+        self.call_stack.pop();
+        result
+    }
+
     /// Evaluate a function/arm body while tracking tail position: a
     /// self-recursive call in the final position yields `Flow::TailCall` for the
     /// trampoline instead of recursing.
@@ -1799,10 +1886,21 @@ impl Interp {
             Expr::Call {
                 callee: Callee::Local(name),
                 args,
+                line,
             } if self.is_self_tail_call(name, env, target) => {
                 let mut values = Vec::with_capacity(args.len());
                 for arg in args {
                     values.push(self.eval_expr(arg, env)?);
+                }
+                // The trampoline loops in place rather than recursing, so
+                // this call gets no frame of its own — pushing one per
+                // iteration would grow the stacktrace without bound for what
+                // is, on the Rust stack, a single call. The frame already on
+                // top (from whoever called into this function, if anyone
+                // did) is updated in place instead, so a stacktrace taken
+                // mid-loop still names the line the loop is currently at.
+                if let Some(top) = self.call_stack.last_mut() {
+                    top.line = *line;
                 }
                 Ok(Flow::TailCall(values))
             }

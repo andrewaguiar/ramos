@@ -1,12 +1,227 @@
-//! `ramos doc` — generates HTML reference for the stdlib.
+//! `ramos doc` — generates a `docs.json` data file plus a static `index.html`
+//! shell that presents it.
 //!
 //! These tests drive the public `generate` API end-to-end: a real (or
-//! synthetic) stdlib directory in, HTML files out, then assert on the rendered
-//! fragments that matter (signatures, `@param`/`@return`, code blocks,
-//! cross-links, lists, and the index).
+//! synthetic) stdlib directory in, `docs.json` out, then assert on the
+//! rendered fragments that matter (signatures, `@param`/`@return`, code
+//! blocks, cross-links, lists, and the index) by parsing the JSON and
+//! pulling out each page's `body`. The crate ships no JSON dependency (see
+//! `src/doc.rs`'s hand-rolled writer), so this file carries a matching
+//! hand-rolled reader — just enough to walk the small, fixed shape of
+//! `docs.json`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
+
+// ── a tiny JSON reader, mirroring the writer in src/doc.rs ──────────────
+
+#[derive(Debug)]
+enum Json {
+    Null,
+    Bool(bool),
+    Str(String),
+    Array(Vec<Json>),
+    Object(Vec<(String, Json)>),
+}
+
+impl Json {
+    fn parse(s: &str) -> Json {
+        let mut p = JsonParser {
+            s: s.as_bytes(),
+            pos: 0,
+        };
+        p.value()
+    }
+
+    /// Look up a field on an object; panics on any other shape or a missing key.
+    fn get(&self, key: &str) -> &Json {
+        match self {
+            Json::Object(fields) => fields
+                .iter()
+                .find(|(k, _)| k == key)
+                .map(|(_, v)| v)
+                .unwrap_or_else(|| panic!("missing json field `{key}`")),
+            _ => panic!("`{key}`: not an object"),
+        }
+    }
+
+    fn has(&self, key: &str) -> bool {
+        match self {
+            Json::Object(fields) => fields.iter().any(|(k, _)| k == key),
+            _ => false,
+        }
+    }
+
+    fn as_str(&self) -> &str {
+        match self {
+            Json::Str(s) => s,
+            _ => panic!("not a string: {self:?}"),
+        }
+    }
+
+    fn as_array(&self) -> &[Json] {
+        match self {
+            Json::Array(a) => a,
+            _ => panic!("not an array: {self:?}"),
+        }
+    }
+
+    fn as_bool(&self) -> bool {
+        match self {
+            Json::Bool(b) => *b,
+            _ => panic!("not a bool: {self:?}"),
+        }
+    }
+
+    fn is_null(&self) -> bool {
+        matches!(self, Json::Null)
+    }
+}
+
+struct JsonParser<'a> {
+    s: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> JsonParser<'a> {
+    fn skip_ws(&mut self) {
+        while self.pos < self.s.len() && (self.s[self.pos] as char).is_whitespace() {
+            self.pos += 1;
+        }
+    }
+
+    fn value(&mut self) -> Json {
+        self.skip_ws();
+        match self.s[self.pos] {
+            b'{' => self.object(),
+            b'[' => self.array(),
+            b'"' => Json::Str(self.string()),
+            b't' => {
+                self.pos += 4;
+                Json::Bool(true)
+            }
+            b'f' => {
+                self.pos += 5;
+                Json::Bool(false)
+            }
+            b'n' => {
+                self.pos += 4;
+                Json::Null
+            }
+            other => panic!("unexpected byte {other} at {}", self.pos),
+        }
+    }
+
+    fn object(&mut self) -> Json {
+        self.pos += 1; // `{`
+        let mut fields = Vec::new();
+        self.skip_ws();
+        if self.s[self.pos] == b'}' {
+            self.pos += 1;
+            return Json::Object(fields);
+        }
+        loop {
+            self.skip_ws();
+            let key = self.string();
+            self.skip_ws();
+            assert_eq!(self.s[self.pos], b':');
+            self.pos += 1;
+            let val = self.value();
+            fields.push((key, val));
+            self.skip_ws();
+            match self.s[self.pos] {
+                b',' => self.pos += 1,
+                b'}' => {
+                    self.pos += 1;
+                    break;
+                }
+                other => panic!("bad object at byte {other}"),
+            }
+        }
+        Json::Object(fields)
+    }
+
+    fn array(&mut self) -> Json {
+        self.pos += 1; // `[`
+        let mut items = Vec::new();
+        self.skip_ws();
+        if self.s[self.pos] == b']' {
+            self.pos += 1;
+            return Json::Array(items);
+        }
+        loop {
+            items.push(self.value());
+            self.skip_ws();
+            match self.s[self.pos] {
+                b',' => self.pos += 1,
+                b']' => {
+                    self.pos += 1;
+                    break;
+                }
+                other => panic!("bad array at byte {other}"),
+            }
+        }
+        Json::Array(items)
+    }
+
+    fn string(&mut self) -> String {
+        self.skip_ws();
+        assert_eq!(self.s[self.pos], b'"');
+        self.pos += 1;
+        let mut buf: Vec<u8> = Vec::new();
+        loop {
+            let c = self.s[self.pos];
+            if c == b'"' {
+                self.pos += 1;
+                break;
+            }
+            if c == b'\\' {
+                self.pos += 1;
+                let esc = self.s[self.pos];
+                self.pos += 1;
+                match esc {
+                    b'"' => buf.push(b'"'),
+                    b'\\' => buf.push(b'\\'),
+                    b'/' => buf.push(b'/'),
+                    b'n' => buf.push(b'\n'),
+                    b'r' => buf.push(b'\r'),
+                    b't' => buf.push(b'\t'),
+                    b'u' => {
+                        let hex = std::str::from_utf8(&self.s[self.pos..self.pos + 4]).unwrap();
+                        let code = u32::from_str_radix(hex, 16).unwrap();
+                        self.pos += 4;
+                        let mut tmp = [0u8; 4];
+                        buf.extend_from_slice(
+                            char::from_u32(code)
+                                .unwrap()
+                                .encode_utf8(&mut tmp)
+                                .as_bytes(),
+                        );
+                    }
+                    other => panic!("unsupported escape \\{}", other as char),
+                }
+            } else {
+                buf.push(c);
+                self.pos += 1;
+            }
+        }
+        String::from_utf8(buf).expect("valid utf8")
+    }
+}
+
+/// Load and parse `docs.json` from a generated output directory.
+fn load_docs(out: &Path) -> Json {
+    let text = fs::read_to_string(out.join("docs.json")).expect("docs.json");
+    Json::parse(&text)
+}
+
+/// The rendered HTML fragment for the page keyed `id` (a module name, or
+/// `""`/`"guide"`/`"examples"`/`"programs"`).
+fn page_body(doc: &Json, id: &str) -> String {
+    doc.get("pages").get(id).get("body").as_str().to_string()
+}
+
+// ── the real stdlib ──────────────────────────────────────────────────────
 
 /// Read the project stdlib dir, regardless of where `cargo test` runs from.
 fn stdlib_dir() -> PathBuf {
@@ -33,8 +248,6 @@ impl Drop for TempDir {
     }
 }
 
-// ── the real stdlib ──────────────────────────────────────────────────────
-
 #[test]
 fn generates_a_page_per_real_stdlib_module() {
     let out = TempDir::new("real");
@@ -45,6 +258,20 @@ fn generates_a_page_per_real_stdlib_module() {
          NaiveDateTime, TimeZone, DateTime, Time, File, Dir, Actor, Global, Config, Thread, \
          Test, Module"
     );
+
+    // The site is one static shell plus the data it presents, not one HTML
+    // file per module.
+    assert!(out.0.join("index.html").exists());
+    assert!(out.0.join("docs.json").exists());
+    assert!(out.0.join("assets").join("style.css").exists());
+    assert!(
+        !out.0.join("Kernel.html").exists(),
+        "modules are pages inside docs.json now, not their own files"
+    );
+
+    let doc = load_docs(&out.0);
+    let modules = doc.get("modules").as_array();
+    let module_names: Vec<&str> = modules.iter().map(Json::as_str).collect();
 
     // `Actor` and `Test` are traits rather than modules, and `Date`,
     // `NaiveDateTime`, `TimeZone` and `DateTime` are structs rather than
@@ -72,18 +299,17 @@ fn generates_a_page_per_real_stdlib_module() {
         "Test",
         "Module",
     ] {
-        let page = out.0.join(format!("{name}.html"));
-        assert!(page.exists(), "missing {name}.html");
+        assert!(module_names.contains(&name), "missing module {name}");
+        assert!(doc.get("pages").has(name), "missing page for {name}");
     }
-    assert!(out.0.join("index.html").exists());
-    assert!(out.0.join("assets").join("style.css").exists());
 }
 
 #[test]
 fn kernel_page_has_signatures_params_returns_and_examples() {
     let out = TempDir::new("kernel");
     ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();
-    let html = fs::read_to_string(out.0.join("Kernel.html")).unwrap();
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "Kernel");
 
     // Function signature anchors use the Elixir-style name/arity.
     assert!(html.contains(r#"id="print/1""#), "missing print/1 anchor");
@@ -108,22 +334,30 @@ fn kernel_page_has_signatures_params_returns_and_examples() {
 
     // `@module_doc` summary is on the page.
     assert!(html.contains("the implicit, always-in-scope module"));
+
+    // The module page's own heading is carried as page data, not baked into
+    // the body — the shell renders it as the `<h1>`.
+    assert_eq!(
+        doc.get("pages").get("Kernel").get("heading").as_str(),
+        "Kernel"
+    );
 }
 
 #[test]
 fn cross_links_target_known_modules() {
     let out = TempDir::new("xref");
     ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();
-    let html = fs::read_to_string(out.0.join("Kernel.html")).unwrap();
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "Kernel");
 
-    // `` `String` `` → a code span that links to String.html.
+    // `` `String` `` → a code span that links to the String page's route.
     assert!(
-        html.contains("<code><a href=\"String.html\">String</a></code>"),
+        html.contains("<code><a href=\"#/String\">String</a></code>"),
         "module cross-link not rendered"
     );
-    // `` `Kernel.print(x)` `` → links to Kernel.html#print.
+    // `` `Kernel.print(x)` `` → links to Kernel's route with a member anchor.
     assert!(
-        html.contains("href=\"Kernel.html#print\""),
+        html.contains("href=\"#/Kernel:print\""),
         "member cross-link not rendered"
     );
 }
@@ -132,7 +366,8 @@ fn cross_links_target_known_modules() {
 fn bulleted_lists_and_emphasis_render() {
     let out = TempDir::new("lists");
     ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();
-    let html = fs::read_to_string(out.0.join("Kernel.html")).unwrap();
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "Kernel");
 
     // The Kernel module doc has a `- console I/O …` bulleted list.
     assert!(html.contains("<ul>"), "no <ul> rendered");
@@ -149,11 +384,12 @@ fn bulleted_lists_and_emphasis_render() {
 fn index_lists_every_module_with_its_summary() {
     let out = TempDir::new("index");
     ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();
-    let html = fs::read_to_string(out.0.join("index.html")).unwrap();
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "");
 
     for name in ["Kernel", "List", "String", "Tuple", "File", "Dir"] {
         assert!(
-            html.contains(&format!("href=\"{name}.html\"")),
+            html.contains(&format!("href=\"#/{name}\"")),
             "index missing link to {name}"
         );
     }
@@ -190,7 +426,8 @@ module M
     let out = TempDir::new("nodoc");
     let count = ramos::doc::generate(&src, &out.0).expect("generate");
     assert_eq!(count, 1);
-    let html = fs::read_to_string(out.0.join("M.html")).unwrap();
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "M");
     // The function still gets a signature + anchor, just no prose.
     assert!(html.contains(r#"id="undocumented/1""#));
     assert!(html.contains("function undocumented(x)"));
@@ -219,8 +456,12 @@ module M
 
     let out = TempDir::new("priv");
     ramos::doc::generate(&src, &out.0).unwrap();
-    let html = fs::read_to_string(out.0.join("M.html")).unwrap();
-    assert!(html.contains("helper hidden(a, b)"), "helper signature wrong");
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "M");
+    assert!(
+        html.contains("helper hidden(a, b)"),
+        "helper signature wrong"
+    );
     assert!(
         html.contains(r#"<span class="badge private">private</span>"#),
         "private badge missing"
@@ -250,7 +491,8 @@ module M
 
     let out = TempDir::new("inline");
     ramos::doc::generate(&src, &out.0).unwrap();
-    let html = fs::read_to_string(out.0.join("M.html")).unwrap();
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "M");
     assert!(html.contains("One-line module summary."));
     assert!(html.contains("Inline doc."));
     assert!(html.contains("<dt><code>x</code></dt>"));
@@ -261,7 +503,7 @@ module M
 
 // ── the guide page (README) ──────────────────────────────────────────────
 
-/// The README that backs `guide.html`.
+/// The README that backs the `guide` page.
 fn readme_file() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("README.md")
 }
@@ -291,7 +533,8 @@ fn generate_with_programs(
 fn guide_page_renders_the_readmes_markdown() {
     let out = TempDir::new("guide");
     generate_with(&out.0, None, Some(&readme_file()));
-    let html = fs::read_to_string(out.0.join("guide.html")).expect("guide.html");
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "guide");
 
     // Headings get GitHub-style slugs, so the README's own `#anchor` links
     // still resolve on the rendered page.
@@ -308,7 +551,7 @@ fn guide_page_renders_the_readmes_markdown() {
     assert!(html.contains("<strong>immutable</strong>"));
     assert!(!html.contains("```"), "fence markers leaked into the HTML");
 
-    // A repo-relative link is rewritten to somewhere that exists from docs/.
+    // A repo-relative link is rewritten to somewhere that exists off-site.
     assert!(
         html.contains("href=\"https://github.com/andrewaguiar/ramos/src/branch/main/stdlib/\""),
         "relative README link not rewritten"
@@ -316,16 +559,17 @@ fn guide_page_renders_the_readmes_markdown() {
 }
 
 #[test]
-fn guide_page_is_linked_from_the_sidebar_and_index() {
+fn guide_flag_is_set_and_index_links_to_it() {
+    // The sidebar is built client-side by the shell from `docs.json`'s
+    // `guides` flags and `modules` list, rather than rendered per page — so
+    // "linked from the sidebar" is now a property of that flag, not HTML on
+    // every page.
     let out = TempDir::new("guide-links");
     generate_with(&out.0, None, Some(&readme_file()));
+    let doc = load_docs(&out.0);
 
-    assert!(fs::read_to_string(out.0.join("List.html"))
-        .unwrap()
-        .contains("href=\"guide.html\""));
-    assert!(fs::read_to_string(out.0.join("index.html"))
-        .unwrap()
-        .contains("href=\"guide.html\""));
+    assert!(doc.get("guides").get("guide").as_bool());
+    assert!(page_body(&doc, "").contains("href=\"#/guide\""));
 }
 
 #[test]
@@ -333,16 +577,16 @@ fn a_missing_readme_drops_the_guide_page() {
     let out = TempDir::new("no-guide");
     let missing = std::env::temp_dir().join("ramos-no-such-readme.md");
     generate_with(&out.0, None, Some(&missing));
+    let doc = load_docs(&out.0);
 
-    assert!(!out.0.join("guide.html").exists());
-    assert!(!fs::read_to_string(out.0.join("index.html"))
-        .unwrap()
-        .contains("guide.html"));
+    assert!(!doc.get("guides").get("guide").as_bool());
+    assert!(!doc.get("pages").has("guide"));
+    assert!(!page_body(&doc, "").contains("#/guide"));
 }
 
 // ── the Examples page ────────────────────────────────────────────────────
 
-/// The feature fixtures that back `examples.html`.
+/// The feature fixtures that back the `examples` page.
 fn features_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -354,7 +598,8 @@ fn features_dir() -> PathBuf {
 fn examples_page_renders_one_section_per_fixture() {
     let out = TempDir::new("examples");
     generate_with(&out.0, Some(&features_dir()), None);
-    let html = fs::read_to_string(out.0.join("examples.html")).expect("examples.html");
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "examples");
 
     let fixtures = fs::read_dir(features_dir())
         .unwrap()
@@ -390,31 +635,30 @@ fn examples_page_renders_one_section_per_fixture() {
 }
 
 #[test]
-fn examples_page_is_linked_from_the_sidebar_and_index() {
+fn examples_flag_is_set_and_index_links_to_it() {
     let out = TempDir::new("examples-links");
     generate_with(&out.0, Some(&features_dir()), None);
+    let doc = load_docs(&out.0);
 
-    let module_page = fs::read_to_string(out.0.join("List.html")).unwrap();
-    assert!(module_page.contains("href=\"examples.html\""));
-
-    let index = fs::read_to_string(out.0.join("index.html")).unwrap();
-    assert!(index.contains("href=\"examples.html\""));
+    assert!(doc.get("guides").get("examples").as_bool());
+    assert!(page_body(&doc, "").contains("href=\"#/examples\""));
 }
 
 #[test]
 fn without_fixtures_there_is_no_examples_page_or_link() {
     let out = TempDir::new("no-examples");
     ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();
+    let doc = load_docs(&out.0);
 
-    assert!(!out.0.join("examples.html").exists());
-    let index = fs::read_to_string(out.0.join("index.html")).unwrap();
-    assert!(!index.contains("examples.html"));
+    assert!(!doc.get("guides").get("examples").as_bool());
+    assert!(!doc.get("pages").has("examples"));
+    assert!(!page_body(&doc, "").contains("#/examples"));
 }
 
 // ── the Programs page ─────────────────────────────────────────────────────
 
-/// The runnable programs that back `programs.html` — the real `examples/`
-/// directory, files and subdirectories alike.
+/// The runnable programs that back the `programs` page — the real
+/// `examples/` directory, files and subdirectories alike.
 fn programs_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples")
 }
@@ -434,7 +678,8 @@ fn program_entry_count(dir: &Path) -> usize {
 fn programs_page_renders_one_section_per_program() {
     let out = TempDir::new("programs");
     generate_with_programs(&out.0, None, Some(&programs_dir()), None);
-    let html = fs::read_to_string(out.0.join("programs.html")).expect("programs.html");
+    let doc = load_docs(&out.0);
+    let html = page_body(&doc, "programs");
 
     assert_eq!(
         html.matches("<section class=\"example\"").count(),
@@ -472,25 +717,24 @@ fn programs_page_renders_one_section_per_program() {
 }
 
 #[test]
-fn programs_page_is_linked_from_the_sidebar_and_index() {
+fn programs_flag_is_set_and_index_links_to_it() {
     let out = TempDir::new("programs-links");
     generate_with_programs(&out.0, None, Some(&programs_dir()), None);
+    let doc = load_docs(&out.0);
 
-    let module_page = fs::read_to_string(out.0.join("List.html")).unwrap();
-    assert!(module_page.contains("href=\"programs.html\""));
-
-    let index = fs::read_to_string(out.0.join("index.html")).unwrap();
-    assert!(index.contains("href=\"programs.html\""));
+    assert!(doc.get("guides").get("programs").as_bool());
+    assert!(page_body(&doc, "").contains("href=\"#/programs\""));
 }
 
 #[test]
 fn without_programs_there_is_no_programs_page_or_link() {
     let out = TempDir::new("no-programs");
     ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();
+    let doc = load_docs(&out.0);
 
-    assert!(!out.0.join("programs.html").exists());
-    let index = fs::read_to_string(out.0.join("index.html")).unwrap();
-    assert!(!index.contains("programs.html"));
+    assert!(!doc.get("guides").get("programs").as_bool());
+    assert!(!doc.get("pages").has("programs"));
+    assert!(!page_body(&doc, "").contains("#/programs"));
 }
 
 #[test]
@@ -504,6 +748,32 @@ fn empty_source_dir_is_an_error() {
     assert!(err.contains("no `.rmo` files"), "unexpected error: {err}");
 
     let _ = fs::remove_dir_all(&src);
+}
+
+// ── page metadata (heading / content_class) ──────────────────────────────
+
+#[test]
+fn narrative_pages_carry_no_generic_heading() {
+    // Only module pages use the shell's generic `<h1 class="module-header">`
+    // — the guide/examples/programs/index pages write their own `<h1>` inline
+    // in the body, so their JSON `heading` is null.
+    let out = TempDir::new("headings");
+    generate_with_programs(
+        &out.0,
+        Some(&features_dir()),
+        Some(&programs_dir()),
+        Some(&readme_file()),
+    );
+    let doc = load_docs(&out.0);
+    let pages = doc.get("pages");
+
+    for id in ["", "guide", "examples", "programs"] {
+        assert!(
+            pages.get(id).get("heading").is_null(),
+            "{id} heading should be null"
+        );
+    }
+    assert_eq!(pages.get("Kernel").get("heading").as_str(), "Kernel");
 }
 
 // ── plain-text summaries (what `ramos test` prints) ───────────────────────────
