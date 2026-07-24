@@ -9,7 +9,9 @@ module Config
   # writes — the actor is **read-only**, so what a program sees at the end of a
   # run is what it saw at the start.
   #
-  # The examples here and below are written against this `.env`:
+  # The examples here and below are written against this `.env.dev` — `dev` is
+  # where `APP_ENV` defaults to, so this is the file an unset environment (as
+  # here) reads:
   #
   #   # ramos doctest setup
   #   settings =
@@ -18,7 +20,7 @@ module Config
   #       host = "db.internal"
   #       port = 5432
   #     """
-  #   File.write(".env", settings)
+  #   File.write(".env.dev", settings)
   #
   # Read back, that is:
   #
@@ -29,10 +31,11 @@ module Config
   #
   # **Which file.** `APP_ENV` names the environment and the file is `.env`
   # followed by its downcased name — `APP_ENV=PROD` reads `.env.prod`,
-  # `APP_ENV=staging` reads `.env.staging`. With `APP_ENV` unset or empty the
-  # plain `.env` is read. `path()` reports the choice without starting anything.
-  # The path is relative, so it resolves against the working directory the
-  # program was run from.
+  # `APP_ENV=staging` reads `.env.staging`. Unset or empty, that downcased name
+  # defaults to `dev`, so a project reads `.env.dev` — and so runs — without
+  # anything set. `path()` reports the choice without starting anything. The
+  # path is relative, so it resolves against the working directory the program
+  # was run from.
   #
   # **The format** is TOML, of the subset a settings file actually uses:
   # `[section]` headers, `key = value` pairs, `#` comments, blank lines. Every
@@ -48,12 +51,14 @@ module Config
   # is skipped.
   #
   # **Missing files are not an error to `get`.** `start` reports an unreadable
-  # file as `(:error, reason)` in `File`'s vocabulary, so the caller decides
-  # whether a run without config is fatal:
+  # file with `error` — `(:error, (:config_file_not_found, message, _))` when
+  # no file matches `APP_ENV`, `(:error, (reason, message, _))` in `File`'s own
+  # vocabulary for anything else — so the caller decides whether a run without
+  # config is fatal:
   #
   #   case Config.start()
   #     :ok -> run()
-  #     (:error, :enoent) -> run_with_defaults()
+  #     (:error, (:config_file_not_found, _, _)) -> run_with_defaults()
   #
   # `Config` is an ordinary `Actor` implementation, so `list_actors`,
   # `actor_stats(:config)` and `stop_actor(:config)` all work on it. For state
@@ -86,14 +91,18 @@ module Config
     # Reading happens here rather than inside the actor, so a missing or
     # unreadable file surfaces at the call that started it.
     #
-    # @return `:ok`, or `(:error, reason)` when the file cannot be read —
-    #   `File`'s reasons, so `:enoent` is "no such file"
+    # @return `:ok`, or an error built by `error` when the file cannot be
+    #   read: `(:config_file_not_found, message, stacktrace)` names the
+    #   environment and the path when no file matches `APP_ENV`; any other
+    #   reason — a permissions error, say — passes through in `File`'s own
+    #   vocabulary, `(reason, message, stacktrace)`
     #
     #   Config.start()   # == :ok
     #   Config.get("database", "host")   # == "db.internal"
     case File.read(path())
       (:ok, text) -> start_actor(:config, Config, parse(text), {})
-      (:error, reason) -> (:error, reason)
+      (:error, :enoent) -> error(:config_file_not_found, not_found_message())
+      (:error, reason) -> error(reason, "cannot read `#{path()}`")
 
   function get(section, key)
     # @doc
@@ -114,21 +123,35 @@ module Config
   function path()
     # @doc
     #
-    # The file `start` will read, chosen from `APP_ENV`: `.env.<downcased>`
-    # when it is set, and `.env` when it is not. Reads nothing itself.
+    # The file `start` will read: `.env.<downcased APP_ENV>`, or `.env.dev`
+    # when it is unset or empty — `dev` is the default environment. Reads
+    # nothing itself.
     #
     # @return the path as a `String`
     #
-    # With `APP_ENV=PROD` this reads `.env.prod`; unset, as here, it is `.env`:
+    # With `APP_ENV=PROD` this reads `.env.prod`; unset, as here, it is
+    # `.env.dev`:
     #
-    #   Config.path()   # == ".env"
+    #   Config.path()   # == ".env.dev"
+    path_for(env_name())
+
+  # private functions
+
+  helper env_name()
     app_env = get_env("APP_ENV")
     cond
-      app_env == nil -> ".env"
-      is_empty(String.trim(app_env)) -> ".env"
-      true -> ".env.#{String.downcase(String.trim(app_env))}"
+      app_env == nil -> "dev"
+      is_empty(String.trim(app_env)) -> "dev"
+      true -> String.downcase(String.trim(app_env))
 
-  # private functions — the TOML subset a settings file uses
+  helper path_for(env)
+    ".env.#{env}"
+
+  helper not_found_message()
+    env = env_name()
+    "no config file for the `#{env}` environment — expected `#{path_for(env)}`, chosen by APP_ENV"
+
+  # the TOML subset a settings file uses
 
   helper get_impl(args, state)
     [section, key] = args

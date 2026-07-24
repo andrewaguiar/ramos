@@ -1620,9 +1620,11 @@ once and answered from memory. It is **read-only** — there is no `put`.
 
 `APP_ENV` names the environment, and the file is `.env` followed by its
 downcased name: `APP_ENV=PROD` reads `.env.prod`, `APP_ENV=staging` reads
-`.env.staging`, and an unset or empty `APP_ENV` reads the plain `.env`. The path
-is relative, so it resolves against the directory the program was run from, and
-`Config.path()` reports the choice without reading anything.
+`.env.staging`, and an unset or empty `APP_ENV` defaults to `dev`, reading
+`.env.dev` — the file [`ramos new`](#starting-a-project) scaffolds, so a fresh
+project reads its settings without anything set. The path is relative, so it
+resolves against the directory the program was run from, and `Config.path()`
+reports the choice without reading anything.
 
 ```elixir
 # .env.prod
@@ -1633,7 +1635,7 @@ password = 'p#ss'   # a comment after an unquoted value is trimmed off
 ```
 
 ```elixir
-Config.start()                     # == :ok, or (:error, :enoent)
+Config.start()                     # == :ok
 Config.get("database", "host")     # == "db.internal"
 Config.get("database", "port")     # == "5432"
 Config.get("database", "nope")     # == nil
@@ -1649,12 +1651,15 @@ written before the first `[section]` has no section to be asked for, so it is
 skipped.
 
 Reading happens in `start`, not in the actor, so an unreadable file surfaces at
-the call that started it and the caller decides whether that is fatal:
+the call that started it, built by [`error`](#error-handling) — no file for
+`APP_ENV` is `(:error, (:config_file_not_found, message, stacktrace))`; any
+other reason (a permissions error, say) is `File`'s own, in the same shape —
+and the caller decides whether that is fatal:
 
 ```elixir
 case Config.start()
   :ok -> run()
-  (:error, :enoent) -> run_with_defaults()
+  (:error, (:config_file_not_found, _, _)) -> run_with_defaults()
 ```
 
 ### Threads

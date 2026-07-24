@@ -516,15 +516,15 @@ println(inspect(Config.get(\"nope\", \"host\")))
 }
 
 #[test]
-fn config_falls_back_to_plain_env_without_app_env() {
+fn config_defaults_to_dev_without_app_env() {
     let p = Project::new("config_default");
-    p.file(".env", "[server]\nname = fallback\n");
+    p.file(".env.dev", "[server]\nname = fallback\n");
     p.file(
         "app.rmo",
         "println(Config.path())\nConfig.start()\nprintln(Config.get(\"server\", \"name\"))\n",
     );
     let out = ramos_in(&p.0, None, "app.rmo");
-    assert_eq!(String::from_utf8_lossy(&out.stdout), ".env\nfallback\n");
+    assert_eq!(String::from_utf8_lossy(&out.stdout), ".env.dev\nfallback\n");
 }
 
 #[test]
@@ -535,10 +535,19 @@ fn config_reports_a_missing_file_rather_than_starting() {
         "println(Config.path())\nprintln(Config.start())\n",
     );
     let out = ramos_in(&p.0, Some("staging"), "app.rmo");
-    assert_eq!(
-        String::from_utf8_lossy(&out.stdout),
-        ".env.staging\n(:error, :enoent)\n"
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    // `error` stamps a stacktrace, whose line numbers shift as `config.rmo`
+    // changes, so this checks the parts that matter rather than the whole
+    // line.
+    assert!(
+        stdout.starts_with(".env.staging\n(:error, (:config_file_not_found, "),
+        "{stdout}"
     );
+    assert!(
+        stdout.contains("no config file for the `staging` environment"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("expected `.env.staging`"), "{stdout}");
 }
 
 // ── the CLI drives the loader ────────────────────────────────────────────────
