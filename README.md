@@ -54,7 +54,7 @@ the terminal — the examples below are the same ones.
   `do` lambda with an indented body, it begins on the line *after* the `=`,
   indented one level:
 
-  ```
+  ```ruby
   # error: the block hangs off the end of the assignment
   result = case value
     true -> :ok
@@ -1810,7 +1810,7 @@ The binary takes a subcommand and (except for the REPL) a single `.rmo` file:
 
 | Command                | What it does |
 | ---------------------- | ------------ |
-| `ramos new <name>`      | Scaffold a project: `<name>/src/<snake_case>/main.rmo` defining `<CamelCase>.Main` |
+| `ramos new <name>`      | Scaffold a project: `<name>/src/<snake_case>/main.rmo` defining `<CamelCase>.Main`, plus a `.env.dev` `Config` starter |
 | `ramos run <file.rmo>`   | Execute a program — calls the file's [entrypoint](#entrypoints) `main()` |
 | `ramos run <dir>`        | Run that directory's `main.rmo` (the shallowest one found) |
 | `ramos run`               | Same as `ramos run .` — run the current directory's `main.rmo` |
@@ -1856,6 +1856,7 @@ creates:
 
 ```
 pet-project/
+├── .env.dev
 └── src/
     └── pet_project/
         └── main.rmo
@@ -1877,6 +1878,11 @@ and a CamelCase module name, so the project is runnable as soon as it exists:
 ```
 ramos run pet-project    # finds and runs src/pet_project/main.rmo
 ```
+
+`.env.dev` is a starter settings file for the [`Config`](#config) module — the
+`dev` environment's, since that's what `APP_ENV=dev` reads. It starts out
+comment-only; add `[section]` / `key = value` lines as the project needs them,
+and `Config.start()` picks it up once `APP_ENV` is set.
 
 ### Running a program
 
@@ -1926,6 +1932,14 @@ colour honours `NO_COLOR` and can be forced with `--color` / `--no-color`:
 ramos ast --dump app.rmo --color | less -R   # keep colour through a pager
 ramos lexer app.rmo --no-color               # force plain output
 ```
+
+Every command follows the same rule: colour on for a terminal, off when piped
+or redirected, `NO_COLOR` honoured, `--color`/`--no-color` forcing it either
+way. `ramos test` and `ramos doctest` paint a module name bold, `ok` green,
+`FAIL` and an `error:` tag the same colour, and a doc summary dim; `check`
+paints its own `ok` the same green. The one exception is `ramos learn`, whose
+output is meant to be read as-is or piped straight into an agent's context, so
+it never carries colour codes.
 
 The interpreter runs on a large stack (256 MB, a virtual reservation that costs
 only the pages it touches), because the standard library recurses once per list

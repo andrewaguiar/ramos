@@ -1,8 +1,15 @@
-use ramos::color::Color;
+use ramos::color::{Color, Style};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+
+/// Paint just the leading `error:` tag, the same convention `ramos test` /
+/// `ramos doctest` use for their own `ok`/`FAIL` tags — the message after it
+/// stays in the terminal's own color.
+fn err_tag(color: Color) -> String {
+    color.paint(Style::Keyword, "error:")
+}
 
 /// Remove `flag` from `args` if present, reporting whether it was there.
 fn take_flag(args: &mut Vec<String>, flag: &str) -> bool {
@@ -25,7 +32,7 @@ fn take_opt(args: &mut Vec<String>, flag: &str) -> Option<String> {
 }
 
 /// `ramos doc` — render the stdlib reference into `docs/`.
-fn run_doc(args: &[String]) -> ExitCode {
+fn run_doc(args: &[String], color: Color) -> ExitCode {
     let mut args: Vec<String> = args.to_vec();
     let stdlib = take_opt(&mut args, "--stdlib");
     let out = take_opt(&mut args, "--out");
@@ -80,7 +87,7 @@ fn run_doc(args: &[String]) -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(e) => {
-            eprintln!("error: {e}");
+            eprintln!("{} {e}", err_tag(color));
             ExitCode::FAILURE
         }
     }
@@ -119,10 +126,11 @@ fn capitalize(word: &str) -> String {
 
 /// `ramos new <name>` — scaffold a new project: `<name>/src/<snake>/main.rmo`
 /// defining `module <CamelCase>.Main` with a `function main()` that prints the
-/// project name. That module lives where the naming rule (see `loader`) says
-/// it must, and its file is named `main.rmo`, so `ramos run <name>` finds it
-/// straight away.
-fn run_new(args: &[String]) -> ExitCode {
+/// project name, plus `<name>/.env.dev`, a starter settings file for the
+/// `Config` module's `dev` environment. The module lives where the naming
+/// rule (see `loader`) says it must, and its file is named `main.rmo`, so
+/// `ramos run <name>` finds it straight away.
+fn run_new(args: &[String], color: Color) -> ExitCode {
     let (name, rest) = match args.split_first() {
         Some((name, rest)) => (name, rest),
         None => {
@@ -137,8 +145,9 @@ fn run_new(args: &[String]) -> ExitCode {
     let words = project_words(name);
     if words.is_empty() {
         eprintln!(
-            "error: `{name}` is not a valid project name — use letters, digits, `-` or `_`, \
-             starting with a letter"
+            "{} `{name}` is not a valid project name — use letters, digits, `-` or `_`, \
+             starting with a letter",
+            err_tag(color)
         );
         return ExitCode::from(2);
     }
@@ -147,22 +156,60 @@ fn run_new(args: &[String]) -> ExitCode {
 
     let root = PathBuf::from(name);
     if root.exists() {
-        eprintln!("error: `{}` already exists", root.display());
+        eprintln!("{} `{}` already exists", err_tag(color), root.display());
         return ExitCode::FAILURE;
     }
     let src_dir = root.join("src").join(&snake_name);
     if let Err(e) = fs::create_dir_all(&src_dir) {
-        eprintln!("error: cannot create `{}`: {e}", src_dir.display());
+        eprintln!(
+            "{} cannot create `{}`: {e}",
+            err_tag(color),
+            src_dir.display()
+        );
         return ExitCode::FAILURE;
     }
     let main_path = src_dir.join("main.rmo");
     let contents =
         format!("module {module_name}.Main\n  function main()\n    println(\"{name}\")\n");
     if let Err(e) = fs::write(&main_path, contents) {
-        eprintln!("error: cannot write `{}`: {e}", main_path.display());
+        eprintln!(
+            "{} cannot write `{}`: {e}",
+            err_tag(color),
+            main_path.display()
+        );
         return ExitCode::FAILURE;
     }
-    println!("created `{}`", main_path.display());
+    println!(
+        "{} `{}`",
+        color.paint(Style::Str, "created"),
+        main_path.display()
+    );
+
+    // The `dev` environment's settings — `Config.start()` reads this when
+    // `APP_ENV=dev`. It lives at the project root, not under `src/`, since
+    // `Config` resolves it against the working directory a program runs from.
+    let env_path = root.join(".env.dev");
+    let env_contents = format!(
+        "# {name} — the `dev` environment's settings, read by `Config.start()`\n\
+         # when `APP_ENV=dev` (unset defaults to `.env` instead). See the `Config`\n\
+         # module (`ramos doc`) for the file format.\n\
+         #\n\
+         # [section]\n\
+         # key = \"value\"\n"
+    );
+    if let Err(e) = fs::write(&env_path, env_contents) {
+        eprintln!(
+            "{} cannot write `{}`: {e}",
+            err_tag(color),
+            env_path.display()
+        );
+        return ExitCode::FAILURE;
+    }
+    println!(
+        "{} `{}`",
+        color.paint(Style::Str, "created"),
+        env_path.display()
+    );
     ExitCode::SUCCESS
 }
 
@@ -202,13 +249,13 @@ fn run_doctest(args: &[String], stdlib: Option<String>, quietly: bool, color: Co
     let report = match ramos::doctest::run(&root, stdlib_dir.as_deref()) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("error: {e}");
+            eprintln!("{} {e}", err_tag(color));
             return ExitCode::FAILURE;
         }
     };
     let mut stdout = std::io::stdout();
     if let Err(e) = ramos::doctest::write_report(&report, &mut stdout, quietly, color) {
-        eprintln!("error: could not write output: {e}");
+        eprintln!("{} could not write output: {e}", err_tag(color));
         return ExitCode::FAILURE;
     }
     if report.failures.is_empty() {
@@ -231,7 +278,12 @@ fn run_doctest(args: &[String], stdlib: Option<String>, quietly: bool, color: Co
 /// the report says what a test is for and not only that it ran. `--quietly`
 /// leaves the docs out, for a run watched by a person who already knows them
 /// (or by a CI log that does not need them).
-fn run_tests(filter: Option<&str>, stdlib: Option<String>, quietly: bool) -> ExitCode {
+fn run_tests(
+    filter: Option<&str>,
+    stdlib: Option<String>,
+    quietly: bool,
+    color: Color,
+) -> ExitCode {
     let stdlib_dir = stdlib.map(PathBuf::from);
     let Some(root) = find_test_root() else {
         println!("no `{TEST_ROOT}` directory found in `.` or any parent — tests live there");
@@ -240,7 +292,7 @@ fn run_tests(filter: Option<&str>, stdlib: Option<String>, quietly: bool) -> Exi
     let mut files = match find_test_files(&root) {
         Ok(found) => found,
         Err(e) => {
-            eprintln!("error: {e}");
+            eprintln!("{} {e}", err_tag(color));
             return ExitCode::FAILURE;
         }
     };
@@ -258,7 +310,6 @@ fn run_tests(filter: Option<&str>, stdlib: Option<String>, quietly: bool) -> Exi
         return ExitCode::SUCCESS;
     }
 
-    let color = ramos::color::Color::for_stdout();
     let (mut passed, mut failed) = (0usize, 0usize);
     for file in &files {
         let program = match ramos::loader::load(file, stdlib_dir.as_deref()) {
@@ -269,7 +320,7 @@ fn run_tests(filter: Option<&str>, stdlib: Option<String>, quietly: bool) -> Exi
             }
         };
         if let Err(e) = check_test_module(file, &parse_only(file)) {
-            eprintln!("error: {e}");
+            eprintln!("{} {e}", err_tag(color));
             return ExitCode::FAILURE;
         }
         // Docs live in comments, so they come from the file's own text rather
@@ -288,45 +339,34 @@ fn run_tests(filter: Option<&str>, stdlib: Option<String>, quietly: bool) -> Exi
             match ramos::interp::run_tests(&program, ramos::interp::sink(std::io::stdout()), &[]) {
                 Ok(o) => o,
                 Err(e) => {
-                    eprintln!("error: {}: {e}", file.display());
+                    eprintln!("{} {}: {e}", err_tag(color), file.display());
                     return ExitCode::FAILURE;
                 }
             };
         let mut current = String::new();
         for outcome in outcomes {
             if outcome.module != current {
-                println!(
-                    "{}",
-                    color.paint(ramos::color::Style::Heading, &outcome.module)
-                );
+                println!("{}", color.paint(Style::Heading, &outcome.module));
                 if let Some(summary) = &docs.module {
-                    println!("  {}", color.paint(ramos::color::Style::Dim, summary));
+                    println!("  {}", color.paint(Style::Dim, summary));
                 }
                 current = outcome.module.clone();
             }
             match &outcome.failure {
                 None => {
                     passed += 1;
-                    println!(
-                        "  {} {}",
-                        color.paint(ramos::color::Style::Str, "ok"),
-                        outcome.name
-                    );
+                    println!("  {} {}", color.paint(Style::Str, "ok"), outcome.name);
                 }
                 Some(why) => {
                     failed += 1;
-                    println!(
-                        "  {} {}",
-                        color.paint(ramos::color::Style::Keyword, "FAIL"),
-                        outcome.name
-                    );
+                    println!("  {} {}", color.paint(Style::Keyword, "FAIL"), outcome.name);
                     println!("      {why}");
                 }
             }
             // Under the result, so the name and its `ok`/`FAIL` still line up
             // down the column.
             if let Some(summary) = docs.functions.get(&outcome.name) {
-                println!("     {}", color.paint(ramos::color::Style::Dim, summary));
+                println!("     {}", color.paint(Style::Dim, summary));
             }
         }
     }
@@ -509,6 +549,7 @@ fn run_loaded(
     stdlib: Option<String>,
     prog_args: &[String],
     require_main: bool,
+    color: Color,
 ) -> ExitCode {
     let stdlib_dir = stdlib.map(PathBuf::from);
     let program = match ramos::loader::load(Path::new(path), stdlib_dir.as_deref()) {
@@ -526,14 +567,19 @@ fn run_loaded(
         }
     };
     if cmd == "check" {
-        println!("{path}: ok ({} items loaded)", program.items.len());
+        println!(
+            "{path}: {} ({} items loaded)",
+            color.paint(Style::Str, "ok"),
+            program.items.len()
+        );
         return ExitCode::SUCCESS;
     }
     if require_main && !has_entrypoint(&program) {
         eprintln!(
-            "error: `{path}` defines no module exposing a public `function main()` — \
+            "{} `{path}` defines no module exposing a public `function main()` — \
              a directory is only run through its `main.rmo`, so that file has to be a \
-             real entrypoint"
+             real entrypoint",
+            err_tag(color)
         );
         return ExitCode::FAILURE;
     }
@@ -554,11 +600,12 @@ fn run_loaded(
     match (result, flushed) {
         (Ok(_), Ok(())) => ExitCode::SUCCESS,
         (Err(e), _) => {
-            eprintln!("runtime error: {e}");
+            // Matches the tag `ramos repl` paints for the same message.
+            eprintln!("{} {e}", color.paint(Style::Heading, "runtime error:"));
             ExitCode::FAILURE
         }
         (Ok(_), Err(e)) => {
-            eprintln!("error: could not write output: {e}");
+            eprintln!("{} could not write output: {e}", err_tag(color));
             ExitCode::FAILURE
         }
     }
@@ -588,20 +635,22 @@ fn run_cli() -> ExitCode {
     // `doc` is a directory-level command (no `.rmo` file), so handle it before
     // the file-based dispatch below.
     if args.first().map(String::as_str) == Some("doc") {
-        return run_doc(&args[1..]);
+        return run_doc(&args[1..], color);
     }
     // `new` takes a project name, not a `.rmo` file.
     if args.first().map(String::as_str) == Some("new") {
-        return run_new(&args[1..]);
+        return run_new(&args[1..], color);
     }
-    // `learn` takes no file — it prints a fixed crash course on the language.
+    // `learn` takes no file — it prints a fixed crash course on the language,
+    // meant to be read as-is (or piped into an agent's context), so it is
+    // never colored regardless of `--color`.
     if args.first().map(String::as_str) == Some("learn") {
         print!("{}", ramos::learn::text());
         return ExitCode::SUCCESS;
     }
     // `repl` takes no file either — an interactive session on stdin.
     if args.first().map(String::as_str) == Some("repl") {
-        return ramos::repl::run(stdlib);
+        return ramos::repl::run(stdlib, color);
     }
     // `doctest` takes an optional stdlib root, not a `.rmo` file.
     if args.first().map(String::as_str) == Some("doctest") {
@@ -610,7 +659,7 @@ fn run_cli() -> ExitCode {
     // `test` takes an optional file: with one, run that file's tests; without,
     // find every test module under the current directory.
     if args.first().map(String::as_str) == Some("test") {
-        return run_tests(args.get(1).map(String::as_str), stdlib, quietly);
+        return run_tests(args.get(1).map(String::as_str), stdlib, quietly, color);
     }
     let (cmd, path) = match (args.first().map(String::as_str), args.get(1)) {
         (Some(c @ ("run" | "check" | "lexer" | "ast")), Some(p)) => (c, p.as_str()),
@@ -632,7 +681,10 @@ fn run_cli() -> ExitCode {
             eprintln!(
                 "  new <project-name>         scaffold a project: <name>/src/<snake>/main.rmo"
             );
-            eprintln!("                             defining `<CamelCase>.Main`");
+            eprintln!(
+                "                             defining `<CamelCase>.Main`, plus a `.env.dev`"
+            );
+            eprintln!("                             Config starter");
             eprintln!("  learn                      print a crash course on the language: every");
             eprintln!("                             keyword, the syntax, and what not to do");
             eprintln!("  repl                       start an interactive session (persists state)");
@@ -682,7 +734,7 @@ fn run_cli() -> ExitCode {
                 resolved.as_str()
             }
             None => {
-                eprintln!("error: no `main.rmo` found under `{path}`");
+                eprintln!("{} no `main.rmo` found under `{path}`", err_tag(color));
                 return ExitCode::FAILURE;
             }
         }
@@ -690,7 +742,10 @@ fn run_cli() -> ExitCode {
         path
     };
     if !path.ends_with(".rmo") {
-        eprintln!("error: Ramos source files must use the `.rmo` extension (got `{path}`)");
+        eprintln!(
+            "{} Ramos source files must use the `.rmo` extension (got `{path}`)",
+            err_tag(color)
+        );
         let mut renamed = std::path::PathBuf::from(path);
         renamed.set_extension("rmo");
         eprintln!("  wrong:   ramos run {path}");
@@ -704,12 +759,12 @@ fn run_cli() -> ExitCode {
         // Anything after the script path is a program argument, exposed to the
         // program via `get_args` / `get_arg`.
         let prog_args: Vec<String> = args.iter().skip(2).cloned().collect();
-        return run_loaded(cmd, path, stdlib, &prog_args, require_main);
+        return run_loaded(cmd, path, stdlib, &prog_args, require_main, color);
     }
     let source = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("error: cannot read `{path}`: {e}");
+            eprintln!("{} cannot read `{path}`: {e}", err_tag(color));
             return ExitCode::FAILURE;
         }
     };

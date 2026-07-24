@@ -17,14 +17,14 @@ use editor::{Editor, Input};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-pub fn run(stdlib: Option<String>) -> ExitCode {
+/// `color` is the CLI's already-resolved `--color`/`--no-color`/`NO_COLOR`
+/// choice; it is further gated on `interactive` here, since a piped stdin
+/// reads plain lines regardless (see the module doc) and painting output
+/// nobody but a script reads would be pointless.
+pub fn run(stdlib: Option<String>, color: Color) -> ExitCode {
     use std::io::IsTerminal;
     let interactive = std::io::stdin().is_terminal();
-    let color = if interactive {
-        Color::for_stdout()
-    } else {
-        Color::Never
-    };
+    let color = if interactive { color } else { Color::Never };
     let mut session = Session::new();
 
     // The stdlib is definitions only, so evaluating it registers `String`,
