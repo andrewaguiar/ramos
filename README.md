@@ -54,7 +54,7 @@ the terminal — the examples below are the same ones.
   `do` lambda with an indented body, it begins on the line *after* the `=`,
   indented one level:
 
-  ```ruby
+  ```elixir
   # error: the block hangs off the end of the assignment
   result = case value
     true -> :ok
