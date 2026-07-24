@@ -1,0 +1,204 @@
+module Pool
+  # @module_doc
+  #
+  # Pool — a fixed-size pool of some resource, held by an actor, generalizing
+  # `Global`'s "one actor, one shared value" to "one actor per named pool,
+  # many resources."
+  #
+  # `new` starts a pool under an `id` you choose — like `start_actor`, the id
+  # is what tells one pool from another, so a program can run several. Its
+  # `config` says how to grow the pool: `min` resources are built right away,
+  # `factory` (a lambda of no arguments) builds one more whenever `checkin`
+  # needs one and the pool is under `max`.
+  #
+  #   config = {min: 2, max: 5, factory: do -> Socket.connect("db.internal", 5432)}
+  #   (:ok, id) = Pool.new(:db_pool, config)
+  #
+  #   (:ok, (ref, conn)) = Pool.checkin(id)   # hand out a connection
+  #   # ... use conn ...
+  #   Pool.checkout(id, ref)                  # give it back
+  #
+  # **Naming reads like a hotel, not like most connection-pool libraries.**
+  # `checkin` is the one that *hands you a resource* — like checking into a
+  # room, you are the one using it now — and `checkout` is the one that
+  # *gives it back* — like checking out, freeing the room for the next guest.
+  # Libraries such as Ruby's `ConnectionPool` or Erlang's `poolboy` use the
+  # opposite pairing (`checkout` to acquire). If you know one of those, read
+  # `checkin`/`checkout` here backwards from what you'd expect.
+  #
+  # Every resource the pool hands out is tracked by a `ref` — an integer
+  # `checkin` returns alongside the resource — because two resources are not
+  # necessarily distinguishable any other way: a `Socket` or `Thread` handle
+  # has no structural identity (`==` on two of them is always `false`, even
+  # against itself), so the pool cannot find "the same one" back by comparing
+  # values. `checkout` always takes the `ref` `checkin` gave you.
+  #
+  # A resource is never validated, health-checked, or closed by `Pool`
+  # itself — it has no idea what a `Socket` or a `Thread` even is, only that
+  # `factory()` builds one and that it is a plain value from then on. Closing
+  # or resetting whatever came out of `checkin` before treating it as good
+  # again is on the caller.
+  #
+  # **`checkin`/`checkout` cannot be called from inside a `Thread.start`ed
+  # lambda, or from inside another actor's handler.** This is not a `Pool`
+  # limitation specifically — it is the same rule every actor lives under
+  # (see `Thread`'s and `Actor`'s own docs): a spawned thread gets a fresh,
+  # empty actor registry and "cannot see the caller's running actors," and a
+  # handler is isolated the same way. In practice: a pool has to be checked
+  # in and out from your program's own top-level flow (or plain functions it
+  # calls directly) — never from a per-connection `Thread.start`, and never
+  # from inside another actor. Naming a pool after a use that sounds
+  # thread-per-something (a thread pool, a connection pool drawn from inside
+  # concurrent handlers) is the trap this warns about: `Pool` itself is not
+  # reachable from there.
+  #
+  # **A `factory` that raises is not a soft failure.** There is no
+  # `try`/`catch` in Ramos, so unlike `:pool_exhausted` — a proper
+  # `(:error, ...)` value `checkin` returns — a runtime error inside
+  # `factory` crashes whatever called `checkin`, not just that one call. The
+  # pool's own actor is unaffected and keeps running (an actor survives an
+  # error in one message and moves on to the next, same as any actor), but
+  # nothing in the caller can see that from the inside — from where `checkin`
+  # was called, this looks exactly like any other uncaught error. Keep
+  # `factory` itself free of anything that can raise, or guard what it does
+  # before handing it to `Pool.new`.
+  #
+  # `Pool` is an ordinary `Actor` implementation, so `list_actors`,
+  # `actor_stats(id)` and `stop_actor(id)` all work on any pool it starts —
+  # `stop_actor` does not close what the pool was holding, for the same
+  # reason `Pool` never does.
+
+  implements Actor
+
+  function call(f, args, state, config)
+    # @doc
+    #
+    # The server half of both operations. `:checkin` hands back a free
+    # resource — building one with `config`'s `factory` first if none is
+    # free and the pool is under `max` — and marks it used; `:checkout`
+    # marks a resource free again.
+    #
+    # @param f: the operation — `:checkin` or `:checkout`
+    # @param args: `[]` for `:checkin`, `[ref]` for `:checkout`
+    # @param state: `{resources: {ref: (value, status), ...}, next_ref: n}`
+    # @param config: the map `new` was given — `min`, `max`, `factory`
+    # @return a `(reply, new_state)` tuple
+    case f
+      :checkin -> checkin_impl(state, config)
+      :checkout -> checkout_impl(args, state)
+
+  # client half — callers never write `call_actor`
+
+  function new(id, config)
+    # @doc
+    #
+    # Builds `min` resources with `config`'s `factory` and starts the pool
+    # under `id`. Call it once per `id`; starting the same one twice is an
+    # error, the same as any actor.
+    #
+    # @param id: names this pool — pass it to every other `Pool` function
+    # @param config: a map with `min` (built immediately), `max` (the most
+    #   `checkin` will ever build), and `factory` (a lambda of no arguments
+    #   that builds one resource)
+    # @return `(:ok, id)`
+    #
+    #   config = {min: 1, max: 2, factory: do -> "connection"}
+    #   Pool.new(:demo_pool, config)   # == (:ok, :demo_pool)
+    factory = Map.get(config, :factory, nil)
+    min = Map.get(config, :min, 0)
+    max = Map.get(config, :max, 0)
+    assert(is_lambda(factory), "Pool.new: config must have a `factory` lambda")
+    assert(min >= 0, "Pool.new: config `min` must be >= 0, got #{min}")
+    assert(max >= min, "Pool.new: config `max` must be >= `min` (#{min}), got #{max}")
+    state = {resources: seed(min, factory), next_ref: min}
+    start_actor(id, Pool, state, config)
+    (:ok, id)
+
+  function checkin(id)
+    # @doc
+    #
+    # Hands back a free resource, building one first (with `config`'s
+    # `factory`) if none is free and the pool is under `max`. Marks whatever
+    # it returns as used, so the next `checkin` will not hand it out too.
+    #
+    # @param id: the pool, as passed to `new`
+    # @return `(:ok, (ref, resource))`, or an error built by `error` with
+    #   type `:pool_exhausted` when nothing is free and the pool is already
+    #   at `max`
+    #
+    #   config = {min: 1, max: 1, factory: do -> "connection"}
+    #   Pool.new(:checkin_demo, config)
+    #   (:ok, (ref, resource)) = Pool.checkin(:checkin_demo)
+    #   resource   # == "connection"
+    #   (:error, (type, _, _)) = Pool.checkin(:checkin_demo)
+    #   type   # == :pool_exhausted
+    call_actor(id, Pool, :checkin, [])
+
+  function checkout(id, ref)
+    # @doc
+    #
+    # Gives a resource back to the pool, marking `ref` free again so the next
+    # `checkin` can hand it out.
+    #
+    # @param id: the pool, as passed to `new`
+    # @param ref: the ref `checkin` returned alongside the resource
+    # @return `:ok`, or an error built by `error` if `ref` is not a resource
+    #   currently checked in (unknown, or already free)
+    #
+    #   config = {min: 1, max: 1, factory: do -> "connection"}
+    #   Pool.new(:checkout_demo, config)
+    #   (:ok, (ref, resource)) = Pool.checkin(:checkout_demo)
+    #   Pool.checkout(:checkout_demo, ref)   # == :ok
+    call_actor(id, Pool, :checkout, [ref])
+
+  # private functions
+
+  helper seed(count, factory)
+    seed_loop(count, factory, {}, 0)
+
+  helper seed_loop(remaining, factory, resources, ref)
+    case remaining
+      0 -> resources
+      _ -> seed_loop(remaining - 1, factory, Map.put(resources, ref, (factory(), :free)), ref + 1)
+
+  helper checkin_impl(state, config)
+    resources = Map.get(state, :resources, {})
+    case find_free(resources)
+      (:ok, ref, value) -> ((:ok, (ref, value)), mark(state, resources, ref, value, :used))
+      :none -> grow(state, resources, config)
+
+  helper find_free(resources)
+    is_free =
+      do entry
+        (ref, (value, status)) = entry
+        status == :free
+    case List.find(Map.entries(resources), is_free)
+      nil -> :none
+      (ref, (value, _)) -> (:ok, ref, value)
+
+  helper grow(state, resources, config)
+    max = Map.get(config, :max, 0)
+    cond
+      size(resources) >= max -> exhausted(state, max)
+      true -> build(state, resources, config)
+
+  helper exhausted(state, max)
+    (error(:pool_exhausted, "Pool.checkin: no free resource and already at max (#{max})"), state)
+
+  helper build(state, resources, config)
+    factory = Map.get(config, :factory, nil)
+    ref = Map.get(state, :next_ref, 0)
+    value = factory()
+    with_ref = mark(state, resources, ref, value, :used)
+    ((:ok, (ref, value)), Map.put(with_ref, :next_ref, ref + 1))
+
+  helper mark(state, resources, ref, value, status)
+    Map.put(state, :resources, Map.put(resources, ref, (value, status)))
+
+  helper checkout_impl(args, state)
+    [ref] = args
+    resources = Map.get(state, :resources, {})
+    case Map.get(resources, ref, nil)
+      nil -> (error(:unknown_resource, "Pool.checkout: no resource checked in under #{inspect(ref)}"), state)
+      (value, :free) -> (error(:not_checked_in, "Pool.checkout: resource #{inspect(ref)} is already free"), state)
+      (value, :used) -> (:ok, mark(state, resources, ref, value, :free))

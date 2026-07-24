@@ -884,6 +884,7 @@ impl<'a> Lexer<'a> {
                     let replacement = match esc {
                         'n' => '\n',
                         't' => '\t',
+                        'r' => '\r',
                         '"' => '"',
                         '\\' => '\\',
                         other => {
@@ -978,6 +979,7 @@ impl<'a> Lexer<'a> {
                     let replacement = match esc {
                         'n' => '\n',
                         't' => '\t',
+                        'r' => '\r',
                         '"' => '"',
                         '\\' => '\\',
                         '#' => '#', // \#{ suppresses interpolation
@@ -1144,6 +1146,7 @@ impl<'a> Lexer<'a> {
                         let replacement = match esc {
                             'n' => '\n',
                             't' => '\t',
+                            'r' => '\r',
                             '"' => '"',
                             '\\' => '\\',
                             '#' => '#',

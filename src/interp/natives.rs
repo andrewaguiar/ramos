@@ -1,7 +1,8 @@
 //! The native primitives behind `Kernel` (PLAN phase 4's `native(str, args)`
 //! table). These implement everything the Ramos stdlib delegates to the host:
-//! console I/O, collection ops, conversions, type predicates, and the
-//! character-level `string_*` operations used by the `String` module.
+//! console I/O, collection ops, conversions, type predicates, file and TCP
+//! I/O, and the character-level `string_*` operations used by the `String`
+//! module.
 //!
 //! `native(name, args)` is the seam: the stdlib calls `native("string_upcase",
 //! [s])`, and [`call`] dispatches by name. Because `Kernel` is implicitly in
@@ -9,9 +10,9 @@
 //! resolve here as bare calls, even before the Ramos stdlib is loaded.
 
 use super::eval::{RuntimeError, Sink};
-use super::value::{values_equal, List, Map, StructValue, Value};
+use super::value::{values_equal, List, Map, ServerSocketHandle, SocketHandle, StructValue, Value};
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::sync::Arc;
 
 /// The program's command-line arguments (everything after the script path),
@@ -263,6 +264,21 @@ fn dispatch(
         "dir_change" => one(name, args, dir_change),
         "dir_make" => one(name, args, dir_make),
         "dir_list" => one(name, args, dir_list),
+
+        // ── networking ───────────────────────────────────────────────────
+        // Blocking TCP only. `ServerSocket` wraps a `TcpListener`, `Socket` a
+        // `TcpStream` — both behind a `Mutex<Option<_>>` so `close` can drop
+        // the underlying resource without invalidating the handle value
+        // itself. Same fallible-result convention as `File`.
+        "server_socket_bind" => two(name, args, server_socket_bind),
+        "server_socket_accept" => one(name, args, server_socket_accept),
+        "server_socket_local_port" => one(name, args, server_socket_local_port),
+        "server_socket_close" => one(name, args, server_socket_close),
+        "socket_connect" => two(name, args, socket_connect),
+        "socket_send" => two(name, args, socket_send),
+        "socket_recv" => two(name, args, socket_recv),
+        "socket_peer_address" => one(name, args, socket_peer_address),
+        "socket_close" => one(name, args, socket_close),
 
         _ => return None,
     };
@@ -802,6 +818,162 @@ fn dir_list(path: &Value) -> Result<Value, RuntimeError> {
     Ok(ok(Value::List(List::from_vec(items))))
 }
 
+// ── networking (blocking TCP) ───────────────────────────────────────────────
+//
+// Same effect-explicit convention as file I/O: every fallible primitive
+// returns `(:ok, value)` / `(:error, reason)` or a bare `:ok`. `host:port` is
+// built as a string and handed to `std::net`, so a hostname resolves through
+// the platform's own DNS the same way it would for any other program.
+
+/// `"host:port"`, after checking `port` is in range — `TcpStream`/`TcpListener`
+/// take any `ToSocketAddrs`, but a bad port is worth rejecting before it is
+/// silently truncated.
+fn socket_address(host: &Value, port: &Value) -> Result<String, RuntimeError> {
+    let host = as_str(host)?;
+    let port = as_int(port)?;
+    if !(0..=65535).contains(&port) {
+        return err(format!("port must be in 0..=65535, got {port}"));
+    }
+    Ok(format!("{host}:{port}"))
+}
+
+fn as_server_socket(v: &Value) -> Result<&Arc<ServerSocketHandle>, RuntimeError> {
+    match v {
+        Value::ServerSocket(s) => Ok(s),
+        other => err(format!(
+            "expected a ServerSocket, got {}",
+            other.type_name()
+        )),
+    }
+}
+
+fn as_socket(v: &Value) -> Result<&Arc<SocketHandle>, RuntimeError> {
+    match v {
+        Value::Socket(s) => Ok(s),
+        other => err(format!("expected a Socket, got {}", other.type_name())),
+    }
+}
+
+/// Bind and start listening: `(:ok, server)` or `(:error, reason)`.
+fn server_socket_bind(host: &Value, port: &Value) -> Result<Value, RuntimeError> {
+    let addr = socket_address(host, port)?;
+    Ok(match std::net::TcpListener::bind(addr) {
+        Ok(listener) => ok(Value::ServerSocket(Arc::new(ServerSocketHandle {
+            listener: std::sync::Mutex::new(Some(listener)),
+        }))),
+        Err(e) => io_error(&e),
+    })
+}
+
+/// Block for the next client and hand back its `Socket`. `(:ok, socket)`,
+/// `(:error, reason)`, or `(:error, :closed)` if `close` already ran.
+fn server_socket_accept(v: &Value) -> Result<Value, RuntimeError> {
+    let handle = as_server_socket(v)?;
+    let guard = handle.listener.lock().unwrap_or_else(|e| e.into_inner());
+    Ok(match &*guard {
+        Some(listener) => match listener.accept() {
+            Ok((stream, _addr)) => ok(Value::Socket(Arc::new(SocketHandle {
+                stream: std::sync::Mutex::new(Some(stream)),
+            }))),
+            Err(e) => io_error(&e),
+        },
+        None => error(sym("closed")),
+    })
+}
+
+/// The port actually bound — what `bind` was given, or what the OS chose for
+/// port `0`. `(:ok, port)`, `(:error, reason)`, or `(:error, :closed)`.
+fn server_socket_local_port(v: &Value) -> Result<Value, RuntimeError> {
+    let handle = as_server_socket(v)?;
+    let guard = handle.listener.lock().unwrap_or_else(|e| e.into_inner());
+    Ok(match &*guard {
+        Some(listener) => match listener.local_addr() {
+            Ok(addr) => ok(Value::Int(addr.port() as i64)),
+            Err(e) => io_error(&e),
+        },
+        None => error(sym("closed")),
+    })
+}
+
+/// Stop listening. Idempotent — closing twice is still `:ok`.
+fn server_socket_close(v: &Value) -> Result<Value, RuntimeError> {
+    let handle = as_server_socket(v)?;
+    let mut guard = handle.listener.lock().unwrap_or_else(|e| e.into_inner());
+    *guard = None;
+    Ok(sym("ok"))
+}
+
+/// Connect to `host:port`: `(:ok, socket)` or `(:error, reason)`.
+fn socket_connect(host: &Value, port: &Value) -> Result<Value, RuntimeError> {
+    let addr = socket_address(host, port)?;
+    Ok(match std::net::TcpStream::connect(addr) {
+        Ok(stream) => ok(Value::Socket(Arc::new(SocketHandle {
+            stream: std::sync::Mutex::new(Some(stream)),
+        }))),
+        Err(e) => io_error(&e),
+    })
+}
+
+/// Write all of `data`'s bytes. `:ok`, `(:error, reason)`, or
+/// `(:error, :closed)` if `close` already ran.
+fn socket_send(socket: &Value, data: &Value) -> Result<Value, RuntimeError> {
+    let handle = as_socket(socket)?;
+    let data = as_str(data)?;
+    let mut guard = handle.stream.lock().unwrap_or_else(|e| e.into_inner());
+    Ok(match &mut *guard {
+        Some(stream) => match stream.write_all(data.as_bytes()) {
+            Ok(()) => sym("ok"),
+            Err(e) => io_error(&e),
+        },
+        None => error(sym("closed")),
+    })
+}
+
+/// Read up to `size` bytes, blocking until at least one is available. `(:ok,
+/// "")` means the peer closed the connection — a blocking read otherwise never
+/// returns zero bytes. `(:error, reason)` or `(:error, :closed)` if `close`
+/// already ran locally.
+fn socket_recv(socket: &Value, size: &Value) -> Result<Value, RuntimeError> {
+    let handle = as_socket(socket)?;
+    let size = as_int(size)?.max(0) as usize;
+    if size == 0 {
+        return Ok(ok(Value::Str("".into())));
+    }
+    let mut buf = vec![0u8; size];
+    let mut guard = handle.stream.lock().unwrap_or_else(|e| e.into_inner());
+    Ok(match &mut *guard {
+        Some(stream) => match stream.read(&mut buf) {
+            Ok(n) => ok(Value::Str(
+                String::from_utf8_lossy(&buf[..n]).into_owned().into(),
+            )),
+            Err(e) => io_error(&e),
+        },
+        None => error(sym("closed")),
+    })
+}
+
+/// The address of the peer this socket is connected to, as `"ip:port"`.
+/// `(:ok, address)`, `(:error, reason)`, or `(:error, :closed)`.
+fn socket_peer_address(socket: &Value) -> Result<Value, RuntimeError> {
+    let handle = as_socket(socket)?;
+    let guard = handle.stream.lock().unwrap_or_else(|e| e.into_inner());
+    Ok(match &*guard {
+        Some(stream) => match stream.peer_addr() {
+            Ok(addr) => ok(Value::Str(addr.to_string().into())),
+            Err(e) => io_error(&e),
+        },
+        None => error(sym("closed")),
+    })
+}
+
+/// Close the connection. Idempotent — closing twice is still `:ok`.
+fn socket_close(socket: &Value) -> Result<Value, RuntimeError> {
+    let handle = as_socket(socket)?;
+    let mut guard = handle.stream.lock().unwrap_or_else(|e| e.into_inner());
+    *guard = None;
+    Ok(sym("ok"))
+}
+
 // Result-shape helpers shared by the file natives.
 
 fn sym(name: &str) -> Value {
@@ -823,6 +995,14 @@ fn io_error(e: &std::io::Error) -> Value {
         ErrorKind::NotFound => "enoent",
         ErrorKind::PermissionDenied => "eacces",
         ErrorKind::AlreadyExists => "eexist",
+        ErrorKind::ConnectionRefused => "econnrefused",
+        ErrorKind::ConnectionReset => "econnreset",
+        ErrorKind::ConnectionAborted => "econnaborted",
+        ErrorKind::NotConnected => "enotconn",
+        ErrorKind::AddrInUse => "eaddrinuse",
+        ErrorKind::AddrNotAvailable => "eaddrnotavail",
+        ErrorKind::TimedOut => "etimedout",
+        ErrorKind::BrokenPipe => "epipe",
         _ => "io_error",
     };
     error(sym(reason))

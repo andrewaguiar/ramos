@@ -1,0 +1,222 @@
+struct HttpServer
+  # @module_doc
+  #
+  # HttpServer — a minimal, bounded-concurrency HTTP server built on
+  # `Socket`/`ServerSocket`, with a `Pool` capping how many connections it
+  # ever handles at once.
+  #
+  #   server = HttpServer{port: 8080}
+  #   server.start(do request -> "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi")
+  #
+  # `start` binds the port, then loops forever: accept a connection, hand it
+  # off to its own `Thread` to be read, run through the lambda it was given,
+  # and written back to — and immediately accept the next, up to
+  # `max_connections` at a time. There is no framework here — no routing, no
+  # parsing of the request line or headers, no status-line helpers. The
+  # lambda gets raw text in and hands raw text back; everything an HTTP
+  # response needs (the status line, `Content-Length`, `Content-Type`, …) is
+  # on it to write:
+  #
+  #   handler =
+  #     do request ->
+  #       case String.starts_with(request, "GET / ")
+  #         true -> "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi"
+  #         false -> "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n"
+  #
+  #   HttpServer{port: 8080}.start(handler)
+  #
+  # **What "the request text" is.** `Socket.recv` reads bytes, not messages —
+  # see its own doc — so this reads chunks until the blank line that ends the
+  # headers (`"\r\n\r\n"`) shows up, and hands back everything read up to and
+  # including it. That is the whole request for a bodyless `GET`/`HEAD`/
+  # `DELETE`; a request **with a body** (a `POST`, typically) arrives with its
+  # body cut off at the blank line, since nothing here reads `Content-Length`
+  # bytes of body on top of the headers. Reading a body, if the handler needs
+  # one, is on the lambda — parse `Content-Length` out of what it was given
+  # and `Socket.recv` the rest off the connection itself (see the doc on
+  # `start` for how to reach it).
+  #
+  # **One request per connection.** There is no keep-alive: the connection
+  # closes right after the response is written, whether or not the request
+  # asked to keep it open.
+  #
+  # **Each connection runs on its own `Thread`, up to `max_connections` at
+  # once.** `accept` hands a connection to a freshly started thread — the
+  # reading, the call to the lambda, and the write back all happen there —
+  # and goes straight back to waiting for the next client, so a slow lambda
+  # or a client that trickles its request in slowly only holds up that one
+  # connection, not the others behind it. A `Pool` (see its own module doc)
+  # tracks how many are in flight: `max_connections` plain integer "slots",
+  # `checkin` before a connection is even accepted, `checkout` once its
+  # thread finishes. Once every slot is taken, `accept` itself blocks — no
+  # new connection is accepted, and no new thread starts — until one frees
+  # up. That is the whole difference from the naive version of this: without
+  # a cap, a burst of connections is a burst of threads with nothing to stop
+  # it; with one, the thread count has a hard ceiling and the excess queues
+  # in the OS's own backlog instead of becoming live threads.
+  #
+  # That is not free either, and is worth knowing before it surprises you:
+  #   - **Slots are freed oldest-first, not first-to-finish.** There is no
+  #     "whichever thread finishes first" primitive to build the fairer
+  #     version out of, so freeing a slot waits on the *oldest* still-open
+  #     connection specifically, however many newer ones already finished.
+  #     Ordinarily that is invisible — connections finish in roughly the
+  #     order they started. But a single connection that never finishes (see
+  #     "no read timeout" below) is a problem the moment every slot fills
+  #     up: `accept` needs the oldest one to free a slot, the oldest one is
+  #     the stuck one, and now nothing is ever accepted again, no matter how
+  #     fast every other connection finishes. One stuck client is enough to
+  #     stall the entire server once the pool behind it is full.
+  #   - **A connection's thread is never awaited by whatever *serves* it** —
+  #     only by the accept loop reclaiming its slot, later, possibly long
+  #     after the thread itself finished. An uncaught error inside the
+  #     lambda still only ends that one thread, not the whole server (see
+  #     `Thread`'s own doc for why), but it is still not reported anywhere;
+  #     a lambda that wants its failures seen has to report them itself.
+  #   - **Still no read timeout.** A connection that never finishes sending
+  #     its headers ties up its own thread and its own pool slot — bounded
+  #     now, rather than unbounded, but see the head-of-line point above for
+  #     what one such connection can still do once the pool is full.
+  #
+  # None of this makes `HttpServer` hardened for hostile traffic — there is
+  # still no timeout — but the thread count now has a hard ceiling, which
+  # was the sharper problem.
+  #
+  # **A request is capped at 64 KB of headers.** Past that, whatever was read
+  # so far is handed to the lambda as-is (almost certainly not ending in
+  # `"\r\n\r\n"`) rather than growing without bound — a defense against a
+  # client that never sends the blank line, not a real HTTP limit.
+
+  attributes
+    port: 8080
+    max_connections: 100
+
+  function new(port, max_connections)
+    # @doc
+    #
+    # Builds an `HttpServer`, validating both fields up front — the same
+    # role `Date.new` plays over a bare `Date{...}` literal. The plain
+    # `HttpServer{port: 8080}` literal still works and still defaults
+    # `max_connections` to `100`; `new` is for when you want both checked
+    # (and both named) at construction time rather than failing later,
+    # inside `start`.
+    #
+    # @param port: the port to bind, `0`..`65535`
+    # @param max_connections: the most connections `start` will ever hand to
+    #   a `Thread` at once — must be at least `1`
+    # @return a new `HttpServer`
+    #
+    #   HttpServer.new(8080, 50)   # == HttpServer{port: 8080, max_connections: 50}
+    assert(
+      port >= 0 and port <= 65535,
+      "HttpServer.new: port must be 0..65535, got #{port}"
+    )
+    assert(
+      max_connections >= 1,
+      "HttpServer.new: max_connections must be >= 1, got #{max_connections}"
+    )
+    HttpServer{port: port, max_connections: max_connections}
+
+  function start(self, f)
+    # @doc
+    #
+    # Binds `self.port` and serves connections forever: accept, hand the
+    # connection to its own `Thread` — which reads the request, calls
+    # `f(request)`, writes its result back, and closes — and immediately
+    # accept the next, up to `self.max_connections` at a time; past that,
+    # `accept` itself waits for one to free up rather than starting another
+    # thread. The accept loop runs on the calling thread and does not return
+    # under normal operation; each connection's handling happens elsewhere
+    # and in parallel — see the module doc for what "the request" contains,
+    # how the cap works, and what is and is not handled for you.
+    #
+    # @param self: an `HttpServer` instance
+    # @param f: a lambda of one argument — the request text — returning the
+    #   response text to write back verbatim
+    # @return an error built by `error` if the port cannot be bound; otherwise
+    #   this never returns
+    #
+    # Real use blocks forever, so this is illustrative rather than a doctest
+    # assertion — start it on its own `Thread` and talk to it over `Socket`:
+    #
+    #   echo =
+    #     do request ->
+    #       body = "you said: #{request}"
+    #       "HTTP/1.1 200 OK\r\nContent-Length: #{String.length(body)}\r\n\r\n#{body}"
+    #
+    #   Thread.start(do -> HttpServer{port: 8080}.start(echo))
+    #   (:ok, socket) = Socket.connect("127.0.0.1", 8080)
+    #   Socket.send(socket, "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    #   Socket.recv(socket, 1024)
+    assert(
+      self.max_connections >= 1,
+      "HttpServer.start: max_connections must be >= 1, got #{self.max_connections}"
+    )
+    case ServerSocket.bind("0.0.0.0", self.port)
+      (:ok, server) -> start_serving(server, f, self.max_connections)
+      failure -> failure
+
+  # private functions
+
+  # `checkin`/`checkout` can only be called from here — the accept loop's own
+  # thread — never from inside a spawned `Thread`, which cannot see the pool
+  # actor at all (see the module doc). So a connection's slot is always freed
+  # by this loop reclaiming it later, never by the thread that held it.
+
+  helper start_serving(server, f, max_connections)
+    (:ok, port) = ServerSocket.local_port(server)
+
+    (:ok, pool_id) =
+      Pool.new(
+        "http_server_pool_#{port}",
+        {min: 0, max: max_connections, factory: do -> 1}
+      )
+
+    accept_forever(server, f, pool_id, [])
+
+  helper accept_forever(server, f, pool_id, in_flight)
+    (ref, ready) = reserve_slot(pool_id, in_flight)
+    case ServerSocket.accept(server)
+      (:ok, conn) ->
+        handle = Thread.start(do -> handle_connection(conn, f))
+        accept_forever(server, f, pool_id, ready ++ [(ref, handle)])
+      (:error, reason) ->
+        Pool.checkout(pool_id, ref)
+        eprintln("HttpServer: accept failed: #{reason}")
+        accept_forever(server, f, pool_id, ready)
+
+  # A slot for the connection about to be accepted, and the (possibly
+  # shrunk) in-flight list to go with it. Blocks, reclaiming the oldest
+  # in-flight connection's slot, only once every slot is already taken.
+  helper reserve_slot(pool_id, in_flight)
+    case Pool.checkin(pool_id)
+      (:ok, (ref, _)) -> (ref, in_flight)
+      (:error, _) -> reserve_slot(pool_id, drain_oldest(pool_id, in_flight))
+
+  helper drain_oldest(pool_id, in_flight)
+    [(ref, handle) | rest] = in_flight
+    Thread.await(handle)
+    Pool.checkout(pool_id, ref)
+    rest
+
+  helper handle_connection(conn, f)
+    case read_request(conn)
+      "" -> :ok
+      request -> Socket.send(conn, f(request))
+    Socket.close(conn)
+
+  helper read_request(conn)
+    read_headers(conn, "")
+
+  helper read_headers(conn, acc)
+    cond
+      String.contains(acc, "\r\n\r\n") -> acc
+      String.length(acc) > max_request_bytes() -> acc
+      true ->
+        case Socket.recv(conn, 4096)
+          (:ok, "") -> acc
+          (:ok, chunk) -> read_headers(conn, acc <> chunk)
+          (:error, _) -> acc
+
+  helper max_request_bytes()
+    65536

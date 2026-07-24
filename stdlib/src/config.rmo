@@ -101,8 +101,8 @@ module Config
     #   Config.get("database", "host")   # == "db.internal"
     case File.read(path())
       (:ok, text) -> start_actor(:config, Config, parse(text), {})
-      (:error, :enoent) -> error(:config_file_not_found, not_found_message())
-      (:error, reason) -> error(reason, "cannot read `#{path()}`")
+      (:error, (:enoent, _, _)) -> error(:config_file_not_found, not_found_message())
+      (:error, (reason, _, _)) -> error(reason, "cannot read `#{path()}`")
 
   function get(section, key)
     # @doc

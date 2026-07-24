@@ -1,0 +1,138 @@
+module Socket
+  # @module_doc
+  #
+  # Socket — one open TCP connection: the reading and writing half of a
+  # connection, whichever side opened it.
+  #
+  # A `Socket` comes from one of two places: `connect`, dialing out to a
+  # listening peer, or `ServerSocket.accept`, handed one by a peer that dialed
+  # in. From there the two are identical — the same `send`, `recv`, and
+  # `close` work on either:
+  #
+  #   (:ok, socket) = Socket.connect("example.com", 9000)
+  #   Socket.send(socket, "GET /\n")
+  #   Socket.recv(socket, 1024)
+  #   Socket.close(socket)
+  #
+  # Every operation **blocks**: `connect` waits for the handshake, `send`
+  # waits for the write to complete, `recv` waits until at least one byte has
+  # arrived. There is no timeout and no non-blocking mode — pair a blocking
+  # call with `Thread` (see [Threads](#threads) in the guide) when it needs to
+  # run alongside other work, the same way the examples on this page pair
+  # `connect` with a listening `ServerSocket.accept`.
+  #
+  # **`recv` reads bytes, not lines or messages.** TCP has no framing of its
+  # own — one `send` may arrive as several `recv`s, or several `send`s as one
+  # — so a protocol that needs message boundaries (a length prefix, a
+  # delimiter, a fixed size) has to add them itself. `recv(socket, n)` reads
+  # *up to* `n` bytes, however many are available already; call it again for
+  # more. It returns `(:ok, "")` exactly when the peer has closed its side —
+  # a blocking read otherwise never comes back with zero bytes.
+  #
+  # Every fallible operation here follows `File`'s convention: `(:ok, value)`
+  # or a bare `:ok` on success, an error built by `error` on failure, its
+  # `type` a lowercase symbol from the OS (`:econnrefused`, `:etimedout`, …).
+  # `close` is idempotent and safe to call from whichever side gives up first
+  # — the other side's next `send` or `recv` then fails with `:econnreset` or
+  # `(:ok, "")` rather than hanging.
+
+  function connect(host, port)
+    # @doc
+    #
+    # Opens a TCP connection to `host`:`port`, blocking until the handshake
+    # completes.
+    #
+    # @param host: the address to connect to — a hostname or an IP
+    # @param port: the port to connect to
+    # @return `(:ok, socket)`, or an error built by `error` on failure — e.g.
+    #   `:econnrefused` when nothing is listening
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   (:ok, socket) = Socket.connect("127.0.0.1", port)
+    #   Socket.close(socket)   # == :ok
+    wrap(native("socket_connect", [host, port]), "connecting to `#{host}:#{port}`")
+
+  function send(socket, data)
+    # @doc
+    #
+    # Writes `data` to the connection, blocking until every byte has been
+    # handed to the OS.
+    #
+    # @param socket: a `Socket` from `connect` or `ServerSocket.accept`
+    # @param data: the `String` to write
+    # @return `:ok`, or an error built by `error` on failure
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   t = Thread.start(do -> Socket.connect("127.0.0.1", port))
+    #   (:ok, conn) = ServerSocket.accept(server)
+    #   (:ok, client) = Thread.await(t)
+    #   Socket.send(client, "hello")   # == :ok
+    #   Socket.recv(conn, 5)           # == (:ok, "hello")
+    wrap(native("socket_send", [socket, data]), "sending on the socket")
+
+  function recv(socket, size)
+    # @doc
+    #
+    # Reads up to `size` bytes from the connection, blocking until at least
+    # one has arrived. May return fewer than `size` bytes — it never waits
+    # for more once some have shown up.
+    #
+    # @param socket: a `Socket` from `connect` or `ServerSocket.accept`
+    # @param size: the most bytes to read
+    # @return `(:ok, data)` — `data` is `""` exactly when the peer has closed
+    #   the connection — or an error built by `error` on failure
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   t = Thread.start(do -> Socket.connect("127.0.0.1", port))
+    #   (:ok, conn) = ServerSocket.accept(server)
+    #   (:ok, client) = Thread.await(t)
+    #   Socket.send(conn, "hi")
+    #   Socket.recv(client, 1024)   # == (:ok, "hi")
+    wrap(native("socket_recv", [socket, size]), "receiving from the socket")
+
+  function peer_address(socket)
+    # @doc
+    #
+    # The address of the peer this socket is connected to.
+    #
+    # @param socket: a `Socket` from `connect` or `ServerSocket.accept`
+    # @return `(:ok, "ip:port")`, or an error built by `error` on failure
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   (:ok, socket) = Socket.connect("127.0.0.1", port)
+    #   (:ok, addr) = Socket.peer_address(socket)
+    #   addr   # == "127.0.0.1:#{port}"
+    wrap(native("socket_peer_address", [socket]), "reading the peer address")
+
+  function close(socket)
+    # @doc
+    #
+    # Closes the connection. The peer's next `recv` sees end of stream; its
+    # next `send` fails. Closing twice is not an error.
+    #
+    # @param socket: a `Socket` from `connect` or `ServerSocket.accept`
+    # @return `:ok`
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   (:ok, socket) = Socket.connect("127.0.0.1", port)
+    #   Socket.close(socket)   # == :ok
+    #   Socket.close(socket)   # == :ok
+    wrap(native("socket_close", [socket]), "closing the socket")
+
+  # private functions
+
+  helper wrap(result, action)
+    # @doc
+    #
+    # (private) Same convention as `File`'s `wrap`: turns a native
+    # `(:error, reason)` into an error built by `error`, whose message names
+    # `action` alongside the reason. Anything else — `:ok`, or `(:ok, value)`
+    # — passes through unchanged.
+    case result
+      (:error, reason) -> error(reason, "#{action} failed with #{reason}")
+      value -> value

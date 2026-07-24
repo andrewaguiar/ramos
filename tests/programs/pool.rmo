@@ -1,0 +1,25 @@
+# Pool: min pre-builds, checkin/checkout track resources by ref (not by
+# value), growth stops at max, and a freed ref is reused.
+config = {min: 1, max: 2, factory: do -> "connection"}
+(:ok, id) = Pool.new(:demo_pool, config)
+
+(:ok, (first_ref, first_value)) = Pool.checkin(id)
+println("first checkin: #{first_value}")
+
+(:ok, (second_ref, second_value)) = Pool.checkin(id)
+println("grew to max, second checkin: #{second_value}")
+
+case Pool.checkin(id)
+  (:error, (type, _, _)) -> println("third checkin over max: #{type}")
+
+println(Pool.checkout(id, first_ref))
+
+(:ok, (third_ref, third_value)) = Pool.checkin(id)
+println("reused the freed ref: #{third_ref == first_ref}")
+
+case Pool.checkout(id, 999)
+  (:error, (type, _, _)) -> println("checkout of an unknown ref: #{type}")
+
+Pool.checkout(id, third_ref)
+case Pool.checkout(id, third_ref)
+  (:error, (type, _, _)) -> println("double checkout: #{type}")

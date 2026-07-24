@@ -1,0 +1,37 @@
+# HttpServer: bind a real port, serve one request through a handler lambda,
+# and read the response back over a real Socket connection.
+function first_line(request)
+  case String.find(request, "\r\n")
+    nil -> request
+    i -> String.slice(request, 0, i)
+
+function connect_when_ready(port, attempts)
+  case Socket.connect("127.0.0.1", port)
+    (:ok, socket) -> (:ok, socket)
+    (:error, reason) when attempts <= 0 -> (:error, reason)
+    (:error, _) ->
+      sleep(10)
+      connect_when_ready(port, attempts - 1)
+
+# Reserve a free port with a throwaway bind, then hand the number to the
+# server — avoids hardcoding a port that might already be taken.
+(:ok, probe) = ServerSocket.bind("127.0.0.1", 0)
+(:ok, port) = ServerSocket.local_port(probe)
+ServerSocket.close(probe)
+
+handler =
+  do request
+    body = "you said: #{first_line(request)}"
+    "HTTP/1.1 200 OK\r\nContent-Length: #{String.length(body)}\r\n\r\n#{body}"
+
+Thread.start(do -> HttpServer{port: port}.start(handler))
+
+(:ok, socket) = connect_when_ready(port, 50)
+Socket.send(socket, "GET /hello HTTP/1.1\r\nHost: localhost\r\n\r\n")
+(:ok, response) = Socket.recv(socket, 1024)
+Socket.close(socket)
+println(response)
+
+# The server thread never returns (its accept loop runs forever) — end the
+# whole process rather than waiting for it.
+exit(0)

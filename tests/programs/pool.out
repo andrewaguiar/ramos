@@ -1,0 +1,7 @@
+first checkin: connection
+grew to max, second checkin: connection
+third checkin over max: :pool_exhausted
+:ok
+reused the freed ref: true
+checkout of an unknown ref: :unknown_resource
+double checkout: :not_checked_in

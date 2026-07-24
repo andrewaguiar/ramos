@@ -946,7 +946,7 @@ name = "andrew"
 print("Ola #{name}, you have #{1 + 1} new messages")
 ```
 
-Escape sequences such as `\n`, `\t`, `\"`, `\\` and `\#{` are supported.
+Escape sequences such as `\n`, `\t`, `\r`, `\"`, `\\` and `\#{` are supported.
 
 ### Multiline strings
 
@@ -1200,8 +1200,18 @@ case parse_document(text)
 follows: match on `type`, read `message`, and reach for `stacktrace` — when
 there is one — only while diagnosing. Where there is nothing useful to say
 beyond a bare tag, `(:error, reason)` with a symbol reason is enough — that is
-what `File` and `Dir` return (`:enoent`, `:eacces`, …), since those come
-straight from the OS rather than through `exception` or `error`.
+what `Dir` returns (`:enoent`, `:eacces`, …), straight from the OS.
+
+`File` returns the same OS reasons, but built through `error` rather than bare
+— a symbol alone does not say *which* path failed, so `error`'s `message`
+names it alongside `type`, the reason itself:
+
+```elixir
+File.write("greeting.txt", "hello\n")
+(:error, (type, message, _)) = File.read("missing.txt")
+(type, message)
+# == (:enoent, "reading file `missing.txt` failed with :enoent")
+```
 
 Because a failure is a value, a function that cannot handle one passes it along
 by returning it, and the choice is visible at every step rather than hidden in
@@ -1215,8 +1225,8 @@ module FileHandler
   function read_safely(path)
     case File.read(path)
       (:ok, text) -> text
-      (:error, reason) ->
-        print("Could not read #{path}: #{reason}")
+      (:error, (_, message, _)) ->
+        print("Could not read #{path}: #{message}")
         default_content()
 ```
 
@@ -1401,10 +1411,29 @@ Each type ships with a rich, pipe-friendly module. A few highlights (`Kernel`,
   `day_of_week`. `compare`/`diff_millis` order by the instant, not the
   printed local fields; `now_in`/`in_time_zone` take a `TimeZone`, the rest a
   bare `offset_minutes`.
+- **`File`** — path-based file I/O: `read`/`write`/`append`, `size`, `rm`,
+  `cp`/`mv`, `exists`/`is_file`, `touch`/`chmod`. There are no open handles —
+  every call names a path, and `read`/`write` move the whole file at once.
+- **`Dir`** — `cwd`/`cd`, `mkdir` (like `mkdir -p`), `ls`, `exists`/`is_dir`.
+- **`Socket`** / **`ServerSocket`** — blocking TCP: `ServerSocket.bind` +
+  `accept` on the listening side, `Socket.connect` to dial out, then
+  `send`/`recv`/`close` on the `Socket` either side ends up with; see
+  [Sockets](#sockets).
+- **`HttpServer`** — a minimal HTTP server built on `Socket`/`ServerSocket`:
+  `HttpServer{port: n}.start(f)` accepts connections forever, handing each
+  one to its own `Thread` — up to `max_connections` at a time, capped by a
+  `Pool` — which calls `f` with the raw request text and writes back
+  whatever string it returns; see [Sockets](#sockets).
 - **`Actor`** — the trait a module implements to hold state and answer
   messages; driven by `Kernel`'s `start_actor` / `call_actor`.
 - **`Global`** — one process-wide map held by an actor: `start`, `get`, `put`,
   `clear`.
+- **`Pool`** — a fixed-size pool of some resource, held by an actor:
+  `Pool.new(id, {min, max, factory})`, then `checkin`/`checkout` by the `ref`
+  each `checkin` returns. `checkin` acquires, `checkout` releases — read
+  backwards from most connection-pool libraries; see its own module doc.
+  Same actor-registry rule as `Global`: not reachable from inside a
+  `Thread.start`ed lambda.
 - **`Config`** — the environment's `.env` file, read once at `start` and
   answered from memory: `get(section, key)`, `path`. Read-only. Shared mutable state; see [Global](#global) before reaching for it.
 - **`Thread`** — one-shot parallel work: `start`, `await`, `await_all`, and a
@@ -1707,6 +1736,62 @@ delivers its output at the reply, so actor lines never interleave.)
 > collected, and it may be cut off when the program ends. There is no registry of
 > threads and no automatic wait at the end — the handle is the only way back to
 > the work.
+
+### Sockets
+
+`Socket` and `ServerSocket` are blocking TCP. `ServerSocket.bind` claims a host
+and port and starts listening; `ServerSocket.accept` blocks for the next client
+and hands back a `Socket` — the same type `Socket.connect` returns for the
+dialing-out side. From there the two are identical: `send`, `recv`, and `close`
+work on either.
+
+```elixir
+(:ok, server) = ServerSocket.bind("127.0.0.1", 9000)
+(:ok, conn) = ServerSocket.accept(server)   # blocks for a client
+Socket.send(conn, "hi")
+Socket.recv(conn, 1024)
+Socket.close(conn)
+```
+
+Every operation blocks — `connect` for the handshake, `send` until the write
+completes, `recv` until at least one byte has arrived. There is no timeout and
+no non-blocking mode, so a blocking call that needs to run alongside other work
+pairs with `Thread`, exactly like the doc examples on both modules do: start a
+thread to `connect` while the main path `accept`s.
+
+`recv` reads bytes, not lines or messages — TCP has no framing of its own, so
+one `send` may arrive as several `recv`s or the reverse. `recv(socket, n)`
+reads up to `n` bytes, however many are already available; it returns
+`(:ok, "")` exactly when the peer has closed its side, since a blocking read
+otherwise never comes back with zero bytes.
+
+Binding port `0` asks the OS for a free one — `ServerSocket.local_port` reports
+its choice, which is how a program (or these modules' own examples) picks an
+ephemeral port rather than guessing at one that might already be taken.
+
+Both modules follow `File`'s error convention: `(:ok, value)` or a bare `:ok`
+on success, an error built by `error` on failure, `type` a lowercase symbol
+from the OS (`:econnrefused`, `:eaddrinuse`, `:etimedout`, …). `close` is
+idempotent from either side.
+
+`HttpServer` is `Socket`/`ServerSocket` with the accept-loop already written:
+`HttpServer{port: n}.start(f)` binds, then serves connections forever — each
+one handed to its own `Thread`, which calls `f` with the raw request text and
+writes back whatever string it returns as the response, verbatim. A `Pool`
+caps how many of those threads run at once (`max_connections`, `100` by
+default): past the cap, `accept` itself waits for one to free up rather than
+starting another thread.
+
+```elixir
+handler = do request -> "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi"
+HttpServer{port: 8080, max_connections: 50}.start(handler)
+```
+
+It is deliberately bare — no routing, no header parsing, no keep-alive, no
+read timeout — see its own module doc for exactly what "the request"
+contains and what capping connections with a `Pool` costs in return (freeing
+a slot is oldest-first, so one connection that never finishes can still
+stall every client behind it once the pool fills up).
 
 ### Tests
 

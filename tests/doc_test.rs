@@ -253,10 +253,10 @@ fn generates_a_page_per_real_stdlib_module() {
     let out = TempDir::new("real");
     let count = ramos::doc::generate(&stdlib_dir(), &out.0).expect("generate");
     assert_eq!(
-        count, 21,
+        count, 25,
         "expected Kernel, Integer, Float, List, Map, String, Tuple, Struct, Date, \
-         NaiveDateTime, TimeZone, DateTime, Time, File, Dir, Actor, Global, Config, Thread, \
-         Test, Module"
+         NaiveDateTime, TimeZone, DateTime, Time, File, Dir, Socket, ServerSocket, HttpServer, \
+         Actor, Global, Pool, Config, Thread, Test, Module"
     );
 
     // The site is one static shell plus the data it presents, not one HTML
@@ -292,8 +292,12 @@ fn generates_a_page_per_real_stdlib_module() {
         "Time",
         "File",
         "Dir",
+        "Socket",
+        "ServerSocket",
+        "HttpServer",
         "Actor",
         "Global",
+        "Pool",
         "Config",
         "Thread",
         "Test",

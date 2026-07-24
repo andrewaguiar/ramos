@@ -1,0 +1,112 @@
+module ServerSocket
+  # @module_doc
+  #
+  # ServerSocket — a bound, listening TCP socket: the acceptor half of a
+  # connection.
+  #
+  # `bind` claims a host and port and starts listening; `accept` blocks until
+  # a client connects and hands back the `Socket` for that one connection.
+  # Reading and writing never happen on the listener itself — only on the
+  # `Socket`s it produces:
+  #
+  #   (:ok, server) = ServerSocket.bind("127.0.0.1", 9000)
+  #   (:ok, conn) = ServerSocket.accept(server)   # blocks for a client
+  #   Socket.recv(conn, 1024)
+  #
+  # Binding port `0` asks the OS to pick a free port instead of naming one —
+  # `local_port` reports what it chose. That is how this module's own
+  # examples avoid clashing with whatever else is listening on the machine
+  # running them.
+  #
+  # `accept` is blocking and one connection at a time; there is no `select`
+  # and no non-blocking mode. To serve more than one client at once, hand
+  # each accepted `Socket` off to its own `Thread.start` and loop back to
+  # `accept` for the next:
+  #
+  #   handle = do socket ->
+  #     Socket.send(socket, Socket.recv(socket, 1024))
+  #     Socket.close(socket)
+  #
+  #   loop = do server ->
+  #     (:ok, socket) = ServerSocket.accept(server)
+  #     Thread.start(do -> handle(socket))
+  #     loop(server)
+  #
+  # Every fallible operation here follows `File`'s convention: `(:ok, value)`
+  # or a bare `:ok` on success, an error built by `error` on failure, its
+  # `type` a lowercase symbol from the OS (`:eaddrinuse`, `:eacces`, …).
+
+  function bind(host, port)
+    # @doc
+    #
+    # Binds to `host`:`port` and starts listening for connections.
+    #
+    # @param host: the address to bind, e.g. `"127.0.0.1"` or `"0.0.0.0"`
+    # @param port: the port to bind, or `0` to let the OS choose a free one —
+    #   read its choice back with `local_port`
+    # @return `(:ok, server)`, or an error built by `error` on failure — e.g.
+    #   `:eaddrinuse` when the port is already taken
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   ServerSocket.close(server)   # == :ok
+    wrap(native("server_socket_bind", [host, port]), "binding `#{host}:#{port}`")
+
+  function accept(server)
+    # @doc
+    #
+    # Blocks until a client connects, then returns the `Socket` for that one
+    # connection. Call it again to accept the next.
+    #
+    # @param server: a `ServerSocket` from `bind`
+    # @return `(:ok, socket)`, or an error built by `error` on failure
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   t = Thread.start(do -> Socket.connect("127.0.0.1", port))
+    #   (:ok, conn) = ServerSocket.accept(server)
+    #   (:ok, client) = Thread.await(t)
+    #   Socket.close(conn)
+    #   Socket.close(client)   # == :ok
+    wrap(native("server_socket_accept", [server]), "accepting a connection")
+
+  function local_port(server)
+    # @doc
+    #
+    # The port `bind` ended up listening on: the number passed in, unless it
+    # was `0`, in which case this is what the OS chose.
+    #
+    # @param server: a `ServerSocket` from `bind`
+    # @return `(:ok, port)`, or an error built by `error` on failure
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   port > 0   # == true
+    wrap(native("server_socket_local_port", [server]), "reading the local port")
+
+  function close(server)
+    # @doc
+    #
+    # Stops listening and releases the port. `Socket`s already handed out by
+    # `accept` are unaffected. Closing twice is not an error.
+    #
+    # @param server: a `ServerSocket` from `bind`
+    # @return `:ok`
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   ServerSocket.close(server)   # == :ok
+    #   ServerSocket.close(server)   # == :ok
+    wrap(native("server_socket_close", [server]), "closing the server socket")
+
+  # private functions
+
+  helper wrap(result, action)
+    # @doc
+    #
+    # (private) Same convention as `File`'s `wrap`: turns a native
+    # `(:error, reason)` into an error built by `error`, whose message names
+    # `action` alongside the reason — a bare `:eaddrinuse` does not say which
+    # bind failed. Anything else — `:ok`, or `(:ok, value)` — passes through
+    # unchanged.
+    case result
+      (:error, reason) -> error(reason, "#{action} failed with #{reason}")
+      value -> value

@@ -50,9 +50,30 @@ fn the_text_covers_every_keyword() {
         .filter(|w| !w.is_empty())
         .collect();
     for keyword in [
-        "module", "struct", "trait", "implements", "attributes", "function", "helper", "alias",
-        "case", "if", "else", "cond", "run", "do", "end", "when", "and", "or", "not", "true",
-        "false", "nil", "self", "_",
+        "module",
+        "struct",
+        "trait",
+        "implements",
+        "attributes",
+        "function",
+        "helper",
+        "alias",
+        "case",
+        "if",
+        "else",
+        "cond",
+        "run",
+        "do",
+        "end",
+        "when",
+        "and",
+        "or",
+        "not",
+        "true",
+        "false",
+        "nil",
+        "self",
+        "_",
     ] {
         assert!(words.contains(keyword), "missing keyword: {keyword}");
     }

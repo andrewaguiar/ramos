@@ -7,18 +7,21 @@ module File
   # function here is therefore *effectful* and reports success or failure as a
   # value you pattern match, never by raising:
   #
-  #   - fallible operations return `(:ok, value)` or `(:error, reason)`
+  #   - fallible operations return `(:ok, value)`, or an error built by `error`
   #   - operations with nothing to hand back return the bare `:ok`
   #   - `exists` and `is_file` return a plain `true`/`false`
   #
-  # `reason` is a lowercase symbol — `:enoent` (no such file), `:eacces`
-  # (permission denied), `:eexist`, `:io_error`, or `:unsupported` — so branches
-  # read cleanly:
+  # A failure is `(:error, (reason, message, stacktrace))`. `reason` is a
+  # lowercase symbol straight from the OS — `:enoent` (no such file), `:eacces`
+  # (permission denied), `:eexist`, `:io_error`, or `:unsupported` — the same
+  # vocabulary a bare reason would use, but a symbol alone does not say *which*
+  # path failed, so `message` names both: `"reading file \`config.txt\` failed
+  # with :enoent"`. Branches read cleanly:
   #
   #   case File.read("config.txt")
   #     (:ok, text) -> parse(text)
-  #     (:error, :enoent) -> :use_defaults
-  #     (:error, reason) -> (:error, (:config_unreadable, reason))
+  #     (:error, (:enoent, _, _)) -> :use_defaults
+  #     (:error, (reason, message, _)) -> (:error, (:config_unreadable, message))
   #
   # Every function takes a path; there are no open file handles. `read` and
   # `write` move the whole file at once, which keeps the model simple and the
@@ -37,12 +40,14 @@ module File
     # Reads the entire file at `path` into a string.
     #
     # @param path: the path to read
-    # @return `(:ok, contents)`, or `(:error, reason)` if it cannot be read
+    # @return `(:ok, contents)`, or an error built by `error` if it cannot be
+    #   read
     #
     #   File.write("greeting.txt", "hello\n")
     #   File.read("greeting.txt")   # == (:ok, "hello\n")
-    #   File.read("missing.txt")    # == (:error, :enoent)
-    native("file_read", [path])
+    #   (:error, (type, message, _)) = File.read("missing.txt")
+    #   (type, message)   # == (:enoent, "reading file `missing.txt` failed with :enoent")
+    wrap(native("file_read", [path]), "reading file `#{path}`")
 
   function write(path, contents)
     # @doc
@@ -52,10 +57,10 @@ module File
     #
     # @param path: the path to write
     # @param contents: the string to write
-    # @return `:ok`, or `(:error, reason)` on failure
+    # @return `:ok`, or an error built by `error` on failure
     #
     #   File.write("out.txt", "hello\n")   # == :ok
-    native("file_write", [path, contents])
+    wrap(native("file_write", [path, contents]), "writing file `#{path}`")
 
   function append(path, contents)
     # @doc
@@ -65,10 +70,10 @@ module File
     #
     # @param path: the path to append to
     # @param contents: the string to append
-    # @return `:ok`, or `(:error, reason)` on failure
+    # @return `:ok`, or an error built by `error` on failure
     #
     #   File.append("log.txt", "another line\n")   # == :ok
-    native("file_append", [path, contents])
+    wrap(native("file_append", [path, contents]), "appending to file `#{path}`")
 
   function size(path)
     # @doc
@@ -76,11 +81,11 @@ module File
     # Returns the size of `path` in bytes.
     #
     # @param path: the path to measure
-    # @return `(:ok, bytes)`, or `(:error, reason)` if it cannot be read
+    # @return `(:ok, bytes)`, or an error built by `error` if it cannot be read
     #
     #   File.write("greeting.txt", "hello\n")
     #   File.size("greeting.txt")   # == (:ok, 6)
-    native("file_size", [path])
+    wrap(native("file_size", [path]), "reading size of file `#{path}`")
 
   function rm(path)
     # @doc
@@ -88,11 +93,12 @@ module File
     # Deletes the file at `path`.
     #
     # @param path: the path to delete
-    # @return `:ok`, or `(:error, reason)` (e.g. `:enoent` if it is not there)
+    # @return `:ok`, or an error built by `error` (e.g. `:enoent` if it is not
+    #   there)
     #
     #   File.write("out.txt", "bye\n")
     #   File.rm("out.txt")   # == :ok
-    native("file_remove", [path])
+    wrap(native("file_remove", [path]), "removing file `#{path}`")
 
   function cp(source, dest)
     # @doc
@@ -101,11 +107,11 @@ module File
     #
     # @param source: the file to copy from
     # @param dest: the path to copy to
-    # @return `:ok`, or `(:error, reason)` on failure
+    # @return `:ok`, or an error built by `error` on failure
     #
     #   File.write("a.txt", "hello\n")
     #   File.cp("a.txt", "b.txt")   # == :ok
-    native("file_copy", [source, dest])
+    wrap(native("file_copy", [source, dest]), "copying file `#{source}` to `#{dest}`")
 
   function mv(source, dest)
     # @doc
@@ -115,11 +121,11 @@ module File
     #
     # @param source: the file to move from
     # @param dest: the path to move to
-    # @return `:ok`, or `(:error, reason)` on failure
+    # @return `:ok`, or an error built by `error` on failure
     #
     #   File.write("draft.txt", "hello\n")
     #   File.mv("draft.txt", "final.txt")   # == :ok
-    native("file_move", [source, dest])
+    wrap(native("file_move", [source, dest]), "moving file `#{source}` to `#{dest}`")
 
   function exists(path)
     # @doc
@@ -157,10 +163,10 @@ module File
     # Existing content is preserved — the file-manager equivalent of `touch(1)`.
     #
     # @param path: the path to touch
-    # @return `:ok`, or `(:error, reason)` on failure
+    # @return `:ok`, or an error built by `error` on failure
     #
     #   File.touch("build.stamp")   # == :ok
-    native("file_touch", [path])
+    wrap(native("file_touch", [path]), "touching file `#{path}`")
 
   function chmod(path, mode)
     # @doc
@@ -170,8 +176,23 @@ module File
     #
     # @param path: the path to change
     # @param mode: the numeric permission bits
-    # @return `:ok`, `(:error, reason)`, or `(:error, :unsupported)` off Unix
+    # @return `:ok`, an error built by `error`, or an `:unsupported` error off
+    #   Unix
     #
     #   File.write("run.sh", "echo hi\n")
     #   File.chmod("run.sh", 493)   # == :ok
-    native("file_chmod", [path, mode])
+    wrap(native("file_chmod", [path, mode]), "changing permissions of file `#{path}`")
+
+  # private functions
+
+  helper wrap(result, action)
+    # @doc
+    #
+    # (private) Turns a native `(:error, reason)` into an error built by
+    # `error`: the reason stays the same symbol, but the message names the
+    # path `action` describes together with it, since a bare `:enoent` alone
+    # does not say which file failed. Anything else — `:ok`, or `(:ok, value)`
+    # — passes through unchanged.
+    case result
+      (:error, reason) -> error(reason, "#{action} failed with #{reason}")
+      value -> value

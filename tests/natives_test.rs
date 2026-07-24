@@ -686,3 +686,74 @@ fn dir_current_matches_the_process_cwd_and_change_validates() {
         "(:error, :enoent)"
     );
 }
+
+// ── networking (TCP) ─────────────────────────────────────────────────────────
+
+#[test]
+fn server_socket_bind_reports_a_nonzero_local_port_and_closes() {
+    let src = "\
+(:ok, server) = native(\"server_socket_bind\", [\"127.0.0.1\", 0])
+(:ok, port) = native(\"server_socket_local_port\", [server])
+close = native(\"server_socket_close\", [server])
+(port > 0, close)";
+    assert_eq!(eval(src), "(true, :ok)");
+}
+
+#[test]
+fn socket_connect_accept_send_and_recv_round_trip() {
+    let src = "\
+(:ok, server) = native(\"server_socket_bind\", [\"127.0.0.1\", 0])
+(:ok, port) = native(\"server_socket_local_port\", [server])
+t = native(\"start_thread\", [do -> native(\"socket_connect\", [\"127.0.0.1\", port])])
+(:ok, conn) = native(\"server_socket_accept\", [server])
+(:ok, client) = native(\"await_thread\", [t])
+native(\"socket_send\", [conn, \"hello\"])
+native(\"socket_recv\", [client, 5])";
+    assert_eq!(eval(src), r#"(:ok, "hello")"#);
+}
+
+#[test]
+fn socket_recv_returns_empty_string_once_the_peer_closes() {
+    let src = "\
+(:ok, server) = native(\"server_socket_bind\", [\"127.0.0.1\", 0])
+(:ok, port) = native(\"server_socket_local_port\", [server])
+t = native(\"start_thread\", [do -> native(\"socket_connect\", [\"127.0.0.1\", port])])
+(:ok, conn) = native(\"server_socket_accept\", [server])
+(:ok, client) = native(\"await_thread\", [t])
+native(\"socket_close\", [client])
+native(\"socket_recv\", [conn, 16])";
+    assert_eq!(eval(src), r#"(:ok, "")"#);
+}
+
+#[test]
+fn socket_peer_address_names_the_bound_server() {
+    let src = "\
+(:ok, server) = native(\"server_socket_bind\", [\"127.0.0.1\", 0])
+(:ok, port) = native(\"server_socket_local_port\", [server])
+(:ok, socket) = native(\"socket_connect\", [\"127.0.0.1\", port])
+(:ok, addr) = native(\"socket_peer_address\", [socket])
+addr == \"127.0.0.1:#{port}\"";
+    assert_eq!(eval(src), "true");
+}
+
+#[test]
+fn socket_send_and_recv_after_close_are_error_closed() {
+    let src = "\
+(:ok, server) = native(\"server_socket_bind\", [\"127.0.0.1\", 0])
+(:ok, port) = native(\"server_socket_local_port\", [server])
+(:ok, socket) = native(\"socket_connect\", [\"127.0.0.1\", port])
+native(\"socket_close\", [socket])
+native(\"socket_close\", [socket])
+native(\"socket_send\", [socket, \"x\"])";
+    assert_eq!(eval(src), "(:error, :closed)");
+}
+
+#[test]
+fn server_socket_accept_after_close_is_error_closed() {
+    let src = "\
+(:ok, server) = native(\"server_socket_bind\", [\"127.0.0.1\", 0])
+native(\"server_socket_close\", [server])
+native(\"server_socket_close\", [server])
+native(\"server_socket_accept\", [server])";
+    assert_eq!(eval(src), "(:error, :closed)");
+}

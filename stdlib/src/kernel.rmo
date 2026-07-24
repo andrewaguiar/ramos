@@ -25,6 +25,9 @@ module Kernel
   #                        (there is deliberately no `to_symbol` — see below)
   #   - calling          — `apply(f, args)`, `module_apply(m, fn_name, args)`
   #                        (see the `Module` module)
+  #   - control flow     — `loop(f)` (pure Ramos, no native — Ramos has no
+  #                        `while`/`for`, so this is the one way to repeat
+  #                        something an unknown number of times)
   #   - actors           — `start_actor`, `call_actor`, `cast_actor`,
   #                        `list_actors`, `actor_stats`, `is_actor_started`,
   #                        `stop_actor`
@@ -336,6 +339,62 @@ module Kernel
     # @return whatever the resolved function returns
     #
     #   module_apply(Integer, "abs", [-7])   # == 7
+
+  function loop(f)
+    # @doc
+    #
+    # Calls `f`, a lambda of no arguments, over and over — for its side
+    # effects, since nothing is threaded between calls — until it returns the
+    # symbol `:halt`. This is Ramos's `while(true)`: there is no `while` or
+    # `for`, so `loop` is the one way to repeat something an unknown number of
+    # times, such as a server's accept loop:
+    #
+    #   accept_loop =
+    #     do
+    #       case ServerSocket.accept(server)
+    #         (:ok, conn) -> handle(conn)
+    #         (:error, reason) -> println("accept failed: #{reason}")
+    #       :continue
+    #   loop(accept_loop)
+    #
+    # **This has no Rust loop underneath it and needs none.** `loop` is an
+    # ordinary Ramos function whose last expression is a self-recursive tail
+    # call (`loop(f)` again), and the interpreter trampolines exactly that
+    # shape into a plain loop on its own side — the same mechanism `List.each`
+    # and every other tail-recursive stdlib function already leans on. Each
+    # pass calls `f()`, matches its result, and either stops or re-enters
+    # `loop` in place — the call frame is reused rather than growing, so the
+    # native stack stays flat no matter how many times it runs. A `loop`
+    # meant to run for the life of the program (a server's accept loop, an
+    # event pump) is exactly what this is for.
+    #
+    # What is **not** free: `f` itself still runs on the native stack for the
+    # duration of one call, same as any function call, so a call inside `f`
+    # that never returns (a blocking read with nothing on the other end, an
+    # unbounded recursion of its own) blocks `loop` right there — `loop`
+    # cannot see or interrupt it. And a failure `f` does not catch — a
+    # pattern match with no matching arm, a native error — stops the whole
+    # loop (and, uncaught, the program) at that call, exactly as any other
+    # runtime error would; wrap risky work in a `case` inside `f` rather than
+    # relying on `loop` to survive it.
+    #
+    # @param f: a lambda of no arguments, called repeatedly for its effect
+    # @return `:halt`
+    #
+    #   Global.start()
+    #   Global.put(:count, 0)
+    #   step =
+    #     do
+    #       n = Global.get(:count) + 1
+    #       Global.put(:count, n)
+    #       case n
+    #         3 -> :halt
+    #         _ -> :continue
+    #   loop(step)
+    #   Global.get(:count)   # == 3
+    case f()
+      :halt -> :halt
+      _ -> loop(f)
 
   function start_actor(id, actor_module, initial_state, config)
     # @doc

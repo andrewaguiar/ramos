@@ -22,7 +22,10 @@ use std::path::{Path, PathBuf};
 const FEATURES: &[(&str, &[&str])] = &[
     // syntax & literals
     ("comments.rmo", &["Assign", "Lit \"# not a comment\""]),
-    ("doc_comments.rmo", &["module Greeter", "function greet(name)"]),
+    (
+        "doc_comments.rmo",
+        &["module Greeter", "function greet(name)"],
+    ),
     (
         "variables.rmo",
         &["Assign", "Binding x", "Int 100", "Var x"],
@@ -135,14 +138,21 @@ const FEATURES: &[(&str, &[&str])] = &[
         &["Call .map()", "Call .join()", "Call .filter()"],
     ),
     // modules
-    ("module.rmo", &["module PersonUtils", "function hello(person)"]),
+    (
+        "module.rmo",
+        &["module PersonUtils", "function hello(person)"],
+    ),
     (
         "namespaced_module.rmo",
         &["module MyApp.Business.SystemUser"],
     ),
     (
         "private_functions.rmo",
-        &["module Accounts", "function create(name)", "helper normalize(name)"],
+        &[
+            "module Accounts",
+            "function create(name)",
+            "helper normalize(name)",
+        ],
     ),
     (
         "alias.rmo",
@@ -176,7 +186,10 @@ const FEATURES: &[(&str, &[&str])] = &[
     ),
     (
         "trait.rmo",
-        &["trait Helloable", "function is_over_eighteen(self) [declaration]"],
+        &[
+            "trait Helloable",
+            "function is_over_eighteen(self) [declaration]",
+        ],
     ),
     (
         "implements.rmo",

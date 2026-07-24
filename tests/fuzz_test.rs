@@ -105,7 +105,14 @@ fn indentation_stress_never_panics() {
     // Lines of varying indentation ending in block openers and stray dedents —
     // the shape that exercises the INDENT/DEDENT stack hardest.
     let openers = [
-        "module M", "function f()", "case x", "cond", "if a", "  x = 1", "|", "\"\"\"",
+        "module M",
+        "function f()",
+        "case x",
+        "cond",
+        "if a",
+        "  x = 1",
+        "|",
+        "\"\"\"",
     ];
     hammer(0x0BAD_C0DE_1234_5678, 40_000, |rng| {
         let lines = rng.below(8);

@@ -300,12 +300,12 @@ module Doc
 
 #[test]
 fn string_escapes_including_suppressed_interpolation() {
-    let toks = lex(r#"s = "a\nb\t\"q\" c\\ \#{raw} #{x}""#).unwrap();
+    let toks = lex(r#"s = "a\nb\t\rc\"q\" c\\ \#{raw} #{x}""#).unwrap();
     match &toks[2].kind {
         T::Str(parts) => {
             assert_eq!(
                 parts[0],
-                StrPart::Lit("a\nb\t\"q\" c\\ #{raw} ".to_string())
+                StrPart::Lit("a\nb\t\rc\"q\" c\\ #{raw} ".to_string())
             );
             assert!(matches!(parts[1], StrPart::Interp(_)));
         }
@@ -756,7 +756,10 @@ fn nested_end_markers_all_vanish() {
 fn end_without_a_trailing_newline_still_vanishes() {
     // The lexer synthesizes a final newline before EOF when the source
     // doesn't end in one; `end` should disappear the same way either way.
-    assert_eq!(kinds("function f()\n  1\nend"), kinds("function f()\n  1\n"));
+    assert_eq!(
+        kinds("function f()\n  1\nend"),
+        kinds("function f()\n  1\n")
+    );
 }
 
 #[test]

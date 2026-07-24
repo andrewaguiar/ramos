@@ -34,6 +34,25 @@ pub enum Value {
     /// it and hands back what the spawned lambda returned. Shared behind an
     /// `Arc` like every other value, so awaiting reads through a `Mutex`.
     Thread(Arc<ThreadHandle>),
+    /// An open TCP connection — from `Socket.connect` or `ServerSocket.accept`.
+    /// `send`/`recv`/`close` need to read and eventually tear down the
+    /// underlying stream, which the immutable `Value` model does not otherwise
+    /// allow — the same exception `Thread` makes, behind a `Mutex` guarding an
+    /// `Option` so `close` can drop the stream without dropping the handle.
+    Socket(Arc<SocketHandle>),
+    /// A bound, listening TCP socket — from `ServerSocket.bind`. Holds the
+    /// `TcpListener` the same way `Socket` holds its `TcpStream`.
+    ServerSocket(Arc<ServerSocketHandle>),
+}
+
+/// The live end of a TCP connection. `None` once `Socket.close` has run.
+pub struct SocketHandle {
+    pub stream: std::sync::Mutex<Option<std::net::TcpStream>>,
+}
+
+/// The live end of a listening socket. `None` once `ServerSocket.close` has run.
+pub struct ServerSocketHandle {
+    pub listener: std::sync::Mutex<Option<std::net::TcpListener>>,
 }
 
 /// The live end of a spawned thread. It owns the join handle and the channel
@@ -275,6 +294,8 @@ impl Value {
             // is what the Types table means by a struct dispatching to itself.
             Value::Struct(s) => Cow::Owned(s.def.name.to_string()),
             Value::Thread(_) => Cow::Borrowed("Thread"),
+            Value::Socket(_) => Cow::Borrowed("Socket"),
+            Value::ServerSocket(_) => Cow::Borrowed("ServerSocket"),
         }
     }
 
@@ -340,6 +361,8 @@ impl Value {
             }
             // A thread has no structural identity worth showing — like a lambda.
             Value::Thread(_) => "#thread".to_string(),
+            Value::Socket(_) => "#socket".to_string(),
+            Value::ServerSocket(_) => "#server_socket".to_string(),
         }
     }
 }
@@ -389,7 +412,7 @@ pub fn values_equal(a: &Value, b: &Value) -> bool {
                     .zip(y.fields.iter())
                     .all(|((xn, xv), (yn, yv))| xn == yn && values_equal(xv, yv))
         }
-        // Lambdas and threads have no meaningful structural identity.
+        // Lambdas, threads and sockets have no meaningful structural identity.
         _ => false,
     }
 }
