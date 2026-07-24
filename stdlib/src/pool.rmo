@@ -80,7 +80,10 @@ module Pool
     #
     # @param f: the operation — `:checkin` or `:checkout`
     # @param args: `[]` for `:checkin`, `[ref]` for `:checkout`
-    # @param state: `{resources: {ref: (value, status), ...}, next_ref: n}`
+    # @param state: `{resources: {ref: (value, status), ...}, next_ref: n,
+    #   free: [(ref, value), ...]}` — `free` names which resources `checkin`
+    #   can hand out without building a new one; see `checkin_impl`'s own doc
+    #   for why it exists apart from `resources` already recording status.
     # @param config: the map `new` was given — `min`, `max`, `factory`
     # @return a `(reply, new_state)` tuple
     case f
@@ -110,7 +113,8 @@ module Pool
     assert(is_lambda(factory), "Pool.new: config must have a `factory` lambda")
     assert(min >= 0, "Pool.new: config `min` must be >= 0, got #{min}")
     assert(max >= min, "Pool.new: config `max` must be >= `min` (#{min}), got #{max}")
-    state = {resources: seed(min, factory), next_ref: min}
+    (resources, free) = seed(min, factory)
+    state = {resources: resources, next_ref: min, free: free}
     start_actor(id, Pool, state, config)
     (:ok, id)
 
@@ -154,34 +158,40 @@ module Pool
   # private functions
 
   helper seed(count, factory)
-    seed_loop(count, factory, {}, 0)
+    seed_loop(count, factory, {}, [], 0)
 
-  helper seed_loop(remaining, factory, resources, ref)
+  helper seed_loop(remaining, factory, resources, free, ref)
     case remaining
-      0 -> resources
-      _ -> seed_loop(remaining - 1, factory, Map.put(resources, ref, (factory(), :free)), ref + 1)
+      0 -> (resources, free)
+      _ ->
+        value = factory()
+        seed_loop(
+          remaining - 1,
+          factory,
+          Map.put(resources, ref, (value, :free)),
+          [(ref, value)] ++ free,
+          ref + 1
+        )
 
+  # `state.free` names which refs are ready to hand out, so `checkin` never
+  # has to ask `resources` "which of you is free" — the map has no way to
+  # answer that but a full scan (see the module doc: two resources are
+  # otherwise indistinguishable, and `resources`'s entries are unordered by
+  # status), and that scan would cost more with every resource `checkin` has
+  # ever built, never less, since nothing here removes an entry once built.
+  # A resource comes off `free` in `checkin_impl` and goes back on in
+  # `checkout_impl`; `resources` itself stays the source of truth for
+  # `checkout`'s "is this ref real, and was it actually checked in" checks.
   helper checkin_impl(state, config)
+    case Map.get(state, :free, [])
+      [(ref, value) | rest] ->
+        resources = Map.get(state, :resources, {})
+        with_ref = mark(state, resources, ref, value, :used)
+        ((:ok, (ref, value)), Map.put(with_ref, :free, rest))
+      [] -> grow(state, config)
+
+  helper grow(state, config)
     resources = Map.get(state, :resources, {})
-    case find_free(resources)
-      (:ok, ref, value) -> ((:ok, (ref, value)), mark(state, resources, ref, value, :used))
-      :none -> grow(state, resources, config)
-
-  # Plain recursion rather than `List.find` with a predicate lambda — no
-  # deeper reason now than matching `List.find`'s own style; a lambda bound
-  # to a name here used to leak its captured scope every `checkin` (fixed at
-  # the interpreter level, closures now capture by value), which is what
-  # this was originally written to avoid.
-  helper find_free(resources)
-    find_free_entries(Map.entries(resources))
-
-  helper find_free_entries(entries)
-    case entries
-      [] -> :none
-      [(ref, (value, :free)) | _] -> (:ok, ref, value)
-      [_ | rest] -> find_free_entries(rest)
-
-  helper grow(state, resources, config)
     max = Map.get(config, :max, 0)
     cond
       size(resources) >= max -> exhausted(state, max)
@@ -206,4 +216,7 @@ module Pool
     case Map.get(resources, ref, nil)
       nil -> (error(:unknown_resource, "Pool.checkout: no resource checked in under #{inspect(ref)}"), state)
       (value, :free) -> (error(:not_checked_in, "Pool.checkout: resource #{inspect(ref)} is already free"), state)
-      (value, :used) -> (:ok, mark(state, resources, ref, value, :free))
+      (value, :used) ->
+        freed = mark(state, resources, ref, value, :free)
+        free = Map.get(freed, :free, [])
+        (:ok, Map.put(freed, :free, [(ref, value)] ++ free))

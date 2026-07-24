@@ -172,32 +172,47 @@ struct HttpServer
         {min: 0, max: max_connections, factory: do -> 1}
       )
 
-    accept_forever(server, f, pool_id, [])
+    accept_forever(server, f, pool_id, [], [])
 
-  helper accept_forever(server, f, pool_id, in_flight)
-    (ref, ready) = reserve_slot(pool_id, in_flight)
+  # In-flight connections are a FIFO queue, oldest-first, split across two
+  # lists — `old` (already in oldest-first order) and `new` (newest-first,
+  # freshly enqueued). Enqueuing prepends to `new`; that used to be
+  # `ready ++ [(ref, handle)]`, an append that walks the whole queue — O(n)
+  # per accept, with n climbing toward `max_connections` as cumulative
+  # connections served grows, never shrinking back down since nothing is
+  # dequeued until the pool is exhausted (see the module doc). Prepending to
+  # `new` instead is O(1) regardless of queue length; `drain_oldest` below
+  # pays for it by reversing `new` into `old` once `old` runs dry, but that
+  # cost is spread over every element it moves, so each connection is still
+  # only ever appended and reversed once across its lifetime.
+  helper accept_forever(server, f, pool_id, old, new)
+    (ref, old_rest, new_rest) = reserve_slot(pool_id, old, new)
     case ServerSocket.accept(server)
       (:ok, conn) ->
         handle = Thread.start(do -> handle_connection(conn, f))
-        accept_forever(server, f, pool_id, ready ++ [(ref, handle)])
+        accept_forever(server, f, pool_id, old_rest, [(ref, handle)] ++ new_rest)
       (:error, reason) ->
         Pool.checkout(pool_id, ref)
         eprintln("HttpServer: accept failed: #{reason}")
-        accept_forever(server, f, pool_id, ready)
+        accept_forever(server, f, pool_id, old_rest, new_rest)
 
   # A slot for the connection about to be accepted, and the (possibly
-  # shrunk) in-flight list to go with it. Blocks, reclaiming the oldest
+  # shrunk) in-flight queue to go with it. Blocks, reclaiming the oldest
   # in-flight connection's slot, only once every slot is already taken.
-  helper reserve_slot(pool_id, in_flight)
+  helper reserve_slot(pool_id, old, new)
     case Pool.checkin(pool_id)
-      (:ok, (ref, _)) -> (ref, in_flight)
-      (:error, _) -> reserve_slot(pool_id, drain_oldest(pool_id, in_flight))
+      (:ok, (ref, _)) -> (ref, old, new)
+      (:error, _) ->
+        (old_rest, new_rest) = drain_oldest(pool_id, old, new)
+        reserve_slot(pool_id, old_rest, new_rest)
 
-  helper drain_oldest(pool_id, in_flight)
-    [(ref, handle) | rest] = in_flight
-    Thread.await(handle)
-    Pool.checkout(pool_id, ref)
-    rest
+  helper drain_oldest(pool_id, old, new)
+    case old
+      [] -> drain_oldest(pool_id, List.reverse(new), [])
+      [(ref, handle) | rest] ->
+        Thread.await(handle)
+        Pool.checkout(pool_id, ref)
+        (rest, new)
 
   helper handle_connection(conn, f)
     case read_request(conn)
