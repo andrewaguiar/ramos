@@ -1177,7 +1177,11 @@ fn render_markdown(source: &str, modules: &[String]) -> (String, Vec<Heading>) {
             } else {
                 close_open_blocks!();
                 in_code = true;
-                let _lang = rest.trim(); // fences in the README carry no language
+                // The README tags its fences `elixir` (GitHub has no `ramos`
+                // grammar, and the syntax is close enough) purely for its own
+                // rendering; every block here gets the same Ramos lexer-based
+                // highlighting regardless, so the tag is unused.
+                let _lang = rest.trim();
             }
             continue;
         }

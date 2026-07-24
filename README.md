@@ -101,7 +101,7 @@ the terminal — the examples below are the same ones.
   inside `(` at all — see [Lambdas](#lambdas)) would still parse, just not
   where it visually looks like it does. Name it first instead:
 
-  ```
+  ```elixir
   # error: the lambda is a call argument but spans more than one line
   SomeProcess.process_and_call_back(
     [1, 2, 3],
@@ -123,7 +123,7 @@ the terminal — the examples below are the same ones.
 - **Once a call's arguments spill past one line, every argument is on its own
   line** — the first cannot share the line with `(` either:
 
-  ```
+  ```elixir
   # error: the first argument shares the line with `(`
   SomeProcess.process([1, 2],
     "a"
@@ -180,7 +180,7 @@ module sources under [`stdlib/`](stdlib/).
 
 ## Hello, world
 
-```
+```elixir
 # comments start with # and run to the end of the line
 print("Ola #{name}")
 
@@ -200,14 +200,14 @@ A runnable Ramos program starts from an **entrypoint**: a `.rmo` file whose
 module exposes a public `function main()`. `ramos run` loads the file and calls that
 module's `main()` with no arguments:
 
-```
+```elixir
 # app.rmo
 module App
   function main()
     print("Ola world")
 ```
 
-```
+```elixir
 ramos run app.rmo        # calls App.main()
 ```
 
@@ -216,7 +216,7 @@ whatever other functions it needs, public or private. Keeping it thin is still
 the habit worth having — `helper` functions break `main()` up without widening what
 the module exposes:
 
-```
+```elixir
 # app.rmo
 module App
   function main()
@@ -232,7 +232,7 @@ Most real work still belongs in other modules, and an entrypoint reaches those
 through `alias`, which drops a namespaced module's prefix so you can call it by
 its short name:
 
-```
+```elixir
 # cli.rmo
 module Cli
   alias MyApp.Business.Greeter
@@ -244,7 +244,7 @@ module Cli
 Alias several modules the same way; each `alias` line sits at the top of the
 entrypoint body:
 
-```
+```elixir
 module Cli
   alias MyApp.Business.Greeter
   alias MyApp.Reporting.Summary
@@ -318,7 +318,7 @@ Practically every value is tied to a module — `42` to `Integer`, `"hi"` to
 | module               | `Module`  |
 | struct instance      | `Struct`  |
 
-```
+```elixir
 x = 100
 y = 100.5
 s = "andrew"
@@ -335,7 +335,7 @@ map = {name: "andrew"}
 A **pure module** is a namespace of functions with no per-instance state. It is
 itself a value, so it can be passed around and inspected.
 
-```
+```elixir
 module PersonUtils
   function hello(person)
     print("Ola #{person.name}, eu tenho #{person.age}")
@@ -352,7 +352,7 @@ A name resolves to exactly one function: Ramos does not overload on arity, and
 `function` and `helper` share the one namespace. Defining a name twice in the same body
 is an error rather than a second definition that could never be reached:
 
-```
+```elixir
 module Dup
   function twice(x)
     x * 2
@@ -367,7 +367,7 @@ module's `function`s: the direction only runs one way, so a helper cannot
 widen its own reach by reaching for the public surface it exists to support.
 This is checked the same way a duplicate name is, at parse time:
 
-```
+```elixir
 module Payments
   function charge(amount)
     log(amount)
@@ -382,7 +382,7 @@ There is no `const`: a constant is a function that takes no arguments, so it is
 defined and called like everything else. One construct covers both, and the
 call parentheses say plainly that a name is being resolved in a module.
 
-```
+```elixir
 module SystemUser
   function default_email()
     "system@ramos.com.br"
@@ -394,7 +394,7 @@ print(SystemUser.default_email())
 print(SystemUser.max_retries())
 ```
 
-```
+```elixir
 module Greet
   function hi_all(people)
     people
@@ -407,7 +407,7 @@ module Greet
 `alias` drops a module's namespace prefix so you can call it by its **last
 segment** alone, cutting the verbosity of long names:
 
-```
+```elixir
 alias Geometry.Shapes.Circle       # now referred to as `Circle`
 
 Circle.area(5)  # == 78.5
@@ -417,13 +417,13 @@ The local name defaults to that last segment, so most aliases need no extra
 syntax. `as` **renames** the module — pick a different short name, chiefly to
 avoid a collision when two aliased modules would otherwise claim the same one:
 
-```
+```elixir
 alias Geometry as Geo              # rename to a shorter name
 
 Geo.circle_area(5)  # == 78.5
 ```
 
-```
+```elixir
 alias Geometry.Circle              # -> Circle
 alias Drawing.Circle as Ellipse    # would clash with Circle, so rename it
 
@@ -441,7 +441,7 @@ map-literal syntax prefixed by the struct name — any field you don't supply
 takes its declared default. Instances are immutable maps under the hood,
 tagged with the struct name.
 
-```
+```elixir
 struct Person
   attributes
     name: nil
@@ -461,7 +461,7 @@ builds an instance also destructures one in `case` patterns.
 
 Field access is dot syntax, and updates return a new instance:
 
-```
+```elixir
 andrew.name                       # == "Andrew"
 older =
   andrew
@@ -470,7 +470,7 @@ older =
 
 Setting a field has its own form, which is sugar for exactly that call:
 
-```
+```elixir
 andrew.age = 41                   # andrew = Struct.put(andrew, :age, 41)
 ```
 
@@ -485,7 +485,7 @@ Traits declare a contract of functions. A function **with a body** is a default
 implementation; a function **without a body** is required and every implementer
 must define it. A struct declares its traits with the `implements` keyword.
 
-```
+```elixir
 trait Helloable
   function hello(self)
     print("Ola #{self.name}, eu tenho #{self.age}")
@@ -514,7 +514,7 @@ value — see [Error handling](#error-handling). When a symbol and a message are
 not enough detail, pass a struct as `exception`'s message — it destructures in
 `case` like any other pattern:
 
-```
+```elixir
 struct DeclineReason
   attributes
     code: 0
@@ -538,7 +538,7 @@ case charge(50000)
 first match. `_` is the wildcard. Patterns can bind variables and match tuples,
 structs, and lists:
 
-```
+```elixir
 case result
   (:ok, value)    -> value
   (:error, reason) -> print("failed: #{reason}")
@@ -547,7 +547,7 @@ case result
 
 Lists can be pattern matched with the cons operator `|`:
 
-```
+```elixir
 case numbers
   []          -> "empty"
   [x]         -> "single: #{x}"
@@ -561,14 +561,14 @@ case numbers
 Tuples destructure in plain assignments too, which is the idiomatic way to
 unpack small fixed records:
 
-```
+```elixir
 person = ("Andrew", 40)
 (name, age) = person          # name == "Andrew", age == 40
 ```
 
 Nested pattern matching works for any combination:
 
-```
+```elixir
 case user
   ({name: n, age: a}, :admin) when a > 18 -> "Admin #{n}"
   ({name: n}, :guest) -> "Guest #{n}"
@@ -587,7 +587,7 @@ positions to be equal, but there is no pin operator to ask that with, so the
 second `p` would just rebind and the pattern could never fail — it is rejected
 instead:
 
-```
+```elixir
 (p, p) = (1, 1)     # error: a pattern cannot bind `p` twice
 (a, b) = (1, 1)     # correct — compare them afterwards if that is the intent
 (_, _) = (1, 2)     # fine: `_` binds nothing, so it may repeat
@@ -597,7 +597,7 @@ A struct pattern is held to the struct's declared attributes, exactly as
 construction is. Naming one that does not exist can never match, so it is an
 error rather than a silently skipped branch:
 
-```
+```elixir
 case andrew
   Person{nickname: n} -> n     # error: `Person` has no attribute `nickname`
   _ -> :none
@@ -613,7 +613,7 @@ single value is being matched.
 
 ### Comments
 
-```
+```elixir
 # single line comment, everything after # is ignored
 ```
 
@@ -624,7 +624,7 @@ placed **immediately below** the definition it describes. A module doc starts
 with `@module_doc`; a function doc starts with `@doc`. In both cases the marker
 is followed by an empty `#` line, then the prose:
 
-```
+```elixir
 module List
   # @module_doc
   #
@@ -653,7 +653,7 @@ the standard library.
 **Examples in a doc block are tests.** Any line carrying `# ==` is a claim, and
 `ramos doctest` runs it:
 
-```
+```elixir
 ramos doctest --stdlib stdlib     # the standard library documents itself
 ramos doctest ./mylib             # a project, against the embedded stdlib
 ramos doctest                     # same as `ramos doctest .` — the current
@@ -677,7 +677,7 @@ honouring `NO_COLOR`, forced with `--color`/`--no-color` — and the same
 roles `ramos test` uses: the module name bold, `ok` green, `FAIL` the same
 colour as `ramos test`'s, and every doc summary dim.
 
-```
+```elixir
 list.rmo
   A collection of elements in a fixed order.
   ok map (2 examples)
@@ -693,7 +693,7 @@ Each example runs as its own program, in its own empty directory, with the
 project's modules beside it — so an example must be self-contained. Write the
 file before reading it back, and start an actor before calling it:
 
-```
+```elixir
 #   File.write("greeting.txt", "hello\n")
 #   File.read("greeting.txt")   # == (:ok, "hello\n")
 ```
@@ -703,7 +703,7 @@ prose ends the snippet (and the scope). When several examples in a file share a
 fixture, declare it once in the `@module_doc` under `# ramos doctest setup`: that
 snippet is never asserted itself and runs before every example in the file.
 
-```
+```elixir
 #   # ramos doctest setup
 #   struct Person
 #     attributes
@@ -718,7 +718,7 @@ the expected value is a syntax error, not a comment — put it in the prose.
 Assignment binds a name to a value. Bindings are immutable: a name can be
 **rebound** to a new value, but the underlying values themselves never mutate.
 
-```
+```elixir
 x = 100
 name = "andrew"
 pi = 3.14
@@ -728,7 +728,7 @@ x = x + 1          # rebinding, not mutation
 
 ### Literals
 
-```
+```elixir
 42            # int
 3.14          # float
 "andrew"      # string
@@ -750,7 +750,7 @@ A letter hugging a string — no space — is a **sigil**: shorthand for parsing
 that string into one of the date/time types. It desugars before the parser
 ever sees a call, so `D"..."` and `Date.parse("...")` produce the same AST:
 
-```
+```elixir
 D"2024-02-29"                 # == Date.parse("2024-02-29")
 T"13:45:30"                   # == Time.parse("13:45:30")
 N"2024-02-09T13:45:30.500"    # == NaiveDateTime.parse("2024-02-09T13:45:30.500")
@@ -768,7 +768,7 @@ point, so every map can be written as a literal. A symbol key is a bare name
 followed by the `:` that separates it from its value — that is the only `:`,
 and `{:name: 1}` is an error:
 
-```
+```elixir
 {name: "andrew"}      # symbol key  :name
 {"host": "local"}     # string key  "host"
 {8080: :http}         # integer key 8080
@@ -779,7 +779,7 @@ and `{:name: 1}` is an error:
 Keys are literals: they are looked up by value, so a key cannot interpolate
 (`{"#{host}": 1}` is an error). The same three forms work in patterns:
 
-```
+```elixir
 case config
   {"host": h, 8080: p} -> "#{h}:#{p}"
   _ -> "no match"
@@ -788,7 +788,7 @@ case config
 The rule holds at runtime too: `Map.put` rejects a key of any other type. So a
 grouping function must yield one of the three —
 
-```
+```elixir
 List.group_by([1, 2, 3, 4], do x -> Integer.is_even(x))
 # runtime error: a Map key must be an Integer, String or Symbol, got Bool
 
@@ -808,7 +808,7 @@ to a lower level. Two rules:
 - use **exactly 2 spaces** per indentation level
 - **never tabs**
 
-```
+```elixir
 module Geometry
   function area(r)
     r * r * 3.14
@@ -824,7 +824,7 @@ matters, so a program reads identically with or without one. Put it, if you
 use it at all, on its own line, dedented back to the level of whatever it is
 marking the end of:
 
-```
+```elixir
 module Geometry
   function area(r)
     r * r * 3.14
@@ -842,7 +842,7 @@ one at all — this is decoration, not a rule, so unlike everything in the
 
 Arithmetic:
 
-```
+```elixir
 1 + 2       # sum
 10 - 4      # minus
 3 * 4       # multiply
@@ -854,14 +854,14 @@ Arithmetic:
 
 Mixing an `Integer` and a `Float` widens the integer to a float:
 
-```
+```elixir
 1 + 1.5     # == 2.5
 10 / 4.0    # == 2.5 (float division; int / int truncates)
 ```
 
 Comparison (return a `bool`):
 
-```
+```elixir
 1 == 1      # equals?
 1 != 2      # not equals?
 1 < 2       # less?
@@ -875,7 +875,7 @@ word forms. `and` / `or` short-circuit, and — unlike a language where they
 coerce to `bool` — each returns whichever operand decided the result, not
 `true`/`false`.
 
-```
+```elixir
 true and false   # and
 true or false    # or
 not true         # not
@@ -885,7 +885,7 @@ That returned-operand behavior, combined with `and` binding tighter than `or`
 (see the precedence list at the top of this section), gives Ramos a working
 ternary even though it has no dedicated ternary syntax:
 
-```
+```elixir
 value = test and 1 or 100
 ```
 
@@ -905,19 +905,19 @@ which is falsy, so the `or` overrides it. Reach for `if` instead whenever the
 
 String:
 
-```
+```elixir
 "a" <> "b"   # concatenate
 ```
 
 List:
 
-```
+```elixir
 [1, 2] ++ [3, 4]   # concatenate  # == [1, 2, 3, 4]
 ```
 
 Map:
 
-```
+```elixir
 {a: 1} ++ {b: 2}   # merge  # == {a: 1, b: 2}
 {a: 1} ++ {a: 2}   # right side wins on duplicate keys  # == {a: 2}
 ```
@@ -927,7 +927,7 @@ A range of integers is `List.range(from, to)` — an ordinary `List`, so every
 to`, and is never empty for integer arguments (a single-element list when
 `from == to`).
 
-```
+```elixir
 List.range(1, 5)                          # == [1, 2, 3, 4, 5]
 List.range(5, 1)                          # == [5, 4, 3, 2, 1]
 List.range(1, 1)                          # == [1]
@@ -941,7 +941,7 @@ See also the **Pipes** section below for `|`.
 
 Use `#{...}` inside double-quoted strings
 
-```
+```elixir
 name = "andrew"
 print("Ola #{name}, you have #{1 + 1} new messages")
 ```
@@ -965,7 +965,7 @@ is strict:
 Every content line keeps its trailing newline, so the value always ends with
 `\n`. Interpolation and escapes work exactly as in single-line strings.
 
-```
+```elixir
 str =
   """
     Hi there
@@ -991,7 +991,7 @@ indented one level deeper and `"Usage: ..."` is flush left in the value, while
 Three constructs, each for a different shape of decision: `if` for two
 branches, `cond` for a chain of conditions, `case` for matching a value.
 
-```
+```elixir
 if x > 0
   :positive
 else
@@ -1012,7 +1012,7 @@ case x
 **no `else if`** — the moment you want a third branch, that is `cond`, and the
 interpreter says so:
 
-```
+```elixir
 if x > 8
   :high
 else if x > 3     # error: `else if` is not valid: `if` has exactly two
@@ -1022,7 +1022,7 @@ else if x > 3     # error: `else if` is not valid: `if` has exactly two
 A single guarded statement can be written on one line, with the condition
 trailing it after `when`:
 
-```
+```elixir
 print("big") when x > 3
 ```
 
@@ -1039,7 +1039,7 @@ interpreter rejects it rather than binding into nowhere.
 are falsy, so `0`, `""` and `[]` all take the `if` branch. `Kernel.is_truthy`
 is that rule written down (`not is_truthy(x)` is the inverse):
 
-```
+```elixir
 is_truthy(0)       # == true
 is_truthy("")      # == true
 is_truthy(nil)     # == false
@@ -1049,7 +1049,7 @@ is_truthy(false)   # == false
 All three are expressions, so they can be assigned. Like any block on the right
 of `=`, the construct starts on the **next** line, indented:
 
-```
+```elixir
 grade =
   if score > 8
     :high
@@ -1064,7 +1064,7 @@ indent the body on the following lines; the last expression is the arm's
 value. A `when` guard sits between the pattern and the `->`. Both are used
 throughout the standard library:
 
-```
+```elixir
 case list
   [] -> []
   [head | tail] when head > 0 ->
@@ -1081,7 +1081,7 @@ ends the block right there, and the value that failed to match becomes the
 block's result. If every match succeeds, the block's result is its last
 statement's value, exactly as usual.
 
-```
+```elixir
 result =
   run
     :ok = validate_number(1)
@@ -1106,7 +1106,7 @@ A `run` may close with a `case` written **without a subject** — the block's
 result *is* the subject — so the happy path and the failure path sit side by
 side at the same indentation:
 
-```
+```elixir
 run
   :ok = validate_id(data)
   :ok = validate_name(data)
@@ -1123,7 +1123,7 @@ case
 Bindings made inside a `run` are visible to the statements after them in the
 same block, which is what lets each step build on the last:
 
-```
+```elixir
 total =
   run
     (:ok, price) = fetch_price(item)
@@ -1153,7 +1153,7 @@ Most failures are `exception`'s: an expected outcome in the ordinary run of a
 program — a bad request, a declined charge — handled a line or two away.
 `exception(type, message)` returns `(:error, (type, message))`:
 
-```
+```elixir
 function withdraw(balance, amount)
   cond
     amount <= 0 -> exception(:invalid_amount, "amount must be positive")
@@ -1169,7 +1169,7 @@ The error is an ordinary value, so it is read with the same `case` as anything
 else — and because the error carries its own tag, each failure is handled where
 it is named:
 
-```
+```elixir
 case withdraw(100, 250)
   (:ok, remaining) -> print("left: #{remaining}")
   (:error, (:invalid_amount, message)) -> print("bad request: #{message}")
@@ -1183,14 +1183,14 @@ back to where it happened, not a predictable business rule. It returns
 `(:error, (type, message, stacktrace))` — the same two fields, plus
 `current_stacktrace()` captured at the point of failure:
 
-```
+```elixir
 error(:insufficient_funds, "balance is too low")
 # == (:error, (:insufficient_funds, "balance is too low", []))
 ```
 
 Matching it back out just carries the extra position:
 
-```
+```elixir
 case parse_document(text)
   (:ok, doc) -> doc
   (:error, (:malformed, message, _)) -> print("parse failed: #{message}")
@@ -1207,7 +1207,7 @@ Because a failure is a value, a function that cannot handle one passes it along
 by returning it, and the choice is visible at every step rather than hidden in
 whether some caller installed a handler:
 
-```
+```elixir
 module FileHandler
   function default_content()
     "Default content"
@@ -1223,7 +1223,7 @@ module FileHandler
 Chains of fallible steps do not nest, because [`run`](#run) flattens them: each
 line must match, and the first that does not becomes the block's value.
 
-```
+```elixir
 total =
   run
     (:ok, after_rent) = withdraw(1000, 400)
@@ -1243,7 +1243,7 @@ top-to-bottom. It always starts its own line, at the same indentation as
 whatever comes before it — `x | f()` on one line is an error; write `x` and
 `| f()` on the next.
 
-```
+```elixir
 {}
 | Map.put(:new_value_a, 100)
 | Map.put(:new_value_b, 50)
@@ -1255,7 +1255,7 @@ whatever comes before it — `x | f()` on one line is an error; write `x` and
 calls read in the order they happen. Naming the module at each step is the
 point: the value's type is on the page rather than inferred from the call.
 
-```
+```elixir
 ["ana", "bob"]
 | List.map(do n -> String.upcase(n))
 | List.join(", ")
@@ -1267,7 +1267,7 @@ point: the value's type is on the page rather than inferred from the call.
 `do` opens an anonymous function — a **lambda**. Single-expression lambdas
 use `->` and fit on one line:
 
-```
+```elixir
 add = do x, y -> x + y
 add(1, 2)          # == 3
 ```
@@ -1275,7 +1275,7 @@ add(1, 2)          # == 3
 Multi-statement lambdas drop the `->` and indent the body; the last expression
 is the return value:
 
-```
+```elixir
 double_then_add =
   do x, y
     z = x + y
@@ -1294,7 +1294,7 @@ longer one to a name first, then pass the name.
 
 Lambdas are values, so they pipe naturally:
 
-```
+```elixir
 [1, 2, 3, 4]
 | List.filter(do x -> Integer.is_even(x))    # == [2, 4]
 | List.map(do x -> x * 10)                 # == [20, 40]
@@ -1305,7 +1305,7 @@ Lambdas are values, so they pipe naturally:
 A lambda closes over the scope it was written in, so its body can read the
 names that surrounded it:
 
-```
+```elixir
 v = 1
 lb = do x -> x + v
 
@@ -1423,7 +1423,7 @@ one by implementing the `Actor` trait, which requires a single function:
 reply goes back to the caller; `new_state` is what the actor holds from then on.
 Nothing mutates — the actor simply keeps the newest value.
 
-```
+```elixir
 module Cache
   implements Actor
 
@@ -1448,7 +1448,7 @@ module Cache
     call_actor(:cache, Cache, :set, [key, value])
 ```
 
-```
+```elixir
 Cache.start()
 Cache.set("key", "v2")
 value = Cache.get("key")     # == "v2"
@@ -1469,7 +1469,7 @@ Two `Kernel` functions drive them, so neither needs a prefix:
 The `id` is what identifies a running actor, so one module can back many of
 them, each with its own state:
 
-```
+```elixir
 Counter.start(:a)
 Counter.start(:b)      # independent state from :a
 ```
@@ -1478,7 +1478,7 @@ Counter.start(:b)      # independent state from :a
 
 Running actors can be listed and asked about themselves:
 
-```
+```elixir
 list_actors()             # == [(:alpha, Counter), (:beta, Gauge)]
 is_actor_started(:alpha)  # == true
 actor_stats(:alpha)
@@ -1488,7 +1488,7 @@ actor_stats(:alpha)
 Each row carries the module itself, not just its name, so a pair goes straight
 back into a call:
 
-```
+```elixir
 [(id, mod) | _] = list_actors()
 call_actor(id, mod, :ping, [])
 ```
@@ -1502,7 +1502,7 @@ its thread and frees the id for reuse. Nothing in flight is discarded: the stop
 is queued behind the messages already in the mailbox. Sending to a stopped
 actor is an error, the same as sending to one that was never started.
 
-```
+```elixir
 stop_actor(:beta)         # == :ok
 is_actor_started(:beta)   # == false
 ```
@@ -1518,7 +1518,7 @@ so a `call` always sees every message sent to that actor before it.
 The second callback returns only the new state, because a cast has no reply to
 send anywhere:
 
-```
+```elixir
 function cast(f, args, state, config)
   [key] = args
   Map.delete(state, key)
@@ -1531,7 +1531,7 @@ only for `call` can be cast to without writing anything extra, and you override
 
 The concurrency is real, not just deferral. With a handler that sleeps 400ms:
 
-```
+```elixir
 cast_actor(:s, Sleeper, :work, [])
 print("main continued immediately")
 sleep(50)
@@ -1570,7 +1570,7 @@ For the same reason, **`start_actor`, `call_actor` and `cast_actor` never
 accept a `do` lambda** — directly, or nested in a list, tuple or map literal
 argument:
 
-```
+```elixir
 # error: a lambda cannot be passed to an actor
 call_actor(:cache, Cache, :process, [do x -> x + 1])
 ```
@@ -1581,7 +1581,7 @@ never actually reach. This check is a strict, syntactic one rather than full
 dataflow analysis, so it only catches a lambda written in place; it does not
 follow a lambda through a variable:
 
-```
+```elixir
 # not caught at parse time, but just as broken at runtime
 cb = do x -> x + 1
 call_actor(:cache, Cache, :process, [cb])
@@ -1592,7 +1592,7 @@ call_actor(:cache, Cache, :process, [cb])
 The stdlib ships one actor already written: `Global`, a single process-wide
 `Map` behind the id `:global`.
 
-```
+```elixir
 Global.start()
 Global.put(:user, "andrew")
 Global.get(:user)             # == "andrew"
@@ -1624,7 +1624,7 @@ downcased name: `APP_ENV=PROD` reads `.env.prod`, `APP_ENV=staging` reads
 is relative, so it resolves against the directory the program was run from, and
 `Config.path()` reports the choice without reading anything.
 
-```
+```elixir
 # .env.prod
 [database]
 host = "db.internal"
@@ -1632,7 +1632,7 @@ port = 5432
 password = 'p#ss'   # a comment after an unquoted value is trimmed off
 ```
 
-```
+```elixir
 Config.start()                     # == :ok, or (:error, :enoent)
 Config.get("database", "host")     # == "db.internal"
 Config.get("database", "port")     # == "5432"
@@ -1651,7 +1651,7 @@ skipped.
 Reading happens in `start`, not in the actor, so an unreadable file surfaces at
 the call that started it and the caller decides whether that is fatal:
 
-```
+```elixir
 case Config.start()
   :ok -> run()
   (:error, :enoent) -> run_with_defaults()
@@ -1665,7 +1665,7 @@ Where an actor holds **state** and answers messages over its lifetime, a
 handle at once; `Thread.await` waits on the handle and returns what the lambda
 produced.
 
-```
+```elixir
 t = Thread.start(do -> slow_sum())
 other_work()                  # runs while the thread does
 total = Thread.await(t)       # now wait for it
@@ -1676,7 +1676,7 @@ The parallelism is real: two threads each sleeping 300ms finish in ~300ms, not
 handles — every thread is already running, so the wait is for the slowest, not
 the sum:
 
-```
+```elixir
 [do -> a(), do -> b(), do -> c()]
 | List.map(do f -> Thread.start(f))
 | Thread.await_all()
@@ -1685,7 +1685,7 @@ the sum:
 `Thread.map` wraps that pattern: it fans a list out one thread per element and
 gathers the results in order.
 
-```
+```elixir
 Thread.map([1, 2, 3], do n -> n * n)   # == [1, 4, 9]
 ```
 
@@ -1709,7 +1709,7 @@ A test is a function. There is no test DSL and nothing registers itself: a
 module implements `Test`, and every public function whose name begins with
 `test_` is run by `ramos test`.
 
-```
+```elixir
 # src/test/my_app/user_test.rmo
 module MyApp.UserTest
   # @module_doc
@@ -1730,7 +1730,7 @@ module MyApp.UserTest
     assert(User{}.age == 0)
 ```
 
-```
+```elixir
 ramos test                # everything under the nearest src/test — found by
                            # walking up from `.`, so this works from any
                            # directory inside the project, not only its root
@@ -1741,7 +1741,7 @@ ramos test --quietly      # results only, no doc lines
 The report carries the [documentation comments](#documentation-comments) along
 with the results, so it says what the suite covers and not only that it ran:
 
-```
+```elixir
 MyApp.UserTest
   The behaviour a User promises its callers.
   ok test_user_hello
@@ -1781,7 +1781,7 @@ because Ramos has nothing to throw.
 When the condition is a comparison, the failure reports both sides, which is
 usually the whole story:
 
-```
+```elixir
 assert(name == "andrew")
 # assertion failed: expected "Andrew" to equal "andrew"
 
@@ -1792,7 +1792,7 @@ assert(age < 18)
 A second argument replaces the generated message when the comparison is not the
 point:
 
-```
+```elixir
 assert(is_valid(user), "a user with no email should be invalid")
 ```
 
@@ -1802,7 +1802,7 @@ This repository *is* the interpreter — a Rust crate whose `src/` holds the
 implementation and whose [`stdlib/`](stdlib/) holds the Ramos standard library.
 Build it once and the `ramos` binary drives everything:
 
-```
+```elixir
 cargo build --release        # binary at target/release/ramos
 ```
 
@@ -1848,13 +1848,13 @@ The binary takes a subcommand and (except for the REPL) a single `.rmo` file:
 
 ### Starting a project
 
-```
+```elixir
 ramos new pet-project
 ```
 
 creates:
 
-```
+```elixir
 pet-project/
 ├── .env.dev
 └── src/
@@ -1864,7 +1864,7 @@ pet-project/
 
 with an [entrypoint](#entrypoints) already in place:
 
-```
+```elixir
 # pet-project/src/pet_project/main.rmo
 module PetProject.Main
   function main()
@@ -1875,7 +1875,7 @@ The project name (`-` or `_` separated) becomes both a snake_case directory —
 following the same file-naming rule the module system uses everywhere else —
 and a CamelCase module name, so the project is runnable as soon as it exists:
 
-```
+```elixir
 ramos run pet-project    # finds and runs src/pet_project/main.rmo
 ```
 
@@ -1886,7 +1886,7 @@ and `Config.start()` picks it up once `APP_ENV` is set.
 
 ### Running a program
 
-```
+```elixir
 ramos run app.rmo        # loads the stdlib, then app.rmo, then calls App.main()
 ```
 
@@ -1898,7 +1898,7 @@ with no argument at all, `ramos run` is `ramos run .`, so the project a
 [`ramos new`](#starting-a-project) scaffold produces is runnable from its own
 root with nothing more than:
 
-```
+```elixir
 ramos run
 ```
 
@@ -1910,7 +1910,7 @@ along the way and reporting the first violation with file, line, column and a
 source excerpt. Because it loads the whole program, it also catches a module
 that no file defines. Ideal for editors and CI:
 
-```
+```elixir
 ramos check src/my_app/business/system_user.rmo
 ```
 
@@ -1919,7 +1919,7 @@ ramos check src/my_app/business/system_user.rmo
 Two debug commands expose the interpreter's internals — useful when working on
 the language itself rather than a program:
 
-```
+```elixir
 ramos lexer app.rmo      # the INDENT / DEDENT / NEWLINE token stream
 ramos ast   app.rmo      # the parsed tree
 ```
@@ -1928,7 +1928,7 @@ Add `--dump` to either to print the source alongside the output. Both views are
 **syntax coloured** from the lexer's own token spans when stdout is a terminal;
 colour honours `NO_COLOR` and can be forced with `--color` / `--no-color`:
 
-```
+```elixir
 ramos ast --dump app.rmo --color | less -R   # keep colour through a pager
 ramos lexer app.rmo --no-color               # force plain output
 ```
@@ -1946,13 +1946,13 @@ only the pages it touches), because the standard library recurses once per list
 element. `RAMA_STACK_SIZE` resizes it when a program recurses deeper still — or
 to prove the point with less:
 
-```
+```elixir
 RAMA_STACK_SIZE=1G ramos run deep.rmo    # 1 gibibyte; also accepts 512M, 64K, a byte count
 ```
 
 ## The REPL
 
-```
+```elixir
 ramos repl
 ```
 
@@ -1962,7 +1962,7 @@ across lines.
 
 ## Project layout
 
-```
+```elixir
 .
 ├── README.md                # this file — language tour
 ├── Cargo.toml               # the `ramos` Rust crate (lib + binary)
