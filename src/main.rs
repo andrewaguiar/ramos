@@ -180,7 +180,7 @@ fn run_new(args: &[String]) -> ExitCode {
 /// and `check`: without it they load against the copy embedded in this binary.
 /// A project's *own* modules are reachable either way — they are copied in
 /// beside each example.
-fn run_doctest(args: &[String], stdlib: Option<String>, quietly: bool) -> ExitCode {
+fn run_doctest(args: &[String], stdlib: Option<String>, quietly: bool, color: Color) -> ExitCode {
     let args: Vec<String> = args.to_vec();
     if args.len() > 1 {
         eprintln!("usage: ramos doctest [--quietly] [--stdlib DIR] [DIR]");
@@ -207,7 +207,7 @@ fn run_doctest(args: &[String], stdlib: Option<String>, quietly: bool) -> ExitCo
         }
     };
     let mut stdout = std::io::stdout();
-    if let Err(e) = ramos::doctest::write_report(&report, &mut stdout, quietly) {
+    if let Err(e) = ramos::doctest::write_report(&report, &mut stdout, quietly, color) {
         eprintln!("error: could not write output: {e}");
         return ExitCode::FAILURE;
     }
@@ -605,7 +605,7 @@ fn run_cli() -> ExitCode {
     }
     // `doctest` takes an optional stdlib root, not a `.rmo` file.
     if args.first().map(String::as_str) == Some("doctest") {
-        return run_doctest(&args[1..], stdlib, quietly);
+        return run_doctest(&args[1..], stdlib, quietly, color);
     }
     // `test` takes an optional file: with one, run that file's tests; without,
     // find every test module under the current directory.

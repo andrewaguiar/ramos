@@ -666,6 +666,29 @@ ramos doctest                     # same as `ramos doctest .` — the current
 `MyApp.Business.Greeter.greet(...)`, not the short name a real caller would
 get from `alias`ing it.
 
+The report reads like [`ramos test`](#tests)'s: a heading per module, its
+`@module_doc` summary under that, then one `ok`/`FAIL` line per function —
+every `# ==` its `@doc` carries rolled into that one outcome, the way `ramos
+test` reports one test regardless of how many `assert`s it makes — with that
+function's own summary underneath. `--quietly` drops the summary lines, not
+the `ok`/`FAIL` lines or any failure detail, exactly as it does for `ramos
+test`. Colour follows the same rule as everywhere else — on for a terminal,
+honouring `NO_COLOR`, forced with `--color`/`--no-color` — and the same
+roles `ramos test` uses: the module name bold, `ok` green, `FAIL` the same
+colour as `ramos test`'s, and every doc summary dim.
+
+```
+list.rmo
+  A collection of elements in a fixed order.
+  ok map (2 examples)
+     Applies `f` to every element of `list`, keeping order.
+  FAIL filter
+      list.rmo:42: List.filter([1, 2, 3], do x -> x > 5)  # == [3]  -> got []
+     Keeps the elements `f` accepts, in order.
+
+64 example(s), 63 passed, 1 failed
+```
+
 Each example runs as its own program, in its own empty directory, with the
 project's modules beside it — so an example must be self-contained. Write the
 file before reading it back, and start an actor before calling it:

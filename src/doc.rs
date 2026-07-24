@@ -813,7 +813,7 @@ fn after_keyword<'a>(line: &'a str, keyword: &str) -> Option<&'a str> {
 /// Parse a `function`/`helper name(params)` head. Returns `(name, is_private)`.
 /// Requires a word boundary after the keyword, so `functionality` isn't
 /// mistaken for `function`.
-fn fn_head(line: &str) -> Option<(String, bool)> {
+pub(crate) fn fn_head(line: &str) -> Option<(String, bool)> {
     let (rest, private) = if let Some(r) = line.strip_prefix("helper") {
         (r, true)
     } else if let Some(r) = line.strip_prefix("function") {

@@ -16,6 +16,7 @@
 //! write, read back, and assert, without touching the tree it was run from and
 //! without seeing what the example before it left behind.
 
+use crate::color::{Color, Style};
 use crate::interp::{run_with_args, sink, Value};
 use crate::loader::load;
 use std::fs;
@@ -28,6 +29,9 @@ use std::path::{Path, PathBuf};
 pub struct Example {
     /// The file stem the example came from — `list` for `list.rmo`.
     pub module: String,
+    /// The function the example's `@doc` block documents — `None` when the
+    /// block is a `@module_doc`, above any `function`/`helper` head.
+    pub function: Option<String>,
     /// The 1-based line the asserted expression starts on.
     pub line: usize,
     /// Statements that set the assertion up (bindings from earlier in the same
@@ -65,13 +69,36 @@ pub struct Report {
     pub passed: usize,
     pub failures: Vec<Failure>,
     /// The modules that carried at least one example, in the order run.
-    pub modules: Vec<(String, usize)>,
+    modules: Vec<ModuleReport>,
 }
 
 impl Report {
     pub fn total(&self) -> usize {
         self.passed + self.failures.len()
     }
+}
+
+/// One module's examples, grouped the way `write_report` shows them.
+#[derive(Debug)]
+struct ModuleReport {
+    /// The file stem — `list` for `list.rmo`.
+    module: String,
+    /// First paragraph of the module's `@module_doc`, if it has one.
+    summary: Option<String>,
+    groups: Vec<Group>,
+}
+
+/// Every example from one `@doc` block, reported as a single unit — the same
+/// way `ramos test` reports one test function regardless of how many
+/// `assert`s it makes. `function` is `None` for examples living directly in
+/// the `@module_doc`, above any `function`/`helper` head.
+#[derive(Debug)]
+struct Group {
+    function: Option<String>,
+    /// First paragraph of the function's `@doc`, if it has one.
+    summary: Option<String>,
+    total: usize,
+    failures: Vec<Failure>,
 }
 
 /// Extract the runnable examples from a Ramos source.
@@ -97,6 +124,10 @@ pub fn examples_in(module: &str, source: &str) -> Vec<Example> {
     let mut current: Option<(usize, String)> = None; // (line, joined statement)
     let mut base_indent = 0usize; // indentation of the current logical line
     let mut argv: Vec<String> = Vec::new();
+    // The most recently seen `function`/`helper` head, so each example can be
+    // tied back to the doc it came from — `None` before the first one, which
+    // is what an example living in the `@module_doc` gets.
+    let mut current_fn: Option<String> = None;
 
     // Finish the pending logical line, keeping it as setup for what follows.
     let flush = |current: &mut Option<(usize, String)>, setup: &mut Vec<String>| {
@@ -108,6 +139,9 @@ pub fn examples_in(module: &str, source: &str) -> Vec<Example> {
     for (i, raw) in source.lines().enumerate() {
         let line = raw.trim_start();
         let Some(body) = line.strip_prefix('#') else {
+            if let Some((name, _private)) = crate::doc::fn_head(line) {
+                current_fn = Some(name);
+            }
             continue;
         };
         // A code line is indented past the `#`; anything else is prose and ends
@@ -152,7 +186,15 @@ pub fn examples_in(module: &str, source: &str) -> Vec<Example> {
             if let Some((line, text)) = &current {
                 if !in_preamble {
                     push_example(
-                        &mut out, module, *line, &preamble, &setup, text, expected, &argv,
+                        &mut out,
+                        module,
+                        current_fn.clone(),
+                        *line,
+                        &preamble,
+                        &setup,
+                        text,
+                        expected,
+                        &argv,
                     );
                 }
             }
@@ -188,7 +230,15 @@ pub fn examples_in(module: &str, source: &str) -> Vec<Example> {
             if let Some((line, text)) = &current {
                 if !in_preamble {
                     push_example(
-                        &mut out, module, *line, &preamble, &setup, text, expected, &argv,
+                        &mut out,
+                        module,
+                        current_fn.clone(),
+                        *line,
+                        &preamble,
+                        &setup,
+                        text,
+                        expected,
+                        &argv,
                     );
                 }
             }
@@ -202,6 +252,7 @@ pub fn examples_in(module: &str, source: &str) -> Vec<Example> {
 fn push_example(
     out: &mut Vec<Example>,
     module: &str,
+    function: Option<String>,
     line: usize,
     preamble: &[String],
     setup: &[String],
@@ -217,6 +268,7 @@ fn push_example(
     lines.extend_from_slice(setup);
     out.push(Example {
         module: module.to_string(),
+        function,
         line,
         setup: lines,
         expr: expr.to_string(),
@@ -299,19 +351,54 @@ pub fn run(source_dir: &Path, stdlib_dir: Option<&Path>) -> Result<Report, Strin
         if examples.is_empty() {
             continue;
         }
-        report.modules.push((module.clone(), examples.len()));
+        let docs = crate::doc::summaries(&source);
+        let mut module_report = ModuleReport {
+            module: module.clone(),
+            summary: docs.module.clone(),
+            groups: Vec::new(),
+        };
         for example in &examples {
-            match run_one(example, &sandbox, stdlib_dir.as_deref(), &home) {
-                Ok(()) => report.passed += 1,
-                Err(detail) => report.failures.push(Failure {
-                    module: example.module.clone(),
-                    line: example.line,
-                    expr: example.expr.clone(),
-                    expected: example.expected.clone(),
-                    detail,
-                }),
+            let failure = match run_one(example, &sandbox, stdlib_dir.as_deref(), &home) {
+                Ok(()) => {
+                    report.passed += 1;
+                    None
+                }
+                Err(detail) => {
+                    let failure = Failure {
+                        module: example.module.clone(),
+                        line: example.line,
+                        expr: example.expr.clone(),
+                        expected: example.expected.clone(),
+                        detail,
+                    };
+                    report.failures.push(failure.clone());
+                    Some(failure)
+                }
+            };
+            // Examples from the same `@doc` block are adjacent in extraction
+            // order, so the group they belong to is always the last one —
+            // unless this is the first example of a new function.
+            match module_report.groups.last_mut() {
+                Some(group) if group.function == example.function => {
+                    group.total += 1;
+                    group.failures.extend(failure);
+                }
+                _ => {
+                    let summary = example
+                        .function
+                        .as_ref()
+                        .and_then(|f| docs.functions.get(f))
+                        .cloned();
+                    module_report.groups.push(Group {
+                        function: example.function.clone(),
+                        summary,
+                        total: 1,
+                        failures: failure.into_iter().collect(),
+                    });
+                }
             }
         }
+        report.modules.push(module_report);
     }
     Ok(report)
 }
@@ -456,20 +543,61 @@ impl Drop for Sandbox {
     }
 }
 
-/// Write a report the way `ramos test` writes its own.
-pub fn write_report(report: &Report, out: &mut impl io::Write, quietly: bool) -> io::Result<()> {
-    if !quietly {
-        for (module, count) in &report.modules {
-            writeln!(out, "{module}.rmo: {count} example(s)")?;
+/// Write a report the way `ramos test` writes its own: a heading per module,
+/// its `@module_doc` summary under that, then one `ok`/`FAIL` line per `@doc`
+/// block — every example it carries rolled into one outcome, the way `ramos
+/// test` reports one test regardless of how many `assert`s it makes — with
+/// that function's own summary beneath. `--quietly` drops the summary lines,
+/// exactly as it does for `ramos test`; the `ok`/`FAIL` lines and any failure
+/// detail still print.
+///
+/// `color` paints the same three roles `ramos test` does: the module heading
+/// bold, `ok` green, `FAIL` the same as `ramos test`'s, and every doc summary
+/// dim — `Color::Never` for a piped run or `--no-color`.
+pub fn write_report(
+    report: &Report,
+    out: &mut impl io::Write,
+    quietly: bool,
+    color: Color,
+) -> io::Result<()> {
+    for module in &report.modules {
+        writeln!(
+            out,
+            "{}",
+            color.paint(Style::Heading, &format!("{}.rmo", module.module))
+        )?;
+        if !quietly {
+            if let Some(summary) = &module.summary {
+                writeln!(out, "  {}", color.paint(Style::Dim, summary))?;
+            }
         }
-        if !report.modules.is_empty() {
-            writeln!(out)?;
+        for group in &module.groups {
+            let label = group.function.as_deref().unwrap_or("(module doc)");
+            let count = if group.total > 1 {
+                format!(" ({} examples)", group.total)
+            } else {
+                String::new()
+            };
+            if group.failures.is_empty() {
+                writeln!(out, "  {} {label}{count}", color.paint(Style::Str, "ok"))?;
+            } else {
+                writeln!(
+                    out,
+                    "  {} {label}{count}",
+                    color.paint(Style::Keyword, "FAIL")
+                )?;
+                for failure in &group.failures {
+                    writeln!(out, "      {failure}")?;
+                }
+            }
+            if !quietly {
+                if let Some(summary) = &group.summary {
+                    writeln!(out, "     {}", color.paint(Style::Dim, summary))?;
+                }
+            }
         }
     }
-    for failure in &report.failures {
-        writeln!(out, "{failure}")?;
-    }
-    if !report.failures.is_empty() {
+    if !report.modules.is_empty() {
         writeln!(out)?;
     }
     writeln!(
