@@ -1312,14 +1312,27 @@ Lambdas are values, so they pipe naturally:
 
 #### Closures
 
-A lambda closes over the scope it was written in, so its body can read the
-names that surrounded it:
+A lambda closes over the names its body actually uses from the scope it was
+written in, so it can read them even after that scope's own function call has
+returned:
 
 ```elixir
 v = 1
 lb = do x -> x + v
 
 lb(2)   # == 3
+```
+
+The capture is by value, fixed at the moment the lambda is built — a name the
+surrounding scope rebinds afterward is not seen by a lambda that already
+captured it:
+
+```elixir
+v = 1
+lb = do x -> x + v
+v = 10
+
+lb(2)   # == 3, not 12 — `lb` already has its own `v`
 ```
 
 A lambda may not refer to the name it is being bound to

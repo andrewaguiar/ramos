@@ -167,14 +167,19 @@ module Pool
       (:ok, ref, value) -> ((:ok, (ref, value)), mark(state, resources, ref, value, :used))
       :none -> grow(state, resources, config)
 
+  # Plain recursion rather than `List.find` with a predicate lambda — no
+  # deeper reason now than matching `List.find`'s own style; a lambda bound
+  # to a name here used to leak its captured scope every `checkin` (fixed at
+  # the interpreter level, closures now capture by value), which is what
+  # this was originally written to avoid.
   helper find_free(resources)
-    is_free =
-      do entry
-        (ref, (value, status)) = entry
-        status == :free
-    case List.find(Map.entries(resources), is_free)
-      nil -> :none
-      (ref, (value, _)) -> (:ok, ref, value)
+    find_free_entries(Map.entries(resources))
+
+  helper find_free_entries(entries)
+    case entries
+      [] -> :none
+      [(ref, (value, :free)) | _] -> (:ok, ref, value)
+      [_ | rest] -> find_free_entries(rest)
 
   helper grow(state, resources, config)
     max = Map.get(config, :max, 0)

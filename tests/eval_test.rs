@@ -363,9 +363,13 @@ fn a_lambda_closes_over_the_scope_it_was_written_in() {
         eval("v = 7\nouter = do x -> do y -> v\ninner = outer(1)\ninner(2)"),
         "7"
     );
-    // A capture is by binding, not by value: rebinding after the do is
-    // built is visible to it, since both name the same scope.
-    assert_eq!(eval("v = 1\nlb = do x -> x + v\nv = 10\nlb(2)"), "12");
+    // A capture is by value, fixed when the lambda is built: rebinding `v`
+    // afterward is not visible to it. (Deliberately not "by binding" — a
+    // lambda assigned to a name in the very scope it captured would form an
+    // `Arc` cycle with that scope under a live capture, which nothing here
+    // collects; capturing the value once, into a scope of its own, is what
+    // avoids that leaking every such binding.)
+    assert_eq!(eval("v = 1\nlb = do x -> x + v\nv = 10\nlb(2)"), "3");
     // A parameter shadows the outer name rather than capturing it.
     assert_eq!(eval("v = 1\nlb = do v -> v + 1\nlb(41)"), "42");
     // A local the body binds itself does not leak back out.

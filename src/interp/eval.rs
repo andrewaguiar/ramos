@@ -608,9 +608,13 @@ impl Interp {
             Stmt::Expr(e) => self.eval_expr(e, env),
             Stmt::Assign { pattern, value } => {
                 // A lambda is anonymous and non-recursive: it may not refer to
-                // the name it is being bound to. This is both a language rule
-                // and what keeps a closure from forming an `Rc` cycle with the
-                // scope it captured.
+                // the name it is being bound to. `capture` (below) already
+                // makes a closure's captured scope independent of whatever
+                // name it ends up assigned to, so this check is no longer
+                // what prevents a reference cycle — it is kept as an early,
+                // clear error (`f = do x -> f(x)` fails right here) rather
+                // than a confusing "undefined variable `f`" wherever the
+                // lambda is later called.
                 if let (Pattern::Binding(name), Expr::Lambda { params, body }) = (pattern, value) {
                     if freevars::free_names(params, body).iter().any(|n| n == name) {
                         return err(format!(
@@ -684,7 +688,7 @@ impl Interp {
             Expr::Lambda { params, body } => Ok(Value::Lambda(Arc::new(Closure {
                 params: params.clone(),
                 body: body.clone(),
-                env: env.clone(),
+                env: capture(params, body, env),
                 module: self.current_module.clone(),
                 file: self.current_file.clone(),
             }))),
@@ -2087,6 +2091,30 @@ impl Interp {
         let r = self.eval_expr(right, env)?;
         apply_binop(op, &l, &r)
     }
+}
+
+/// A fresh, parentless scope holding just the values a lambda's free names
+/// resolve to right now — not a reference to `env` itself.
+///
+/// A closure that captured `env` directly, then got bound to a name inside
+/// that very `env` (`f = do -> ...`), would leave `env` holding the closure
+/// and the closure holding `env` right back: an `Arc` cycle. Nothing here
+/// collects cycles, so neither side would ever free — every such binding
+/// would leak its whole enclosing scope, and the language's own style rule
+/// for a multi-line lambda (bind it to a name first) makes that binding
+/// common, not a corner case. Capturing by value breaks the cycle
+/// unconditionally, with no need to special-case "assigned to its own
+/// scope." The trade-off: a closure's view of what it captured is fixed at
+/// the moment it is built, not live — a name rebound in `env` after the
+/// lambda exists is a rebinding the lambda does not see.
+fn capture(params: &[String], body: &Block, env: &Env) -> Env {
+    let captured = Env::root();
+    for name in freevars::free_names(params, body) {
+        if let Some(value) = env.get(&name) {
+            captured.set(name, value);
+        }
+    }
+    captured
 }
 
 fn eval_unary(op: UnOp, v: Value) -> Result<Value, RuntimeError> {
