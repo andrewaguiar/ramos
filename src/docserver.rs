@@ -40,7 +40,11 @@ fn handle_connection(mut stream: TcpStream, root: &Path) {
         return;
     };
     let (status, content_type, body) = if method != "GET" {
-        (405, "text/plain; charset=utf-8", b"method not allowed\n".to_vec())
+        (
+            405,
+            "text/plain; charset=utf-8",
+            b"method not allowed\n".to_vec(),
+        )
     } else {
         let path_only = target.split('?').next().unwrap_or(&target);
         match resolve(root, path_only).and_then(|file| fs::read(&file).ok().map(|b| (file, b))) {

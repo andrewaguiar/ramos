@@ -58,12 +58,16 @@
       });
       html += "</ul>\n";
     }
-    html += "<h3>Modules</h3>\n<ul>\n";
-    data.modules.forEach(function (name) {
-      html +=
-        '  <li><a href="#/' + name + '" data-page="' + name + '">' + name + "</a></li>\n";
+    html += "<h3>Modules</h3>\n";
+    data.module_groups.forEach(function (group, i) {
+      html += '<div class="module-group' + (i === 0 ? "" : " separated") + '">\n';
+      html += "  <h4>" + escapeHtml(group.name) + "</h4>\n  <ul>\n";
+      group.modules.forEach(function (name) {
+        html +=
+          '    <li><a href="#/' + name + '" data-page="' + name + '">' + name + "</a></li>\n";
+      });
+      html += "  </ul>\n</div>\n";
     });
-    html += "</ul>\n";
     sidebarNav.innerHTML = html;
   }
 

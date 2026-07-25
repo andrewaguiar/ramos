@@ -207,7 +207,10 @@ fn run_see(args: &[String], stdlib: Option<String>, color: Color) -> ExitCode {
         .iter()
         .find(|(stem, _)| normalize_module_name(stem) == wanted)
     else {
-        let available: Vec<&str> = ramos::loader::STDLIB.iter().map(|(stem, _)| *stem).collect();
+        let available: Vec<&str> = ramos::loader::STDLIB
+            .iter()
+            .map(|(stem, _)| *stem)
+            .collect();
         eprintln!("{} no stdlib module named `{name}`", err_tag(color));
         eprintln!("  available: {}", available.join(", "));
         return ExitCode::FAILURE;
@@ -880,9 +883,7 @@ fn run_cli() -> ExitCode {
             eprintln!("                             one found, if there is more than one)");
             eprintln!("  run                        same as `run .` — run the current directory's");
             eprintln!("                             `main.rmo`");
-            eprintln!(
-                "  run -e CODE                run CODE as a snippet, no `.rmo` file needed"
-            );
+            eprintln!("  run -e CODE                run CODE as a snippet, no `.rmo` file needed");
             eprintln!(
                 "  new <project-name>         scaffold a project: <name>/src/<snake>/main.rmo"
             );

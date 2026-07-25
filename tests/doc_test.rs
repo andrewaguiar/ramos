@@ -311,6 +311,57 @@ fn generates_a_page_per_real_stdlib_module() {
 }
 
 #[test]
+fn module_groups_cover_every_module_exactly_once_and_the_index_shows_separators() {
+    // `MODULE_GROUPS` in src/doc.rs is a hand-maintained table, independent
+    // of the AST — this is what stops it drifting silently as modules are
+    // added, renamed, or removed.
+    let out = TempDir::new("groups");
+    ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();
+    let doc = load_docs(&out.0);
+
+    let modules: Vec<&str> = doc.get("modules").as_array().iter().map(Json::as_str).collect();
+    let groups = doc.get("module_groups").as_array();
+
+    let mut grouped: Vec<&str> = Vec::new();
+    for group in groups {
+        assert!(
+            !group.get("name").as_str().is_empty(),
+            "a module group has no name"
+        );
+        for m in group.get("modules").as_array() {
+            let name = m.as_str();
+            assert!(
+                !grouped.contains(&name),
+                "{name} appears in more than one module group"
+            );
+            grouped.push(name);
+        }
+    }
+    for name in &modules {
+        assert!(grouped.contains(name), "{name} is in no module group");
+    }
+    assert_eq!(
+        grouped.len(),
+        modules.len(),
+        "module groups and the flat module list disagree on membership"
+    );
+
+    // The index page renders one heading per group and a separator between
+    // them (`.module-group` with a `.separated` sibling from the second
+    // group on) — spot-check rather than every group, so this doesn't have
+    // to be rewritten each time a module moves between themes.
+    let html = page_body(&doc, "");
+    assert!(
+        html.contains("<h3 class=\"module-group\">Core</h3>"),
+        "index missing the Core group heading"
+    );
+    assert!(
+        html.contains("<h3 class=\"module-group\">Networking</h3>"),
+        "index missing the Networking group heading"
+    );
+}
+
+#[test]
 fn kernel_page_has_signatures_params_returns_and_examples() {
     let out = TempDir::new("kernel");
     ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();

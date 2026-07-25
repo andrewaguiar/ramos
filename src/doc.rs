@@ -105,6 +105,81 @@ pub fn generate_embedded(out_dir: &Path, opts: &Options) -> Result<usize, String
     generate_from_modules(modules, out_dir, opts)
 }
 
+/// Thematic grouping for the sidebar and the index page's module list — the
+/// stdlib's own declaration order (roughly "dependency order", `Kernel`
+/// first) doesn't say anything about how modules relate to each other, so
+/// this is the one place that shape is spelled out. `pub` so
+/// `tests/doc_test.rs` can assert every stdlib module lands in exactly one
+/// group, keeping this from silently drifting as modules are added, renamed,
+/// or removed.
+pub const MODULE_GROUPS: &[(&str, &[&str])] = &[
+    ("Core", &["Kernel"]),
+    (
+        "Primitives & collections",
+        &[
+            "Integer", "Float", "String", "List", "Map", "Tuple", "Struct", "Json",
+        ],
+    ),
+    (
+        "Date & time",
+        &["Date", "Time", "NaiveDateTime", "TimeZone", "DateTime"],
+    ),
+    ("Files", &["File", "Dir"]),
+    (
+        "Networking",
+        &[
+            "Socket",
+            "ServerSocket",
+            "HttpServer",
+            "HttpRequest",
+            "HttpResponse",
+        ],
+    ),
+    (
+        "Concurrency & process state",
+        &["Actor", "Global", "Pool", "Config", "Thread"],
+    ),
+    ("Testing & meta", &["Test", "Module"]),
+];
+
+/// `names` partitioned into `MODULE_GROUPS`'s themes, each theme in its own
+/// declared order, themes in declaration order. A name `MODULE_GROUPS`
+/// doesn't mention (there should be none; see the doc comment above) sinks
+/// into a trailing `"Other"` group instead of silently vanishing from the
+/// sidebar and index — the doc site should never drop a module just because
+/// this table fell out of sync.
+fn grouped_module_names(names: &[String]) -> Vec<(String, Vec<String>)> {
+    let mut out: Vec<(String, Vec<String>)> = MODULE_GROUPS
+        .iter()
+        .filter_map(|(theme, members)| {
+            let present: Vec<String> = members
+                .iter()
+                .filter(|m| names.iter().any(|n| n == *m))
+                .map(|m| m.to_string())
+                .collect();
+            if present.is_empty() {
+                None
+            } else {
+                Some((theme.to_string(), present))
+            }
+        })
+        .collect();
+
+    let grouped: std::collections::HashSet<&str> = MODULE_GROUPS
+        .iter()
+        .flat_map(|(_, members)| members.iter().copied())
+        .collect();
+    let other: Vec<String> = names
+        .iter()
+        .filter(|n| !grouped.contains(n.as_str()))
+        .cloned()
+        .collect();
+    if !other.is_empty() {
+        out.push(("Other".to_string(), other));
+    }
+    out
+}
+
 /// The shared second half of `generate_with`/`generate_embedded`: `modules`
 /// already collected (from disk or embedded, either way), everything past
 /// that point — narrative pages, rendering, writing `out_dir` — is identical
@@ -127,7 +202,22 @@ fn generate_from_modules(
         None => None,
     };
 
+    // Alphabetical first (a stable, predictable tie-break), then reordered
+    // into `MODULE_GROUPS`'s themes — the sidebar and the index list both
+    // want modules grouped by theme, not by file name.
     modules.sort_by(|a, b| a.name.cmp(&b.name));
+    let alpha_names: Vec<String> = modules.iter().map(|m| m.name.clone()).collect();
+    let groups = grouped_module_names(&alpha_names);
+    let group_order: Vec<&str> = groups
+        .iter()
+        .flat_map(|(_, members)| members.iter().map(|m| m.as_str()))
+        .collect();
+    modules.sort_by_key(|m| {
+        group_order
+            .iter()
+            .position(|n| *n == m.name)
+            .unwrap_or(usize::MAX)
+    });
 
     // One shared stylesheet, linked from the shell page.
     fs::create_dir_all(out_dir.join("assets")).map_err(|e| format!("create assets dir: {e}"))?;
@@ -178,14 +268,30 @@ fn generate_from_modules(
         ));
     }
 
-    let index_body = render_index(&modules, guides, guide.as_deref());
+    let index_body = render_index(&modules, &groups, guides, guide.as_deref());
     pages.push((String::new(), page_json("Ramos", None, "index", index_body)));
+
+    let module_groups_json = Json::Array(
+        groups
+            .iter()
+            .map(|(theme, members)| {
+                Json::Object(vec![
+                    ("name".to_string(), Json::Str(theme.clone())),
+                    (
+                        "modules".to_string(),
+                        Json::Array(members.iter().cloned().map(Json::Str).collect()),
+                    ),
+                ])
+            })
+            .collect(),
+    );
 
     let doc_json = Json::Object(vec![
         (
             "modules".to_string(),
             Json::Array(module_names.into_iter().map(Json::Str).collect()),
         ),
+        ("module_groups".to_string(), module_groups_json),
         (
             "guides".to_string(),
             Json::Object(vec![
@@ -1826,7 +1932,12 @@ fn render_programs(programs: &[ExampleDoc], module_names: &[String], guides: Gui
     body
 }
 
-fn render_index(modules: &[ModuleDoc], guides: Guides, guide_md: Option<&str>) -> String {
+fn render_index(
+    modules: &[ModuleDoc],
+    groups: &[(String, Vec<String>)],
+    guides: Guides,
+    guide_md: Option<&str>,
+) -> String {
     let names: Vec<String> = modules.iter().map(|m| m.name.clone()).collect();
 
     let mut body = String::new();
@@ -1893,16 +2004,28 @@ fn render_index(modules: &[ModuleDoc], guides: Guides, guide_md: Option<&str>) -
         };
         body.push_str(&format!("<p>New to the language? {joined}.</p>\n"));
     }
-    body.push_str("<ul class=\"module-list\">\n");
-    for m in modules {
+    // One heading + list per theme, rather than one flat list, so the
+    // grouping the sidebar uses (see `MODULE_GROUPS`) reads the same way
+    // here.
+    for (theme, members) in groups {
         body.push_str(&format!(
-            "  <li>\n    <a href=\"#/{name}\" class=\"module-name\">{name}</a>\n    \
-             <p class=\"module-summary\">{summary}</p>\n  </li>\n",
-            name = html_escape(&m.name),
-            summary = render_inline(&m.summary, &names),
+            "<h3 class=\"module-group\">{}</h3>\n",
+            html_escape(theme)
         ));
+        body.push_str("<ul class=\"module-list\">\n");
+        for member in members {
+            let Some(m) = modules.iter().find(|m| &m.name == member) else {
+                continue;
+            };
+            body.push_str(&format!(
+                "  <li>\n    <a href=\"#/{name}\" class=\"module-name\">{name}</a>\n    \
+                 <p class=\"module-summary\">{summary}</p>\n  </li>\n",
+                name = html_escape(&m.name),
+                summary = render_inline(&m.summary, &names),
+            ));
+        }
+        body.push_str("</ul>\n");
     }
-    body.push_str("</ul>\n");
 
     body
 }
@@ -2079,12 +2202,16 @@ const SHELL_HTML: &str = r##"<!DOCTYPE html>
       });
       html += "</ul>\n";
     }
-    html += "<h3>Modules</h3>\n<ul>\n";
-    data.modules.forEach(function (name) {
-      html +=
-        '  <li><a href="#/' + name + '" data-page="' + name + '">' + name + "</a></li>\n";
+    html += "<h3>Modules</h3>\n";
+    data.module_groups.forEach(function (group, i) {
+      html += '<div class="module-group' + (i === 0 ? "" : " separated") + '">\n';
+      html += "  <h4>" + escapeHtml(group.name) + "</h4>\n  <ul>\n";
+      group.modules.forEach(function (name) {
+        html +=
+          '    <li><a href="#/' + name + '" data-page="' + name + '">' + name + "</a></li>\n";
+      });
+      html += "  </ul>\n</div>\n";
     });
-    html += "</ul>\n";
     sidebarNav.innerHTML = html;
   }
 
@@ -2244,6 +2371,18 @@ pre code { background: none; padding: 0; }
   color: #8fbf9c;
   margin: 1.5rem 0 0.5rem;
 }
+.sidebar h4 {
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  color: #6b9c7a;
+  margin: 0.6rem 0 0.3rem;
+  font-weight: 600;
+}
+.sidebar .module-group.separated {
+  border-top: 1px solid #1c3924;
+  margin-top: 0.6rem;
+  padding-top: 0.4rem;
+}
 .sidebar ul { list-style: none; margin: 0; padding: 0; }
 .sidebar li { margin: 0.1rem 0; }
 .sidebar a { color: #d8f3df; }
@@ -2262,6 +2401,16 @@ pre code { background: none; padding: 0; }
   margin-top: 2.5rem;
 }
 .content > section:first-of-type h2 { margin-top: 1rem; }
+.content h3.module-group {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.content h3.module-group:first-of-type { margin-top: 1rem; padding-top: 0; border-top: none; }
 .module-summary { font-size: 1.1rem; color: var(--muted); }
 .content ul { margin: 0.5rem 0; padding-left: 1.5rem; }
 .content li { margin: 0.2rem 0; }
