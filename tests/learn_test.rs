@@ -86,3 +86,34 @@ fn the_text_includes_every_lexer_strict_rule_code() {
         assert!(text.contains(code.as_str()), "missing {}", code.as_str());
     }
 }
+
+#[test]
+fn the_text_lists_every_stdlib_module_and_public_function() {
+    let text = ramos::learn::text();
+    for (stem, source) in ramos::loader::STDLIB {
+        let tokens = ramos::lexer::lex(source).unwrap_or_else(|e| panic!("lex {stem}: {e:?}"));
+        let program =
+            ramos::parser::parse(tokens).unwrap_or_else(|e| panic!("parse {stem}: {e:?}"));
+        let (name, functions) = program
+            .items
+            .iter()
+            .find_map(|it| match it {
+                ramos::ast::Item::Module(m) => Some((m.name.to_string(), &m.functions)),
+                ramos::ast::Item::Trait(t) => Some((t.name.to_string(), &t.functions)),
+                ramos::ast::Item::Struct(s) => Some((s.name.to_string(), &s.functions)),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("{stem}: no module/trait/struct"));
+        assert!(
+            text.contains(&format!("### `{name}`")),
+            "learn text missing stdlib module: {name}"
+        );
+        for f in functions.iter().filter(|f| !f.private) {
+            let signature = format!("{}({})", f.name, f.params.join(", "));
+            assert!(
+                text.contains(&signature),
+                "learn text missing {name}'s `{signature}`"
+            );
+        }
+    }
+}

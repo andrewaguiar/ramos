@@ -1,0 +1,786 @@
+struct HttpRequest
+  # @module_doc
+  #
+  # HttpRequest — parses raw HTTP request text into its request line,
+  # headers, and body. The natural companion to `HttpServer`, whose handler
+  # lambda receives exactly this text (see that module's doc for what "the
+  # request text" contains and does not contain):
+  #
+  #   HttpServer{port: 8080}.start(do text -> handle(HttpRequest.new(text)))
+  #
+  # `new` is the only way in:
+  #
+  #   request = HttpRequest.new("GET /hello HTTP/1.1\r\nHost: localhost\r\n\r\n")
+  #   request.method    # == "GET"
+  #   request.path      # == "/hello"
+  #   request.version   # == "HTTP/1.1"
+  #   request.headers   # == [("host", "localhost")]
+  #
+  # **`headers` is a `List` of `(name, value)` string tuples, not a `Map`.**
+  # HTTP allows the same header name more than once — `Set-Cookie` in a
+  # response, `Cookie` or `X-Forwarded-For` in a request — with every
+  # occurrence significant, so a `Map` would silently drop all but one. Find
+  # one by name with `List.find`:
+  #
+  #   headers = [("host", "localhost"), ("x-test", "a")]
+  #   match_host =
+  #     do header
+  #       (name, _) = header
+  #       name == "host"
+  #   List.find(headers, match_host)
+  #   # == ("host", "localhost")
+  #
+  # **Every name in `headers` is downcased** — `"Host"` and `"HOST"` on the
+  # wire both come back `"host"` — since HTTP header names are
+  # case-insensitive by spec and one written form beats guessing which of
+  # several a caller might match against. Only the name changes; a value is
+  # kept exactly as sent.
+  #
+  # **The request line splits on single spaces, exactly three tokens.** That
+  # is what every conforming client sends — the request-target is
+  # percent-encoded specifically so it never contains a literal space — so a
+  # request line shaped any other way fails loudly, an `assert`, rather than
+  # silently producing a half-parsed `HttpRequest`.
+  #
+  # **`request_body` is whatever text follows the blank line (`"\r\n\r\n"`)
+  # that ends the headers** — `""` if `text` has no such blank line (an
+  # incomplete read) or nothing after it. `HttpServer` itself only reads up
+  # through that blank line, not a `Content-Length` body on top of it (see
+  # its own doc) — a handler that needs the body reads it off the
+  # connection itself and hands `HttpRequest.new` the two concatenated.
+  #
+  # **Query-string parameters are parsed lazily, from `path`, not eagerly in
+  # `new`.** `get_query_params`/`get_query_param` parse `path`'s `"?"` suffix
+  # on every call rather than something `new` computes up front — there is
+  # nowhere on an immutable struct to cache the result, so a request whose
+  # handler never reads a query parameter never pays to parse one. Unlike
+  # `headers`, a repeated query key has no protocol meaning to preserve, so
+  # this one comes back as a `Map` — last occurrence wins — decoded the way
+  # `application/x-www-form-urlencoded` decodes it (`+` to space, `%XX` to
+  # the byte it names).
+  #
+  # **A JSON body is `get_json_params`, not `get_query_params`.** It checks
+  # `Content-Type` for a `.../json` media type before parsing `request_body`
+  # with `Json` — a missing or non-JSON `Content-Type`, or a body `Json`
+  # cannot parse, all come back `nil` rather than raising.
+  #
+  # **A form body is `get_form_params`.** Plain `<form>` posts (no file
+  # input) send `application/x-www-form-urlencoded`, the same encoding as a
+  # query string, just in `request_body` instead of `path`; `get_form_params`
+  # checks `Content-Type` for it and decodes the body exactly as
+  # `get_query_params` decodes `path`'s `"?"` suffix. A missing or
+  # non-matching `Content-Type` comes back `nil`.
+  #
+  # **A file upload is `get_multipart_params`.** It checks `Content-Type` for
+  # `multipart/form-data` and a `boundary` parameter, then splits
+  # `request_body` on it into a `Map`: a plain field's value is its content
+  # as a `String`, a file field's (one with a `filename`) is a `Map` of
+  # `filename`/`content_type`/`content` instead. A missing or non-multipart
+  # `Content-Type`, or one with no `boundary`, comes back `nil`; a part with
+  # no `name` is skipped rather than raising, the body being, like a JSON
+  # one, arbitrary text from outside the program.
+  #
+  # **`params` is `request_body` already parsed, eagerly, by `new`** — unlike
+  # every `get_*_params` above, which parse lazily and hand back `nil` for
+  # the "wrong" `Content-Type`. `new` looks at `Content-Type` once: a
+  # `.../json` body is `Json.parse`d (kept only if it parses to a `Map` — a
+  # JSON array has no field names to key `params` by); an
+  # `application/x-www-form-urlencoded` body is decoded the same way
+  # `get_form_params` decodes it. Anything else — a `multipart/form-data`
+  # upload included, since that one is read lazily on purpose (see its own
+  # doc) — leaves `params` at `{}`, never `nil`, so a handler can
+  # `Map.get(request.params, "id", nil)` without checking first.
+  #
+  # **Both `params` and every `get_*_params` above understand bracket
+  # notation** — `application/x-www-form-urlencoded` and query-string keys
+  # written `name[]` or `name[key]`, the shape an HTML `<form>` and `<a
+  # href="?...">` both write for a field meant to repeat or nest:
+  #
+  #   request =
+  #     HttpRequest.new(
+  #       "POST /items HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nids[]=1&ids[]=2&ids[]=3"
+  #     )
+  #   request.params   # == {"ids": ["1", "2", "3"]}
+  #
+  #   request =
+  #     HttpRequest.new(
+  #       "POST /users HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nuser[name]=Alice&user[email]=alice%40example.com"
+  #     )
+  #   request.params   # == {"user": {"name": "Alice", "email": "alice@example.com"}}
+  #
+  # A bare `name` (no brackets) is unaffected — still the flat, last-value-
+  # wins `Map` entry it always was. `name[]` always *appends* a fresh
+  # element rather than looking for one to extend, which is what turns a
+  # repeated `a[][b]=x&a[][c]=y` into two elements, `[{b: "x"}, {c: "y"}]`,
+  # instead of merging them into one; `name[key]` looks up (or starts) a
+  # nested `Map` at `key` and keeps going from there, so segments may nest
+  # to any depth (`a[b][c]=x` is `{a: {b: {c: "x"}}}`) and mix freely with
+  # `[]` at any position.
+
+  attributes
+    method: ""
+    path: ""
+    version: ""
+    headers: []
+    request_body: ""
+    params: {}
+
+  function new(text)
+    # @doc
+    #
+    # Parses `text` into an `HttpRequest`: `method`, `path`, and `version`
+    # from the request line; `headers` as a `List` of `(name, value)` string
+    # tuples, in order, duplicates kept, names downcased; `request_body`,
+    # whatever follows the blank line ending the headers (`""` if there is
+    # none); and `params` — `request_body` already parsed by `Content-Type`,
+    # `{}` when it names neither JSON nor a form (see the module doc for
+    # both, `params` and the bracket notation `name[]`/`name[key]` keys
+    # understand).
+    #
+    # @param text: raw HTTP request text — a request line, headers, a blank
+    #   line, and optionally a body
+    # @return a new `HttpRequest`
+    #
+    #   request =
+    #     HttpRequest.new(
+    #       "POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 2\r\n\r\nhi"
+    #     )
+    #   request.method         # == "POST"
+    #   request.path           # == "/echo"
+    #   request.version        # == "HTTP/1.1"
+    #   request.headers        # == [("host", "localhost"), ("content-length", "2")]
+    #   request.request_body   # == "hi"
+    #   request.params         # == {}
+    #
+    #   HttpRequest.new("GET / HTTP/1.1\r\n\r\n").headers   # == []
+    (head, request_body) = split_head_body(text)
+    [request_line | header_lines] = String.split(head, "\r\n")
+    parts = String.split(request_line, " ")
+    assert(
+      size(parts) == 3,
+      "HttpRequest.new: malformed request line #{inspect(request_line)}, expected \"METHOD PATH VERSION\""
+    )
+    [method, path, version] = parts
+    headers = List.map(header_lines, do line -> parse_header(line))
+    HttpRequest{
+      method: method,
+      path: path,
+      version: version,
+      headers: headers,
+      request_body: request_body,
+      params: parse_params(headers, request_body)
+    }
+
+  function get_method(self)
+    # @doc
+    #
+    # `self.method`, the request line's verb (`"GET"`, `"POST"`, ...).
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return the `String` method
+    #
+    #   HttpRequest.new("GET / HTTP/1.1\r\n\r\n").get_method()   # == "GET"
+    self.method
+
+  function get_path(self)
+    # @doc
+    #
+    # `self.path`, the request line's target — whatever the client sent
+    # between the method and the version, query string and all (`new` does
+    # not parse it further; see `String.split(path, "?")` for that).
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return the `String` path
+    #
+    #   HttpRequest.new("GET /hello?x=1 HTTP/1.1\r\n\r\n").get_path()   # == "/hello?x=1"
+    self.path
+
+  function get_http_version(self)
+    # @doc
+    #
+    # `self.version`, the request line's HTTP version (`"HTTP/1.1"`, ...).
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return the `String` version
+    #
+    #   HttpRequest.new("GET / HTTP/1.1\r\n\r\n").get_http_version()   # == "HTTP/1.1"
+    self.version
+
+  function get_headers(self)
+    # @doc
+    #
+    # `self.headers`, as a `List` of `(name, value)` string tuples, in
+    # order, duplicates kept, names downcased — see the module doc for why
+    # this is a `List` and not a `Map`.
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return the `List` of `(name, value)` header tuples
+    #
+    #   HttpRequest.new("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n").get_headers()
+    #   # == [("host", "localhost")]
+    self.headers
+
+  function get_header(self, name)
+    # @doc
+    #
+    # The value of the first header named `name`, matched case-insensitively
+    # — HTTP header names are case-insensitive by spec, which is also why
+    # every name in `get_headers` already comes back downcased; `name` is
+    # downcased the same way before it is compared. `nil` if there is no
+    # such header. Only the first match comes back; a header repeated on
+    # purpose (`Set-Cookie`, most commonly) needs `get_headers` and a filter
+    # to see every occurrence.
+    #
+    # @param self: the `HttpRequest` to read from
+    # @param name: the header name to look up, matched case-insensitively
+    # @return the `String` value of the first matching header, or `nil`
+    #
+    #   HttpRequest.new("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n").get_header("host")
+    #   # == "localhost"
+    #
+    #   HttpRequest.new("GET / HTTP/1.1\r\n\r\n").get_header("Host")   # == nil
+    find_header(self.headers, name)
+
+  function get_request_body(self)
+    # @doc
+    #
+    # `self.request_body`, whatever followed the blank line ending the
+    # headers (`""` if there was none) — see the module doc for what a
+    # missing body versus an empty one each mean.
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return the `String` body
+    #
+    #   HttpRequest.new("POST / HTTP/1.1\r\n\r\nhi").get_request_body()   # == "hi"
+    self.request_body
+
+  function get_cookies(self)
+    # @doc
+    #
+    # The request's cookies, parsed out of its `Cookie` header (matched
+    # case-insensitively, like every HTTP header name) into a `List` of
+    # `(name, value)` string tuples — the `Cookie`-specific counterpart to
+    # `get_headers`, since a cookie header packs several `name=value` pairs
+    # into one `;`-separated line that nothing else here unpacks.
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return a `List` of `(name, value)` cookie tuples; `[]` if there is no
+    #   `Cookie` header
+    #
+    #   HttpRequest.new("GET / HTTP/1.1\r\nCookie: a=1; b=2\r\n\r\n").get_cookies()
+    #   # == [("a", "1"), ("b", "2")]
+    #
+    #   HttpRequest.new("GET / HTTP/1.1\r\n\r\n").get_cookies()   # == []
+    case find_header(self.headers, "cookie")
+      nil -> []
+      value -> List.map(String.split(value, ";"), do part -> split_pair(String.trim(part), "="))
+
+  function get_query_params(self)
+    # @doc
+    #
+    # The request's query-string parameters, parsed out of `self.path`'s
+    # `"?"` suffix into a `Map` — unlike `headers`/`get_cookies`, a repeated
+    # key has no protocol meaning to preserve, so the last occurrence simply
+    # wins, the same rule `Map.put` already uses for any other duplicate key.
+    # Parsed fresh on every call, straight from `self.path` — there is
+    # nowhere on an immutable `HttpRequest` to cache it, so `new` does no
+    # work for a request that never reads its query string.
+    #
+    # Decoded the way `application/x-www-form-urlencoded` decodes it: `+` to
+    # a space, `%XX` to the byte it names — covering the printable ASCII
+    # range (`%20`..`%7E`), which is everything a browser or client actually
+    # percent-encodes there. A `%XX` outside that range, or whose two
+    # characters are not hex digits, is left exactly as it was written rather
+    # than guessed at.
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return a `Map` of decoded `(name, value)` pairs; `{}` if `self.path`
+    #   has no `"?"`
+    #
+    #   HttpRequest.new("GET /search?q=hello+world&x=1 HTTP/1.1\r\n\r\n").get_query_params()
+    #   # == {"q": "hello world", "x": "1"}
+    #
+    #   HttpRequest.new("GET /search HTTP/1.1\r\n\r\n").get_query_params()   # == {}
+    #
+    #   HttpRequest.new("GET /search?ids[]=1&ids[]=2 HTTP/1.1\r\n\r\n").get_query_params()
+    #   # == {"ids": ["1", "2"]}
+    case String.find(self.path, "?")
+      nil -> {}
+      i -> decode_urlencoded(String.slice(self.path, i + 1, String.length(self.path) - i - 1))
+
+  function get_query_param(self, name)
+    # @doc
+    #
+    # The value of the query-string parameter `name`, or `nil` if there is
+    # none — `Map.get` over `get_query_params()`, matched case-sensitively
+    # (unlike `get_header`, a query key has no HTTP-mandated
+    # case-insensitivity to honor).
+    #
+    # @param self: the `HttpRequest` to read from
+    # @param name: the parameter name to look up, matched case-sensitively
+    # @return the decoded `String` value, or `nil`
+    #
+    #   HttpRequest.new("GET /search?q=hello HTTP/1.1\r\n\r\n").get_query_param("q")
+    #   # == "hello"
+    #
+    #   HttpRequest.new("GET /search?q=hello HTTP/1.1\r\n\r\n").get_query_param("page")
+    #   # == nil
+    Map.get(self.get_query_params(), name, nil)
+
+  function get_json_params(self)
+    # @doc
+    #
+    # `request_body` parsed as JSON, but only when `Content-Type` says the
+    # body actually is JSON — a media type whose subtype is `json`
+    # (`application/json`, `text/json`, ...; matched case-insensitively, like
+    # every header, and read up to any `;` a parameter such as `charset`
+    # starts). No `Content-Type` header, a media type that is not `.../json`,
+    # or a body that does not parse all come back `nil` — the same "just
+    # tell me you couldn't" contract `Json.parse` itself uses, so a handler
+    # never needs to check the header and the body's validity separately.
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return the parsed JSON value (a `Map` for a JSON object, a `List` for
+    #   a JSON array), or `nil`
+    #
+    #   request =
+    #     HttpRequest.new(
+    #       "POST /users HTTP/1.1\r\nContent-Type: application/json\r\n\r\n{\"name\": \"Andrew\"}"
+    #     )
+    #   request.get_json_params()   # == {"name": "Andrew"}
+    #
+    #   HttpRequest.new("POST /users HTTP/1.1\r\n\r\n{\"name\": \"Andrew\"}").get_json_params()
+    #   # == nil
+    #
+    #   bad = HttpRequest.new("POST /users HTTP/1.1\r\nContent-Type: application/json\r\n\r\nnope")
+    #   bad.get_json_params()   # == nil
+    case self.get_header("Content-Type")
+      nil -> nil
+      content_type ->
+        case is_json_content_type(content_type)
+          true -> Json.parse(self.request_body)
+          false -> nil
+
+  function get_form_params(self)
+    # @doc
+    #
+    # `request_body` parsed as `application/x-www-form-urlencoded`, but only
+    # when `Content-Type` says so — the same decoding `get_query_params` uses
+    # on `path`'s `"?"` suffix (`+` to a space, `%XX` to the byte it names),
+    # since it is the same encoding, just carried in the body instead of the
+    # URL. A missing or non-`application/x-www-form-urlencoded` `Content-Type`
+    # comes back `nil` — the same contract `get_json_params`/
+    # `get_multipart_params` use.
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return a `Map` of decoded `(name, value)` pairs; `{}` if the body is
+    #   empty; `nil` if `Content-Type` is missing or not this media type
+    #
+    #   request =
+    #     HttpRequest.new(
+    #       "POST /login HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nuser=andrew&pw=hunter+2"
+    #     )
+    #   request.get_form_params()   # == {"user": "andrew", "pw": "hunter 2"}
+    #
+    #   HttpRequest.new("POST /login HTTP/1.1\r\n\r\nuser=andrew").get_form_params()   # == nil
+    #
+    #   bracketed =
+    #     HttpRequest.new(
+    #       "POST /items HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nids[]=1&ids[]=2"
+    #     )
+    #   bracketed.get_form_params()   # == {"ids": ["1", "2"]}
+    case self.get_header("Content-Type")
+      nil -> nil
+      content_type ->
+        case is_form_content_type(content_type)
+          true -> decode_urlencoded(self.request_body)
+          false -> nil
+
+  function get_multipart_params(self)
+    # @doc
+    #
+    # `request_body` parsed as `multipart/form-data`, but only when
+    # `Content-Type` says so and carries a `boundary` — the delimiter that
+    # separates one part from the next, sent as
+    # `Content-Type: multipart/form-data; boundary=<boundary>`. Each part is
+    # its own little header/body pair, `Content-Disposition: form-data;
+    # name="..."` naming the field it goes under: a plain field's value is
+    # its content as a `String`; a file field (one whose `Content-Disposition`
+    # also carries a `filename`) comes back as a `Map` of
+    # `filename`/`content_type`/`content` instead, `content_type` `nil` if
+    # the part sent none.
+    #
+    # A missing or non-`multipart/form-data` `Content-Type`, or one with no
+    # `boundary`, comes back `nil` — the same contract `get_json_params`
+    # uses. A part with no `name` (no `Content-Disposition` at all, or one
+    # missing `name`) is skipped rather than raising, since `request_body` is
+    # arbitrary text from outside the program, same as a JSON one.
+    #
+    # @param self: the `HttpRequest` to read from
+    # @return a `Map` of field name to value (a `String`, or a `filename`/
+    #   `content_type`/`content` `Map` for a file field), or `nil`
+    #
+    #   request =
+    #     HttpRequest.new(
+    #       "POST /upload HTTP/1.1\r\nContent-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW\r\n\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name=\"username\"\r\n\r\nandrew\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name=\"avatar\"; filename=\"photo.png\"\r\nContent-Type: image/png\r\n\r\nPNGDATA\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW--\r\n"
+    #     )
+    #   request.get_multipart_params()
+    #   # == {"username": "andrew", "avatar": {filename: "photo.png", content_type: "image/png", content: "PNGDATA"}}
+    #
+    #   HttpRequest.new("POST /upload HTTP/1.1\r\n\r\nignored").get_multipart_params()   # == nil
+    case self.get_header("Content-Type")
+      nil -> nil
+      content_type ->
+        case media_type(content_type) == "multipart/form-data"
+          false -> nil
+          true ->
+            case header_param(content_type, "boundary")
+              nil -> nil
+              boundary -> build_multipart_map(multipart_parts(self.request_body, boundary), {})
+
+  # private functions
+
+  # The media type out of a header value like `application/json` or
+  # `multipart/form-data; boundary=abc` — everything up to any `;` parameter,
+  # trimmed and downcased (HTTP media types are case-insensitive, unlike a
+  # parameter's *value* — a multipart `boundary`, most importantly — which
+  # this leaves untouched).
+  helper media_type(content_type)
+    case String.find(content_type, ";")
+      nil -> String.downcase(String.trim(content_type))
+      i -> String.downcase(String.trim(String.slice(content_type, 0, i)))
+
+  # Shared by `get_json_params` and `new` (by way of `parse_params`), so a
+  # `.../json` body is recognized identically whether it is asked for
+  # explicitly or parsed eagerly into `params`.
+  helper is_json_content_type(content_type)
+    String.ends_with(media_type(content_type), "/json")
+
+  # Shared by `get_form_params` and `new`, for the same reason.
+  helper is_form_content_type(content_type)
+    media_type(content_type) == "application/x-www-form-urlencoded"
+
+  # `params`: `request_body` decoded by `Content-Type`, computed once in
+  # `new` rather than lazily like every `get_*_params` above. `multipart/
+  # form-data` is deliberately left out — see the module doc — so this only
+  # ever looks at JSON and urlencoded; anything else, including no
+  # `Content-Type` at all, is `{}` rather than `nil`, since `params` is
+  # always a `Map`.
+  helper parse_params(headers, request_body)
+    case find_header(headers, "content-type")
+      nil -> {}
+      content_type ->
+        cond
+          is_form_content_type(content_type) -> decode_urlencoded(request_body)
+          is_json_content_type(content_type) -> ensure_map(Json.parse(request_body))
+          true -> {}
+
+  # A top-level JSON array (or a body that fails to parse, `Json.parse`'s
+  # `nil`) has no field names to key `params` by, so it falls back to `{}`
+  # rather than handing back something `Map.get` cannot be called on.
+  helper ensure_map(value)
+    case is_map(value)
+      true -> value
+      false -> {}
+
+  # The value of `;`-separated parameter `param` in a header value such as
+  # `multipart/form-data; boundary=abc` or `form-data; name="a"; filename="b"`
+  # — shared by `Content-Type`'s `boundary` and `Content-Disposition`'s
+  # `name`/`filename`, since all three are the same `key=value` shape.
+  # `nil` if `content_type` has no parameters at all, or none named `param`.
+  helper header_param(content_type, param)
+    case String.find(content_type, ";")
+      nil -> nil
+      i ->
+        rest = String.slice(content_type, i + 1, String.length(content_type) - i - 1)
+        find_param(String.split(rest, ";"), param)
+
+  helper find_param(params, param)
+    case params
+      [] -> nil
+      [p | rest] ->
+        case parse_param(p)
+          nil -> find_param(rest, param)
+          (key, value) ->
+            case String.downcase(key) == String.downcase(param)
+              true -> value
+              false -> find_param(rest, param)
+
+  # One `key=value` parameter, `value` unwrapped from surrounding double
+  # quotes when it has them (`name="a"` and `name=a` both give `"a"`). A
+  # piece with no `=` at all is malformed and skipped by `find_param` rather
+  # than guessed at.
+  helper parse_param(p)
+    case String.find(p, "=")
+      nil -> nil
+      i ->
+        key = String.trim(String.slice(p, 0, i))
+        raw_value = String.trim(String.slice(p, i + 1, String.length(p) - i - 1))
+        (key, unquote_param(raw_value))
+
+  helper unquote_param(value)
+    cond
+      String.length(value) >= 2 and String.starts_with(value, "\"") and String.ends_with(value, "\"") ->
+        String.slice(value, 1, String.length(value) - 2)
+      true -> value
+
+  # `body` split on its boundary delimiter (`--boundary`) into each part's
+  # raw text, dropping the preamble before the first boundary and stopping
+  # at the closing `--boundary--`, which the split leaves as a segment
+  # starting with `--` rather than the `\r\n` an ordinary part starts with.
+  helper multipart_parts(body, boundary)
+    case String.split(body, "--" <> boundary)
+      [] -> []
+      [_preamble | segments] -> multipart_segments(segments)
+
+  helper multipart_segments(segments)
+    case segments
+      [] -> []
+      [segment | rest] ->
+        case String.starts_with(segment, "--")
+          true -> []
+          false -> [trim_part_delimiters(segment)] ++ multipart_segments(rest)
+
+  # Each segment still carries the `\r\n` that separated it from its
+  # boundary line on both ends — one leading (after the previous
+  # `--boundary`), one trailing (before the next) — neither of which is
+  # part of the part itself.
+  helper trim_part_delimiters(segment)
+    without_leading =
+      case String.starts_with(segment, "\r\n")
+        true -> String.slice(segment, 2, String.length(segment) - 2)
+        false -> segment
+    case String.ends_with(without_leading, "\r\n")
+      true -> String.slice(without_leading, 0, String.length(without_leading) - 2)
+      false -> without_leading
+
+  helper build_multipart_map(parts, acc)
+    case parts
+      [] -> acc
+      [part | rest] ->
+        case parse_multipart_part(part)
+          nil -> build_multipart_map(rest, acc)
+          (name, value) -> build_multipart_map(rest, Map.put(acc, name, value))
+
+  # One part's raw text (headers, a blank line, content) to a `(name, value)`
+  # pair, or `nil` when it has no `Content-Disposition` or no `name` to file
+  # it under. A `filename` makes it a file field: `value` is a `Map` of
+  # `filename`/`content_type`/`content` rather than the bare content a plain
+  # field's value is.
+  helper parse_multipart_part(text)
+    (head, content) = split_head_body(text)
+    headers = List.map(String.split(head, "\r\n"), do line -> parse_header(line))
+    case find_header(headers, "content-disposition")
+      nil -> nil
+      disposition ->
+        case header_param(disposition, "name")
+          nil -> nil
+          name ->
+            case header_param(disposition, "filename")
+              nil -> (name, content)
+              filename ->
+                (
+                  name,
+                  {
+                    filename: filename,
+                    content_type: find_header(headers, "content-type"),
+                    content: content
+                  }
+                )
+
+  # Looks up a header by `name`. Every name in `headers` is already
+  # downcased (`parse_header`), so only `name` itself needs it here.
+  # Returns the first match's value, or `nil` if `name` is not present.
+  helper find_header(headers, name)
+    lower_name = String.downcase(name)
+    case List.find(headers, do header -> at(header, 0) == lower_name)
+      nil -> nil
+      (_, value) -> value
+
+  # One header line as a `(name, value)` pair, `name` downcased — HTTP
+  # header names are case-insensitive by spec, so storing them downcased
+  # once here is what lets every other lookup (`find_header`, `get_header`)
+  # skip normalizing the stored side.
+  helper parse_header(line)
+    (name, value) = split_pair(line, ":")
+    (String.downcase(name), value)
+
+  # The header/body boundary is the first blank line, `"\r\n\r\n"` — the
+  # request line and headers before it, whatever follows (if anything) is
+  # the body. `text` with no blank line yet (an incomplete read, see
+  # `HttpServer`'s own doc) has no body to speak of, so it is `""` rather
+  # than a guess at where the headers might have ended.
+  helper split_head_body(text)
+    case String.find(text, "\r\n\r\n")
+      nil -> (text, "")
+      i -> (String.slice(text, 0, i), String.slice(text, i + 4, String.length(text) - i - 4))
+
+  # Splits `s` into `(name, value)` on the first `sep`, rather than
+  # `String.split` — shared by header lines (`sep: ":"`) and cookie pairs
+  # (`sep: "="`), since both need the *first* occurrence specifically: a
+  # header value (`Date: Mon, 01 Jan 2024 00:00:00 GMT`) or a cookie value
+  # can itself contain the separator. `s` with no `sep` at all is malformed;
+  # it comes back as a name with an empty value rather than being dropped,
+  # the same "hand back what was there" leniency `HttpServer` itself uses
+  # for a request cut short.
+  helper split_pair(s, sep)
+    case String.find(s, sep)
+      nil -> (String.trim(s), "")
+      i ->
+        (
+          String.trim(String.slice(s, 0, i)),
+          String.trim(String.slice(s, i + 1, String.length(s) - i - 1))
+        )
+
+  # `application/x-www-form-urlencoded` text (`get_query_params`'s query
+  # string and `get_form_params`'s body are the same encoding, just carried
+  # in different places) as a `Map` — `""` (nothing at all) short-circuits to
+  # `{}` rather than reaching `build_params` for one spurious empty-named
+  # pair, since `String.split("", "&")` would otherwise hand back `[""]`.
+  helper decode_urlencoded(text)
+    case text
+      "" -> {}
+      _ -> build_params(String.split(text, "&"), {})
+
+  # A key with no `[` at all (`split_brackets` gives it `[]` segments) is a
+  # plain flat pair, last value wins, same as ever. One with brackets nests
+  # `value` into whatever is already at `key` — see `bracket_insert`.
+  helper build_params(pairs, acc)
+    case pairs
+      [] -> acc
+      [pair | rest] ->
+        (raw_key, raw_value) = split_pair(pair, "=")
+        (raw_base, raw_segments) = split_brackets(raw_key)
+        key = percent_decode(raw_base)
+        segments = List.map(raw_segments, do s -> percent_decode(s))
+        value = percent_decode(raw_value)
+        case segments
+          [] -> build_params(rest, Map.put(acc, key, value))
+          _ ->
+            build_params(
+              rest,
+              Map.put(acc, key, bracket_insert(Map.get(acc, key, nil), segments, value))
+            )
+
+  # Splits raw (not yet percent-decoded — brackets are almost never sent
+  # percent-encoded, and parsing them first is what lets a percent-encoded
+  # `&`/`=` inside a value stay literal) form key `k` into its base name and
+  # bracket segments: `"user[name]"` is `("user", ["name"])`, `"ids[]"` is
+  # `("ids", [""])`, a key with no `[` at all is `(k, [])`.
+  helper split_brackets(k)
+    case String.find(k, "[")
+      nil -> (k, [])
+      i -> (String.slice(k, 0, i), bracket_segments(String.slice(k, i, String.length(k) - i)))
+
+  # `rest` starts with `[`; each `[...]` becomes one segment, in order,
+  # until `rest` runs out. An unterminated `[` with no matching `]` stops
+  # there rather than raising, the same "hand back what was there" leniency
+  # `split_pair` uses elsewhere in this module.
+  helper bracket_segments(rest)
+    case String.starts_with(rest, "[")
+      false -> []
+      true ->
+        case String.find(rest, "]")
+          nil -> []
+          i ->
+            segment = String.slice(rest, 1, i - 1)
+            remaining = String.slice(rest, i + 1, String.length(rest) - i - 1)
+            [segment] ++ bracket_segments(remaining)
+
+  # Inserts `value` at `path` (a `List` of bracket segments — `""` meaning
+  # "append a new array element", anything else a `Map` key) into
+  # `container`, whatever was already built there (`nil` the first time a
+  # given base key is seen, a `Map` or `List` after). `container` is
+  # coerced to whichever shape `path` needs next — a stray `a=1&a[]=2`
+  # mixing flat and bracketed forms for the same key overwrites rather than
+  # raising, same "best effort" leniency as everywhere else percent-decoded
+  # user input is parsed here.
+  #
+  # An empty segment always builds *fresh* content for the rest of `path`
+  # and appends it, rather than looking for "the last element" to extend —
+  # what turns a repeated `a[][b]=x&a[][c]=y` into two elements, `[{b: "x"},
+  # {c: "y"}]`, the same rule real form libraries use for a repeated `[]`.
+  # A named segment instead looks up (or starts) whatever is already at that
+  # key and keeps inserting into *that*, which is what lets `a[b][]=x`
+  # accumulate into one list at `a.b` across more than one pair.
+  helper bracket_insert(container, path, value)
+    case path
+      [] -> value
+      ["" | rest] ->
+        list =
+          case is_list(container)
+            true -> container
+            false -> []
+        list ++ [bracket_insert(nil, rest, value)]
+      [key | rest] ->
+        map =
+          case is_map(container)
+            true -> container
+            false -> {}
+        Map.put(map, key, bracket_insert(Map.get(map, key, nil), rest, value))
+
+  # `+` is `application/x-www-form-urlencoded`'s own shorthand for a space —
+  # not part of percent-encoding proper, so it is handled here rather than by
+  # `decode_from` looking for a `%`.
+  helper percent_decode(s)
+    decode_from(s, 0, "")
+
+  helper decode_from(s, i, acc)
+    len = String.length(s)
+    cond
+      i >= len -> acc
+      String.at(s, i) == "+" -> decode_from(s, i + 1, acc <> " ")
+      String.at(s, i) == "%" and i + 2 < len -> decode_percent(s, i, acc)
+      true -> decode_from(s, i + 1, acc <> String.at(s, i))
+
+  # A malformed `%` — cut short at the end of `s`, or not followed by two hex
+  # digits — is left as a literal `%`, the same "hand back what was there"
+  # leniency `split_pair` already uses for a missing separator.
+  helper decode_percent(s, i, acc)
+    hi = hex_digit_value(String.at(s, i + 1))
+    lo = hex_digit_value(String.at(s, i + 2))
+    cond
+      hi == nil or lo == nil -> decode_from(s, i + 1, acc <> String.at(s, i))
+      true -> decode_byte(s, i, acc, hi * 16 + lo)
+
+  # A byte outside the printable ASCII range `printable_ascii` covers — a
+  # control character, or one octet of a multi-byte UTF-8 sequence — is left
+  # as its original `%XX`, undecoded, rather than guessed at: Ramos has no
+  # integer-to-character conversion to turn an arbitrary byte into text with.
+  helper decode_byte(s, i, acc, code)
+    cond
+      code >= 32 and code <= 126 ->
+        decode_from(s, i + 3, acc <> String.at(printable_ascii(), code - 32))
+      true ->
+        decode_from(s, i + 3, acc <> "%" <> String.at(s, i + 1) <> String.at(s, i + 2))
+
+  helper hex_digit_value(c)
+    case c
+      "0" -> 0
+      "1" -> 1
+      "2" -> 2
+      "3" -> 3
+      "4" -> 4
+      "5" -> 5
+      "6" -> 6
+      "7" -> 7
+      "8" -> 8
+      "9" -> 9
+      "a" -> 10
+      "b" -> 11
+      "c" -> 12
+      "d" -> 13
+      "e" -> 14
+      "f" -> 15
+      "A" -> 10
+      "B" -> 11
+      "C" -> 12
+      "D" -> 13
+      "E" -> 14
+      "F" -> 15
+      _ -> nil
+
+  # Index `code - 32` into this is `code`'s character — the printable ASCII
+  # range (32..126), in order.
+  helper printable_ascii()
+    " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"

@@ -9,6 +9,14 @@
 //! JSON and presents it, swapping in the right fragment as the URL hash
 //! changes. Everything is written into an output directory (default `docs/`).
 //!
+//! [`generate_with`] reads its module sources off disk; [`generate_embedded`]
+//! reads the same stdlib this binary already embeds (`loader::STDLIB`)
+//! instead, so there is always something to document even outside a checkout
+//! that has a `stdlib/src` of its own — the `ramos doc` command falls back to
+//! it for exactly that reason. Both funnel into the same
+//! `generate_from_modules` past that point: rendering and writing `out_dir`
+//! do not care where the sources came from.
+//!
 //! The doc-comment format is documented in the README; in short:
 //!
 //! ```text
@@ -72,6 +80,40 @@ pub struct Options<'a> {
 
 /// `generate`, plus whichever narrative pages `opts` asks for.
 pub fn generate_with(source_dir: &Path, out_dir: &Path, opts: &Options) -> Result<usize, String> {
+    let modules = collect_modules(source_dir)?;
+    if modules.is_empty() {
+        return Err(format!(
+            "no `.rmo` files found in `{}`",
+            source_dir.display()
+        ));
+    }
+    generate_from_modules(modules, out_dir, opts)
+}
+
+/// `generate_with`, but documenting the stdlib embedded in this binary
+/// (`loader::STDLIB` — the same sources `run`/`check`/the REPL load when
+/// `--stdlib` names no directory) instead of reading `.rmo` files off disk.
+/// This is what lets `ramos doc` work from *any* directory, not just a
+/// checkout with a `stdlib/src` of its own: there is always a stdlib to
+/// document, because one is always built in.
+pub fn generate_embedded(out_dir: &Path, opts: &Options) -> Result<usize, String> {
+    let mut modules = Vec::with_capacity(crate::loader::STDLIB.len());
+    for (stem, source) in crate::loader::STDLIB {
+        let shown = PathBuf::from(format!("stdlib/src/{stem}.rmo"));
+        modules.push(build_module(source, &shown)?);
+    }
+    generate_from_modules(modules, out_dir, opts)
+}
+
+/// The shared second half of `generate_with`/`generate_embedded`: `modules`
+/// already collected (from disk or embedded, either way), everything past
+/// that point — narrative pages, rendering, writing `out_dir` — is identical
+/// regardless of where the module sources came from.
+fn generate_from_modules(
+    mut modules: Vec<ModuleDoc>,
+    out_dir: &Path,
+    opts: &Options,
+) -> Result<usize, String> {
     let examples = match opts.examples_dir {
         Some(dir) => collect_examples(dir)?,
         None => Vec::new(),
@@ -85,13 +127,6 @@ pub fn generate_with(source_dir: &Path, out_dir: &Path, opts: &Options) -> Resul
         None => None,
     };
 
-    let mut modules = collect_modules(source_dir)?;
-    if modules.is_empty() {
-        return Err(format!(
-            "no `.rmo` files found in `{}`",
-            source_dir.display()
-        ));
-    }
     modules.sort_by(|a, b| a.name.cmp(&b.name));
 
     // One shared stylesheet, linked from the shell page.

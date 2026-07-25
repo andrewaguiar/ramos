@@ -280,6 +280,17 @@ fn dispatch(
         "socket_peer_address" => one(name, args, socket_peer_address),
         "socket_close" => one(name, args, socket_close),
 
+        // ── JSON ─────────────────────────────────────────────────────────
+        // Hand-rolled, like everything else here — the crate takes no
+        // dependencies. `json_parse` never raises: malformed text, or a
+        // top-level value that is not an object or array, both come back as
+        // `Nil`, the same "just tell me you couldn't" contract `to_integer`
+        // and `to_float` use. `json_format` raises on a value it cannot
+        // represent — a caller mistake, not something to hand back a
+        // sentinel for.
+        "json_parse" => one(name, args, json_parse),
+        "json_format" => one(name, args, json_format),
+
         _ => return None,
     };
     Some(result)
@@ -972,6 +983,397 @@ fn socket_close(socket: &Value) -> Result<Value, RuntimeError> {
     let mut guard = handle.stream.lock().unwrap_or_else(|e| e.into_inner());
     *guard = None;
     Ok(sym("ok"))
+}
+
+// ── JSON ─────────────────────────────────────────────────────────────────────
+//
+// A small recursive-descent parser and a mirroring encoder. The top level is
+// held to an object or array in both directions — `Json`'s stdlib doc explains
+// why — everything *inside* one may be any JSON value.
+
+/// `str` parsed as JSON, or `Nil` if it is not well-formed *or* its top-level
+/// value is not an object or array. Never raises: malformed input is exactly
+/// as ordinary as a malformed number, which is why `to_integer`/`to_float`
+/// answer the same way.
+fn json_parse(v: &Value) -> Result<Value, RuntimeError> {
+    let text = as_str(v)?;
+    Ok(match JsonParser::new(text).parse_document() {
+        Some(value @ (Value::Map(_) | Value::List(_))) => value,
+        _ => Value::Nil,
+    })
+}
+
+struct JsonParser<'a> {
+    bytes: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> JsonParser<'a> {
+    fn new(text: &'a str) -> Self {
+        JsonParser {
+            bytes: text.as_bytes(),
+            pos: 0,
+        }
+    }
+
+    /// A whole document: one value, optional surrounding whitespace, and
+    /// nothing else — trailing garbage after the value is not valid JSON.
+    fn parse_document(&mut self) -> Option<Value> {
+        self.skip_ws();
+        let value = self.parse_value()?;
+        self.skip_ws();
+        if self.pos == self.bytes.len() {
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    fn parse_value(&mut self) -> Option<Value> {
+        self.skip_ws();
+        match self.peek()? {
+            b'{' => self.parse_object(),
+            b'[' => self.parse_array(),
+            b'"' => self.parse_string().map(|s| Value::Str(s.into())),
+            b't' => self.parse_literal("true", Value::Bool(true)),
+            b'f' => self.parse_literal("false", Value::Bool(false)),
+            b'n' => self.parse_literal("null", Value::Nil),
+            b'-' | b'0'..=b'9' => self.parse_number(),
+            _ => None,
+        }
+    }
+
+    fn parse_object(&mut self) -> Option<Value> {
+        self.pos += 1; // '{'
+        self.skip_ws();
+        let mut map = Map::default();
+        if self.peek() == Some(b'}') {
+            self.pos += 1;
+            return Some(Value::Map(Arc::new(map)));
+        }
+        loop {
+            self.skip_ws();
+            if self.peek() != Some(b'"') {
+                return None;
+            }
+            let key = self.parse_string()?;
+            self.skip_ws();
+            if self.peek() != Some(b':') {
+                return None;
+            }
+            self.pos += 1;
+            let value = self.parse_value()?;
+            // A repeated key takes its last value — `Map.put`'s own rule for
+            // any other duplicate key.
+            map = map.put(Value::Str(key.into()), value);
+            self.skip_ws();
+            match self.peek()? {
+                b',' => self.pos += 1,
+                b'}' => {
+                    self.pos += 1;
+                    return Some(Value::Map(Arc::new(map)));
+                }
+                _ => return None,
+            }
+        }
+    }
+
+    fn parse_array(&mut self) -> Option<Value> {
+        self.pos += 1; // '['
+        self.skip_ws();
+        let mut items = Vec::new();
+        if self.peek() == Some(b']') {
+            self.pos += 1;
+            return Some(Value::List(List::from_vec(items)));
+        }
+        loop {
+            items.push(self.parse_value()?);
+            self.skip_ws();
+            match self.peek()? {
+                b',' => self.pos += 1,
+                b']' => {
+                    self.pos += 1;
+                    return Some(Value::List(List::from_vec(items)));
+                }
+                _ => return None,
+            }
+        }
+    }
+
+    /// The opening `"` is still unconsumed when this is called (`parse_value`
+    /// only peeked it), so it is skipped here rather than by every caller.
+    fn parse_string(&mut self) -> Option<String> {
+        self.pos += 1; // opening quote
+        let mut out = String::new();
+        loop {
+            let start = self.pos;
+            while matches!(self.peek(), Some(b) if b != b'"' && b != b'\\' && b >= 0x20) {
+                self.pos += 1;
+            }
+            out.push_str(std::str::from_utf8(&self.bytes[start..self.pos]).ok()?);
+            match self.peek()? {
+                b'"' => {
+                    self.pos += 1;
+                    return Some(out);
+                }
+                b'\\' => self.parse_escape(&mut out)?,
+                // Only reachable on a raw control character — JSON requires
+                // one of the escapes above for anything below 0x20.
+                _ => return None,
+            }
+        }
+    }
+
+    fn parse_escape(&mut self, out: &mut String) -> Option<()> {
+        self.pos += 1; // '\'
+        let c = self.peek()?;
+        match c {
+            b'"' => out.push('"'),
+            b'\\' => out.push('\\'),
+            b'/' => out.push('/'),
+            b'b' => out.push('\u{8}'),
+            b'f' => out.push('\u{c}'),
+            b'n' => out.push('\n'),
+            b'r' => out.push('\r'),
+            b't' => out.push('\t'),
+            b'u' => {
+                self.pos += 1;
+                let code = self.parse_hex4()?;
+                let ch = self.decode_unicode_escape(code)?;
+                out.push(ch);
+                return Some(());
+            }
+            _ => return None,
+        }
+        self.pos += 1;
+        Some(())
+    }
+
+    /// `code` combined with a following `\uDCxx` low surrogate when `code`
+    /// itself is a high surrogate — the UTF-16 pairing JSON's `\u` escape
+    /// inherits, needed for anything outside the Basic Multilingual Plane.
+    fn decode_unicode_escape(&mut self, code: u32) -> Option<char> {
+        if (0xDC00..=0xDFFF).contains(&code) {
+            return None; // unpaired low surrogate
+        }
+        if !(0xD800..=0xDBFF).contains(&code) {
+            return char::from_u32(code);
+        }
+        if self.peek() != Some(b'\\') || self.bytes.get(self.pos + 1) != Some(&b'u') {
+            return None;
+        }
+        self.pos += 2;
+        let low = self.parse_hex4()?;
+        if !(0xDC00..=0xDFFF).contains(&low) {
+            return None;
+        }
+        let combined = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00);
+        char::from_u32(combined)
+    }
+
+    fn parse_hex4(&mut self) -> Option<u32> {
+        let text = self.bytes.get(self.pos..self.pos + 4)?;
+        let code = u32::from_str_radix(std::str::from_utf8(text).ok()?, 16).ok()?;
+        self.pos += 4;
+        Some(code)
+    }
+
+    fn parse_literal(&mut self, word: &str, value: Value) -> Option<Value> {
+        let bytes = word.as_bytes();
+        if self.bytes[self.pos..].starts_with(bytes) {
+            self.pos += bytes.len();
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    /// `-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?` — JSON's number grammar,
+    /// rejecting a leading zero (`01`) or a bare `.`/`e` (`1.`, `1e`) rather
+    /// than reading a shorter number than what is actually there. Anything
+    /// with a `.` or exponent becomes a `Float`; otherwise an `Integer` when
+    /// it fits an `i64`, `Float` if it does not (JSON has one number type,
+    /// Ramos two, so a giant integer literal still round-trips as a number).
+    fn parse_number(&mut self) -> Option<Value> {
+        let start = self.pos;
+        if self.peek() == Some(b'-') {
+            self.pos += 1;
+        }
+        match self.peek()? {
+            b'0' => self.pos += 1,
+            b'1'..=b'9' => self.consume_digits(),
+            _ => return None,
+        }
+        let mut is_float = false;
+        if self.peek() == Some(b'.') {
+            is_float = true;
+            self.pos += 1;
+            if !matches!(self.peek(), Some(b'0'..=b'9')) {
+                return None;
+            }
+            self.consume_digits();
+        }
+        if matches!(self.peek(), Some(b'e') | Some(b'E')) {
+            is_float = true;
+            self.pos += 1;
+            if matches!(self.peek(), Some(b'+') | Some(b'-')) {
+                self.pos += 1;
+            }
+            if !matches!(self.peek(), Some(b'0'..=b'9')) {
+                return None;
+            }
+            self.consume_digits();
+        }
+        let text = std::str::from_utf8(&self.bytes[start..self.pos]).ok()?;
+        if is_float {
+            text.parse::<f64>().ok().map(Value::Float)
+        } else {
+            match text.parse::<i64>() {
+                Ok(n) => Some(Value::Int(n)),
+                Err(_) => text.parse::<f64>().ok().map(Value::Float),
+            }
+        }
+    }
+
+    fn consume_digits(&mut self) {
+        while matches!(self.peek(), Some(b'0'..=b'9')) {
+            self.pos += 1;
+        }
+    }
+
+    fn skip_ws(&mut self) {
+        while matches!(self.peek(), Some(b' ' | b'\t' | b'\n' | b'\r')) {
+            self.pos += 1;
+        }
+    }
+
+    fn peek(&self) -> Option<u8> {
+        self.bytes.get(self.pos).copied()
+    }
+}
+
+/// `value` as a JSON document: `value` itself must be a `Map`, `Struct`,
+/// `Tuple` or `List` — an object or array, the same restriction `json_parse`
+/// puts on its way in — so the two are exact mirrors of each other. Anything
+/// that shape holds is encoded recursively; a value JSON has no way to write
+/// (`Lambda`, `Module`, `Thread`, `Socket`, `ServerSocket`, or a non-finite
+/// `Float`) raises rather than silently dropping or guessing at it.
+fn json_format(v: &Value) -> Result<Value, RuntimeError> {
+    if !matches!(
+        v,
+        Value::Map(_) | Value::Struct(_) | Value::Tuple(_) | Value::List(_)
+    ) {
+        return err(format!(
+            "Json.format expects a Map, Struct, Tuple or List, got {}",
+            v.type_name()
+        ));
+    }
+    let mut out = String::new();
+    encode_json(v, &mut out)?;
+    Ok(Value::Str(out.into()))
+}
+
+fn encode_json(v: &Value, out: &mut String) -> Result<(), RuntimeError> {
+    match v {
+        Value::Nil => out.push_str("null"),
+        Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
+        Value::Int(n) => out.push_str(&n.to_string()),
+        Value::Float(x) => {
+            if !x.is_finite() {
+                return err(format!(
+                    "Json.format cannot encode {x} — JSON has no way to write NaN or Infinity"
+                ));
+            }
+            out.push_str(&super::value::format_float(*x));
+        }
+        // A `Symbol` has no JSON type of its own; it encodes as its name,
+        // same as `Kernel.to_string` displays one bare. One-way: parsing back
+        // never produces a `Symbol`, only a `String`.
+        Value::Str(s) => encode_json_string(s, out),
+        Value::Symbol(s) => encode_json_string(s, out),
+        Value::List(list) => encode_json_array(list.to_vec().iter(), out)?,
+        Value::Tuple(items) => encode_json_array(items.iter(), out)?,
+        Value::Map(map) => {
+            out.push('{');
+            for (i, (key, value)) in map.entries.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                encode_json_string(&json_key(key), out);
+                out.push(':');
+                encode_json(value, out)?;
+            }
+            out.push('}');
+        }
+        Value::Struct(s) => {
+            out.push('{');
+            for (i, (field, value)) in s.fields.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                encode_json_string(field, out);
+                out.push(':');
+                encode_json(value, out)?;
+            }
+            out.push('}');
+        }
+        other => {
+            return err(format!(
+                "Json.format cannot encode a {} — JSON has no way to write one",
+                other.type_name()
+            ))
+        }
+    }
+    Ok(())
+}
+
+fn encode_json_array<'a>(
+    items: impl Iterator<Item = &'a Value>,
+    out: &mut String,
+) -> Result<(), RuntimeError> {
+    out.push('[');
+    for (i, item) in items.enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        encode_json(item, out)?;
+    }
+    out.push(']');
+    Ok(())
+}
+
+/// A `Map` key as JSON object text — a JSON object key is always a string, so
+/// an `Integer` or `Symbol` key is stringified. `check_key` (run by every path
+/// that builds a `Map`) already limits a key to `Integer`, `String` or
+/// `Symbol`, so nothing else reaches here.
+fn json_key(key: &Value) -> String {
+    match key {
+        Value::Str(s) => s.to_string(),
+        Value::Symbol(s) => s.to_string(),
+        Value::Int(n) => n.to_string(),
+        other => unreachable!(
+            "a Map key is always Integer, String or Symbol, got {}",
+            other.type_name()
+        ),
+    }
+}
+
+fn encode_json_string(s: &str, out: &mut String) {
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
 }
 
 // Result-shape helpers shared by the file natives.

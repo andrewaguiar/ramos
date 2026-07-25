@@ -33,7 +33,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// The embedded standard library, as (file stem, source).
-const STDLIB: &[(&str, &str)] = &[
+///
+/// `pub` so other code that needs every module's source without a filesystem
+/// round-trip — `ramos learn`'s stdlib index, and the test that checks it
+/// stays in sync — can walk the same list this loader embeds, rather than
+/// keeping a second one that could drift from it.
+pub const STDLIB: &[(&str, &str)] = &[
     ("kernel", include_str!("../stdlib/src/kernel.rmo")),
     ("integer", include_str!("../stdlib/src/integer.rmo")),
     ("float", include_str!("../stdlib/src/float.rmo")),
@@ -42,6 +47,7 @@ const STDLIB: &[(&str, &str)] = &[
     ("map", include_str!("../stdlib/src/map.rmo")),
     ("tuple", include_str!("../stdlib/src/tuple.rmo")),
     ("struct", include_str!("../stdlib/src/struct.rmo")),
+    ("json", include_str!("../stdlib/src/json.rmo")),
     ("date", include_str!("../stdlib/src/date.rmo")),
     ("time", include_str!("../stdlib/src/time.rmo")),
     (
@@ -58,12 +64,17 @@ const STDLIB: &[(&str, &str)] = &[
         include_str!("../stdlib/src/server_socket.rmo"),
     ),
     ("http_server", include_str!("../stdlib/src/http_server.rmo")),
+    (
+        "http_request",
+        include_str!("../stdlib/src/http_request.rmo"),
+    ),
     ("actor", include_str!("../stdlib/src/actor.rmo")),
     ("global", include_str!("../stdlib/src/global.rmo")),
     ("pool", include_str!("../stdlib/src/pool.rmo")),
     ("config", include_str!("../stdlib/src/config.rmo")),
     ("thread", include_str!("../stdlib/src/thread.rmo")),
     ("test", include_str!("../stdlib/src/test.rmo")),
+    ("module", include_str!("../stdlib/src/module.rmo")),
 ];
 
 /// A load failure, already rendered for display. Lex and parse problems arrive

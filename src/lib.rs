@@ -2,6 +2,7 @@ pub mod ast;
 pub mod color;
 pub mod diagnostics;
 pub mod doc;
+pub mod docserver;
 pub mod doctest;
 pub mod interp;
 pub mod learn;

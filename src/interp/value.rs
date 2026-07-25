@@ -418,8 +418,10 @@ pub fn values_equal(a: &Value, b: &Value) -> bool {
 }
 
 /// Floats always show a decimal point, so `2.0` never renders as `2` (which
-/// would read as an `Integer`).
-fn format_float(x: f64) -> String {
+/// would read as an `Integer`). `pub(crate)` so `natives.rs` can reuse it for
+/// `json_format` — a JSON number is written the same way, once NaN/Infinity
+/// (not valid JSON) are ruled out by the caller.
+pub(crate) fn format_float(x: f64) -> String {
     if x.is_nan() {
         return "NaN".to_string();
     }

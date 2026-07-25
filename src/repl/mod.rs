@@ -46,7 +46,7 @@ pub fn run(stdlib: Option<String>, color: Color) -> ExitCode {
 
     if interactive {
         println!("Ramos REPL. Expressions run on Enter; blocks submit on a blank line.");
-        println!("Up/Down walk history, Ctrl-C clears the line, Ctrl-D or :quit exits.");
+        println!("Up/Down walk history, Ctrl-C clears the line, Ctrl-D or /q exits.");
     }
 
     let mut ed = Editor::new();
@@ -75,8 +75,8 @@ pub fn run(stdlib: Option<String>, color: Color) -> ExitCode {
             }
         };
 
-        // `:quit` / `:q` only at a fresh prompt (otherwise it's ordinary input).
-        if buffer.is_empty() && matches!(line.trim(), ":quit" | ":q") {
+        // `/q` only at a fresh prompt (otherwise it's ordinary input).
+        if buffer.is_empty() && line.trim() == "/q" {
             break;
         }
         if line.trim().is_empty() {

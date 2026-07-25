@@ -31,27 +31,16 @@ fn take_opt(args: &mut Vec<String>, flag: &str) -> Option<String> {
     Some(val)
 }
 
-/// `ramos doc` — render the stdlib reference into `docs/`.
-fn run_doc(args: &[String], color: Color) -> ExitCode {
-    let mut args: Vec<String> = args.to_vec();
-    let stdlib = take_opt(&mut args, "--stdlib");
-    let out = take_opt(&mut args, "--out");
-    let examples = take_opt(&mut args, "--examples");
-    let programs = take_opt(&mut args, "--programs");
-    let readme = take_opt(&mut args, "--readme");
-    if !args.is_empty() {
-        eprintln!(
-            "usage: ramos doc [--stdlib DIR] [--out DIR] [--examples DIR] [--programs DIR] [--readme FILE]"
-        );
-        eprintln!("  --stdlib DIR   stdlib root, modules read from DIR/src (default: ./stdlib)");
-        eprintln!("  --out DIR      where to write HTML (default: ./docs)");
-        eprintln!(
-            "  --examples DIR feature fixtures for the Examples page (default: ./tests/fixtures/features)"
-        );
-        eprintln!("  --programs DIR runnable programs for the Programs page (default: ./examples)");
-        eprintln!("  --readme FILE  markdown for the guide page (default: ./README.md)");
-        return ExitCode::from(2);
-    }
+/// The flags `ramos doc` and `ramos generate-docs` share (everything but
+/// `--out`, whose default differs between the two — a temp directory for one,
+/// `ramos-docs` for the other — and `--port`, which only `doc` takes).
+/// Pulls its recognized flags out of `args`, leaving whatever is left for the
+/// caller to reject as unknown.
+fn generate_docs(args: &mut Vec<String>, out_dir: &Path) -> Result<usize, String> {
+    let stdlib = take_opt(args, "--stdlib");
+    let examples = take_opt(args, "--examples");
+    let programs = take_opt(args, "--programs");
+    let readme = take_opt(args, "--readme");
     let here = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     // The doc generator reads modules, which live under the root's `src/`.
     let stdlib_root = match stdlib {
@@ -59,10 +48,6 @@ fn run_doc(args: &[String], color: Color) -> ExitCode {
         None => here.join("stdlib"),
     };
     let stdlib_dir = stdlib_root.join("src");
-    let out_dir = match out {
-        Some(s) => PathBuf::from(s),
-        None => here.join("docs"),
-    };
     // Missing sources aren't fatal — the page in question is simply left out.
     let examples_dir = match examples {
         Some(s) => PathBuf::from(s),
@@ -81,7 +66,36 @@ fn run_doc(args: &[String], color: Color) -> ExitCode {
         programs_dir: Some(&programs_dir),
         readme: Some(&readme_file),
     };
-    match ramos::doc::generate_with(&stdlib_dir, &out_dir, &opts) {
+    ramos::doc::generate_with(&stdlib_dir, out_dir, &opts)
+}
+
+/// `ramos generate-docs` — render the stdlib reference into `ramos-docs/`
+/// (or `--out DIR`) and exit. The write-to-disk half of what `ramos doc` used
+/// to do on its own, for a CI step or anything else that wants the HTML
+/// without a server sitting in front of it.
+fn run_generate_docs(args: &[String], color: Color) -> ExitCode {
+    let mut args: Vec<String> = args.to_vec();
+    let out = take_opt(&mut args, "--out");
+    let here = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let out_dir = match out {
+        Some(s) => PathBuf::from(s),
+        None => here.join("ramos-docs"),
+    };
+    let result = generate_docs(&mut args, &out_dir);
+    if !args.is_empty() {
+        eprintln!(
+            "usage: ramos generate-docs [--stdlib DIR] [--out DIR] [--examples DIR] [--programs DIR] [--readme FILE]"
+        );
+        eprintln!("  --stdlib DIR   stdlib root, modules read from DIR/src (default: ./stdlib)");
+        eprintln!("  --out DIR      where to write HTML (default: ./ramos-docs)");
+        eprintln!(
+            "  --examples DIR feature fixtures for the Examples page (default: ./tests/fixtures/features)"
+        );
+        eprintln!("  --programs DIR runnable programs for the Programs page (default: ./examples)");
+        eprintln!("  --readme FILE  markdown for the guide page (default: ./README.md)");
+        return ExitCode::from(2);
+    }
+    match result {
         Ok(n) => {
             println!("generated docs for {n} module(s) in {}", out_dir.display());
             ExitCode::SUCCESS
@@ -89,6 +103,132 @@ fn run_doc(args: &[String], color: Color) -> ExitCode {
         Err(e) => {
             eprintln!("{} {e}", err_tag(color));
             ExitCode::FAILURE
+        }
+    }
+}
+
+/// `ramos doc` — generate a stdlib reference and serve it over HTTP on
+/// `127.0.0.1:3030` (or `--port`), blocking until killed. Deliberately takes
+/// nothing else: a quick preview needs no configuring, and it works from any
+/// directory, not just a checkout of this project. It documents `.`'s own
+/// `./stdlib` when that exists (plus `./tests/fixtures/features`,
+/// `./examples` and `./README.md`, for developing *this* project's own docs)
+/// and falls back to the stdlib embedded in the binary otherwise — the same
+/// one `run`/`check`/the REPL already load without `--stdlib` — so `ramos
+/// doc` run from an arbitrary directory still has the language's own
+/// reference to show. Either way it writes into a temp directory it manages
+/// itself. Reach for `ramos generate-docs` instead to point any of this
+/// somewhere else, or to keep the output.
+fn run_doc(args: &[String], color: Color) -> ExitCode {
+    let mut args: Vec<String> = args.to_vec();
+    let port_arg = take_opt(&mut args, "--port");
+    let port = match port_arg.as_deref().map(str::parse::<u16>) {
+        None => 3030,
+        Some(Ok(p)) => p,
+        Some(Err(_)) => {
+            eprintln!(
+                "{} --port must be a number between 0 and 65535, got `{}`",
+                err_tag(color),
+                port_arg.unwrap()
+            );
+            return ExitCode::from(2);
+        }
+    };
+    if !args.is_empty() {
+        eprintln!("usage: ramos doc [--port PORT]");
+        eprintln!("  --port PORT    port to serve on (default: 3030)");
+        return ExitCode::from(2);
+    }
+    let here = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let stdlib_dir = here.join("stdlib").join("src");
+    let examples_dir = here.join("tests").join("fixtures").join("features");
+    let programs_dir = here.join("examples");
+    let readme_file = here.join("README.md");
+    let opts = ramos::doc::Options {
+        examples_dir: Some(&examples_dir),
+        programs_dir: Some(&programs_dir),
+        readme: Some(&readme_file),
+    };
+    let out_dir = std::env::temp_dir().join(format!("ramos-docs-{}", std::process::id()));
+    // A local `stdlib/src` (this project's own checkout, or any other Ramos
+    // project's) wins when it is there; otherwise there is always the
+    // embedded stdlib to fall back to, which is what makes `ramos doc` work
+    // anywhere at all.
+    let result = if stdlib_dir.is_dir() {
+        ramos::doc::generate_with(&stdlib_dir, &out_dir, &opts)
+    } else {
+        println!("no ./stdlib here — documenting the stdlib built into this binary instead");
+        ramos::doc::generate_embedded(&out_dir, &opts)
+    };
+    if let Err(e) = result {
+        eprintln!("{} {e}", err_tag(color));
+        return ExitCode::FAILURE;
+    }
+    println!("serving docs at http://localhost:{port} (Ctrl-C to stop)");
+    match ramos::docserver::serve(&out_dir, port) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("{} {e}", err_tag(color));
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// A name reduced to its bare letters and digits, lowercased — `"HttpRequest"`
+/// and `"http_request"` both become `"httprequest"`. `ramos see`'s one job:
+/// match a module name written either way (the CamelCase it is called by in
+/// Ramos source, or the snake_case file it lives in) against `loader::STDLIB`,
+/// without needing a real CamelCase-to-snake_case algorithm — the loader's own
+/// naming rule (a module's file is always its name in snake_case) already
+/// guarantees the two normalize to the same thing.
+fn normalize_module_name(name: &str) -> String {
+    name.chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
+/// `ramos see <module>` — print a stdlib module's Ramos source, verbatim.
+///
+/// `<module>` is matched against both the file stem (`http_request`) and the
+/// CamelCase name it is called by in source (`HttpRequest`) via
+/// `normalize_module_name`, so either spelling works.
+///
+/// `--stdlib DIR` reads `DIR/src/<module>.rmo` from disk instead of the copy
+/// embedded in this binary — the same override `run`/`check`/`doctest` take,
+/// for developing the stdlib itself.
+fn run_see(args: &[String], stdlib: Option<String>, color: Color) -> ExitCode {
+    let Some(name) = args.first() else {
+        eprintln!("usage: ramos see [--stdlib DIR] <module>");
+        return ExitCode::from(2);
+    };
+    let wanted = normalize_module_name(name);
+    let Some((stem, embedded)) = ramos::loader::STDLIB
+        .iter()
+        .find(|(stem, _)| normalize_module_name(stem) == wanted)
+    else {
+        let available: Vec<&str> = ramos::loader::STDLIB.iter().map(|(stem, _)| *stem).collect();
+        eprintln!("{} no stdlib module named `{name}`", err_tag(color));
+        eprintln!("  available: {}", available.join(", "));
+        return ExitCode::FAILURE;
+    };
+    match stdlib {
+        None => {
+            print!("{embedded}");
+            ExitCode::SUCCESS
+        }
+        Some(dir) => {
+            let path = Path::new(&dir).join("src").join(format!("{stem}.rmo"));
+            match fs::read_to_string(&path) {
+                Ok(source) => {
+                    print!("{source}");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("{} cannot read `{}`: {e}", err_tag(color), path.display());
+                    ExitCode::FAILURE
+                }
+            }
         }
     }
 }
@@ -632,10 +772,13 @@ fn run_cli() -> ExitCode {
     } else {
         Color::for_stdout()
     };
-    // `doc` is a directory-level command (no `.rmo` file), so handle it before
-    // the file-based dispatch below.
+    // `doc` and `generate-docs` are directory-level commands (no `.rmo`
+    // file), so handle them before the file-based dispatch below.
     if args.first().map(String::as_str) == Some("doc") {
         return run_doc(&args[1..], color);
+    }
+    if args.first().map(String::as_str) == Some("generate-docs") {
+        return run_generate_docs(&args[1..], color);
     }
     // `new` takes a project name, not a `.rmo` file.
     if args.first().map(String::as_str) == Some("new") {
@@ -655,6 +798,10 @@ fn run_cli() -> ExitCode {
     // `doctest` takes an optional stdlib root, not a `.rmo` file.
     if args.first().map(String::as_str) == Some("doctest") {
         return run_doctest(&args[1..], stdlib, quietly, color);
+    }
+    // `see` takes a module name, not a `.rmo` file.
+    if args.first().map(String::as_str) == Some("see") {
+        return run_see(&args[1..], stdlib, color);
     }
     // `test` takes an optional file: with one, run that file's tests; without,
     // find every test module under the current directory.
@@ -710,10 +857,22 @@ fn run_cli() -> ExitCode {
             eprintln!(
                 "  ast [--dump] <file.rmo>    debug: print the AST (--dump adds the raw code)"
             );
-            eprintln!("  doc [--stdlib DIR] [--out DIR]");
+            eprintln!("  doc [--port PORT]");
             eprintln!(
                 "                             generate HTML docs for the stdlib (Hexdocs-style)"
             );
+            eprintln!(
+                "                             and serve them at http://localhost:3030 (or --port)"
+            );
+            eprintln!("  generate-docs [--stdlib DIR] [--out DIR]");
+            eprintln!(
+                "                             generate HTML docs into ./ramos-docs (or --out) and exit"
+            );
+            eprintln!("  see [--stdlib DIR] <module>");
+            eprintln!(
+                "                             print a stdlib module's source (e.g. `HttpRequest`"
+            );
+            eprintln!("                             or `http_request`, either spelling works)");
             eprintln!();
             eprintln!("  --color / --no-color   force colour on or off (default: on for a");
             eprintln!("                         terminal; NO_COLOR is honoured)");

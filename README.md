@@ -1399,6 +1399,12 @@ Each type ships with a rich, pipe-friendly module. A few highlights (`Kernel`,
   `at(t, 0)`, or destructure: `(a, b) = pair`.
 - **`Struct`** — `get`/`put`/`update`, `to_map`, `is_a`, `keys`/`values`.
   Instances are built with the literal `Name{...}` syntax.
+- **`Json`** — `parse`/`format` between JSON text and Ramos values. The top
+  level is always an object or array both ways: an object parses to (and a
+  `Map`/`Struct` formats as) a `Map`; an array parses to (and a `Tuple`/`List`
+  formats as) a `List`. `parse` never raises — invalid JSON, or a top-level
+  scalar, comes back `nil`; `format` raises on a value JSON cannot represent
+  (a `Lambda`, `NaN`, ...).
 - **`Date`** — a calendar date (`year`/`month`/`day`, no time-of-day or time
   zone): `new`/`today`/`from_epoch_day`/`parse`, `to_epoch_day`/`to_iso`,
   `add_days`/`add_weeks`/`add_months`/`add_years`,
@@ -1437,6 +1443,23 @@ Each type ships with a rich, pipe-friendly module. A few highlights (`Kernel`,
   one to its own `Thread` — up to `max_connections` at a time, capped by a
   `Pool` — which calls `f` with the raw request text and writes back
   whatever string it returns; see [Sockets](#sockets).
+- **`HttpRequest`** — parses `HttpServer`'s raw request text into `method`/
+  `path`/`version`/`headers`/`request_body`/`params`: `HttpRequest.new(text)`,
+  then `get_header`/`get_cookies` on top of the parsed `headers`,
+  `get_query_params`/`get_query_param` parsed lazily out of `path`'s `"?"`
+  suffix on every call, `get_json_params` — `request_body` run through
+  `Json.parse`, but only when `Content-Type` is a `.../json` media type —
+  `get_form_params` — `request_body` decoded the same way as a query string,
+  but only when `Content-Type` is `application/x-www-form-urlencoded` — and
+  `get_multipart_params` — `request_body` split on `Content-Type`'s
+  `boundary` into a `Map` of field name to value, a file field's (one with a
+  `filename`) a `filename`/`content_type`/`content` `Map` instead of a bare
+  `String`. `params` is `new` doing that JSON/urlencoded detection and
+  parsing up front — `{}` for anything else, `multipart/form-data` included,
+  never `nil`. Every query-string and urlencoded parser here understands PHP-
+  style bracket notation — `id[]=1&id[]=2` is `{"id": ["1", "2"]}`,
+  `user[name]=Alice` is `{"user": {"name": "Alice"}}`; see
+  [Sockets](#sockets).
 - **`Actor`** — the trait a module implements to hold state and answer
   messages; driven by `Kernel`'s `start_actor` / `call_actor`.
 - **`Global`** — one process-wide map held by an actor: `start`, `get`, `put`,
@@ -1806,6 +1829,119 @@ contains and what capping connections with a `Pool` costs in return (freeing
 a slot is oldest-first, so one connection that never finishes can still
 stall every client behind it once the pool fills up).
 
+`HttpRequest` is the parsing `HttpServer` deliberately leaves out:
+`HttpRequest.new(text)` splits the request line into `method`/`path`/
+`version`, and the headers into a `List` of `(name, value)` tuples — a
+`List`, not a `Map`, since a header name (`Set-Cookie`, `X-Forwarded-For`)
+can legally repeat. `get_header(name)` looks one up case-insensitively;
+`get_cookies()` unpacks the `Cookie` header's `;`-separated pairs the same
+way. `get_query_params()`/`get_query_param(name)` parse `path`'s `"?"`
+suffix into a `Map` (last occurrence wins on a repeated key, decoded like
+`application/x-www-form-urlencoded`: `+` to a space, `%XX` to the byte it
+names) — computed fresh on every call rather than by `new`, since there is
+nowhere on an immutable struct to cache it.
+
+```elixir
+handler =
+  do text
+    request = HttpRequest.new(text)
+    case request.get_path()
+      "/hello" -> "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi"
+      _        -> "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n"
+
+HttpServer{port: 8080}.start(handler)
+```
+
+```elixir
+request = HttpRequest.new("GET /search?q=hello+world&x=1 HTTP/1.1\r\n\r\n")
+request.get_query_params()      # == {"q": "hello world", "x": "1"}
+request.get_query_param("q")    # == "hello world"
+request.get_query_param("z")    # == nil
+```
+
+`get_json_params()` is the JSON counterpart to `get_query_params()`, over
+`request_body` instead of `path`: it checks `Content-Type` for a `.../json`
+media type and, only then, runs the body through `Json.parse`. A missing or
+non-JSON `Content-Type`, or a body `Json` cannot parse, both come back `nil`
+rather than raising.
+
+```elixir
+request =
+  HttpRequest.new(
+    "POST /users HTTP/1.1\r\nContent-Type: application/json\r\n\r\n{\"name\": \"Andrew\"}"
+  )
+request.get_json_params()   # == {"name": "Andrew"}
+```
+
+`get_form_params()` is the `application/x-www-form-urlencoded` counterpart —
+a plain HTML `<form>` post, no file input: the same decoding
+`get_query_params()` runs over `path`'s `"?"` suffix, just over `request_body`
+instead, and only once `Content-Type` names that media type.
+
+```elixir
+request =
+  HttpRequest.new(
+    "POST /login HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nuser=andrew&pw=hunter+2"
+  )
+request.get_form_params()   # == {"user": "andrew", "pw": "hunter 2"}
+```
+
+`params` is `new` running that same JSON/urlencoded detection up front, so a
+handler reads `request.params` directly instead of picking which
+`get_*_params` to call — `{}` (never `nil`) for anything else, including a
+`multipart/form-data` upload, which stays lazy on purpose (see
+`get_multipart_params()` below). Every urlencoded parser here — `params`,
+`get_form_params()`, and `get_query_params()` over `path`'s `"?"` suffix —
+also understands the bracket notation an HTML `<form>` and a query string
+both write for a repeating or nested field: `name[]` appends to a `List`,
+`name[key]` nests into a `Map`, and the two combine to any depth.
+
+```elixir
+request =
+  HttpRequest.new(
+    "POST /items HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nids[]=1&ids[]=2&ids[]=3"
+  )
+request.params   # == {"ids": ["1", "2", "3"]}
+
+request =
+  HttpRequest.new(
+    "POST /users HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nuser[name]=Alice&user[email]=alice%40example.com"
+  )
+request.params   # == {"user": {"name": "Alice", "email": "alice@example.com"}}
+```
+
+`get_multipart_params()` is the `multipart/form-data` counterpart: it checks
+`Content-Type` for that media type and a `boundary` parameter, then splits
+`request_body` on it. Each part becomes one entry in the returned `Map`,
+keyed by its `Content-Disposition`'s `name`; a plain field's value is its
+content as a `String`, a file field's (one whose `Content-Disposition` also
+carries a `filename`) a `filename`/`content_type`/`content` `Map` instead. A
+missing or non-multipart `Content-Type`, or one with no `boundary`, comes
+back `nil`; a part with no `name` is skipped rather than raising.
+
+```elixir
+boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+body =
+  (
+    "--" <> boundary <> "\r\n" <>
+    "Content-Disposition: form-data; name=\"username\"\r\n\r\nandrew\r\n" <>
+    "--" <> boundary <> "\r\n" <>
+    "Content-Disposition: form-data; name=\"avatar\"; filename=\"photo.png\"\r\n" <>
+    "Content-Type: image/png\r\n\r\nPNGDATA\r\n" <>
+    "--" <> boundary <> "--\r\n"
+  )
+text =
+  (
+    "POST /upload HTTP/1.1\r\nContent-Type: multipart/form-data; boundary=#{boundary}\r\n\r\n" <>
+    body
+  )
+HttpRequest.new(text).get_multipart_params()
+# == {
+#   "username": "andrew",
+#   "avatar": {filename: "photo.png", content_type: "image/png", content: "PNGDATA"}
+# }
+```
+
 ### Tests
 
 A test is a function. There is no test DSL and nothing registers itself: a
@@ -1924,30 +2060,50 @@ The binary takes a subcommand and (except for the REPL) a single `.rmo` file:
 | `ramos lexer <file.rmo>` | Print the raw token stream |
 | `ramos test [--quietly] [filter]` | Run every test under the nearest `src/test` (found by walking up from `.`), or just the files whose name or path contains `filter` — `--quietly` leaves the `@doc` lines out |
 | `ramos doctest [--stdlib DIR] [DIR]` | Run the `# ==` examples in `DIR/src/*.rmo`'s doc comments — `DIR` defaults to `.` |
-| `ramos doc`              | Generate a Hexdocs-style reference for [`stdlib/`](stdlib/) into `docs/` |
+| `ramos doc [--port PORT]` | Generate a Hexdocs-style reference and serve it at `http://localhost:3030` (blocks until killed) — works in any directory |
+| `ramos generate-docs`    | Generate that same reference into `ramos-docs/` and exit — no server |
+| `ramos see <module>`     | Print a stdlib module's source verbatim — `HttpRequest` and `http_request` both work |
 
 > `run` loads the standard library (embedded in the binary), then the entry
 > file and every module it reaches, then calls the entrypoint's `main()` — or
 > runs top-level statements when the file has none. `--stdlib DIR` reads the
 > stdlib from disk instead, which is how the stdlib itself is developed.
 >
-> `ramos doc` reads the inline [`@module_doc`](#documentation-comments) / `@doc`
-> comments out of every `.rmo` file under [`stdlib/`](stdlib/) and renders each
-> module, plus a language guide built from the README, an examples guide built
-> from the feature fixtures in [`tests/fixtures/features/`](tests/fixtures/features/)
+> `ramos doc` and `ramos generate-docs` both read the inline
+> [`@module_doc`](#documentation-comments) / `@doc` comments out of every
+> `.rmo` file under [`stdlib/`](stdlib/) and render each module, plus a
+> language guide built from the README, an examples guide built from the
+> feature fixtures in [`tests/fixtures/features/`](tests/fixtures/features/)
 > (each fixture's header comment becomes the prose, its code the snippets, so
 > it can't drift from code that lexes and parses), and a programs guide built
-> from [`examples/`](examples/). Rather than one HTML file per page, it writes
-> `docs/docs.json` — the rendered content, keyed by page — and a single static
-> `docs/index.html` shell that fetches that JSON and presents it client-side,
-> swapping pages in as the URL hash changes (`#/List`, `#/guide`, `#/examples`,
-> `#/programs`). Options: `--stdlib DIR` (source, default `./stdlib`), `--out
-> DIR` (output, default `./docs`), `--examples DIR` (fixtures, default
-> `./tests/fixtures/features`), `--programs DIR` (default `./examples`) and
-> `--readme FILE` (default `./README.md`) — a missing examples/programs dir or
-> readme just drops that page. Serve `docs/` over HTTP and open `index.html`
-> to browse it (the shell's `fetch("docs.json")` needs a real origin, so
-> opening the file directly as `file://` won't load the data).
+> from [`examples/`](examples/). Rather than one HTML file per page, the
+> output is `docs.json` — the rendered content, keyed by page — and a single
+> static `index.html` shell that fetches that JSON and presents it
+> client-side, swapping pages in as the URL hash changes (`#/List`, `#/guide`,
+> `#/examples`, `#/programs`).
+>
+> They differ in what happens to that output, and in how configurable getting
+> there is. `ramos generate-docs` takes `--stdlib DIR` (source, default
+> `./stdlib`), `--out DIR` (default `./ramos-docs`), `--examples DIR`
+> (default `./tests/fixtures/features`), `--programs DIR` (default
+> `./examples`) and `--readme FILE` (default `./README.md`) — a missing
+> examples/programs dir or readme just drops that page — then writes the
+> result to `--out` and exits. `ramos doc` takes none of that: it always
+> writes into a temp directory it manages itself, and serves that directory
+> on `127.0.0.1:3030` (`--port PORT` to pick another) instead of exiting — a
+> quick preview needs no configuring, and the shell's `fetch("docs.json")`
+> needs a real origin regardless, so a real (if local) HTTP server is what
+> makes `index.html` work at all; opening it directly as `file://` will not
+> load the data.
+>
+> `ramos doc` also **works from any directory**, not just a checkout of this
+> project: it documents `.`'s own `./stdlib` (plus `./tests/fixtures/features`,
+> `./examples` and `./README.md`) when that exists, and falls back to the
+> stdlib embedded in the binary — the same one `run`/`check`/the REPL already
+> load without `--stdlib` — when it does not, so there is always a language
+> reference to show. The narrative pages (guide/examples/programs) only ever
+> come from a real local checkout, so the embedded fallback is the module
+> reference alone.
 
 ### Starting a project
 

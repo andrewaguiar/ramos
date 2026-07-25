@@ -1,0 +1,83 @@
+module Json
+  # @module_doc
+  #
+  # Json — parses and writes JSON text.
+  #
+  # `parse` and `format` are exact mirrors of each other, and both hold to the
+  # same rule: **the top level is always an object or an array.** A JSON
+  # object comes back as a `Map`, and a `Map` (or `Struct`) is written out as
+  # one; a JSON array comes back as a `List`, and a `List` (or `Tuple`) is
+  # written out as one. Anything *inside* one of those may be any JSON value:
+  #
+  #   Json.parse("{\"name\": \"Andrew\", \"age\": 40}")
+  #   # == {"name": "Andrew", "age": 40}
+  #
+  #   Json.format({name: "Andrew", tags: ["a", "b"]})
+  #   # == "{\"name\":\"Andrew\",\"tags\":[\"a\",\"b\"]}"
+  #
+  # The type mapping, both ways:
+  #
+  #   - object <-> `Map` — keys are always `String`s; an `Integer` or `Symbol`
+  #     key on the way out is stringified (`1` becomes `"1"`, `:a` becomes
+  #     `"a"`), since a JSON object key is always a string
+  #   - array <-> `List` in, `List` out; a `Tuple` also encodes as an array
+  #   - string <-> `String`
+  #   - number <-> `Integer` (no `.` or exponent) or `Float` (either)
+  #   - `true` / `false` <-> `Bool`
+  #   - `null` <-> `nil`
+  #
+  # A `Struct` also encodes as a JSON object, its attributes as keys — there is
+  # no way back to one, since a JSON object does not say which struct it came
+  # from, so parsing it back gives a plain `Map`. A `Symbol` encodes as its
+  # bare name (`:a` becomes `"a"`), the same text `to_string` gives it, but
+  # does not round-trip either — parsing a JSON string always gives back a
+  # `String`, never a `Symbol`.
+  #
+  # **`parse` never raises.** Text that is not valid JSON, or whose top-level
+  # value is not an object or array (`Json.parse("5")`, `Json.parse("true")`),
+  # comes back as `nil` — the same "just tell me you couldn't" contract
+  # `to_integer`/`to_float` use for a `String` that will not parse.
+  #
+  #   Json.parse("not json")   # == nil
+  #   Json.parse("5")          # == nil
+  #   Json.parse("[1, 2, 3]")  # == [1, 2, 3]
+  #
+  # **`format` raises** on a value with no JSON representation — a `Lambda`,
+  # `Module`, `Thread`, `Socket`, `ServerSocket`, or a non-finite `Float`
+  # (`NaN`/`Infinity`) anywhere inside it, or something other than a `Map`,
+  # `Struct`, `Tuple` or `List` at the top level. That is a caller mistake — a
+  # value that turned out not to be JSON-safe — not something to silently drop
+  # or guess at, unlike `parse`, whose input is arbitrary text from outside
+  # the program.
+
+  function parse(str)
+    # @doc
+    #
+    # Parses `str` as JSON. An object comes back as a `Map`; an array as a
+    # `List`; anything nested inside follows the module doc's type mapping.
+    #
+    # @param str: JSON text, as a `String`
+    # @return the parsed value, or `nil` if `str` is not valid JSON, or its
+    #   top-level value is not an object or an array
+    #
+    #   Json.parse("{\"a\": 1, \"b\": [true, null, 2.5]}")
+    #   # == {"a": 1, "b": [true, nil, 2.5]}
+    #
+    #   Json.parse("[1, 2, 3]")   # == [1, 2, 3]
+    #   Json.parse("nope")        # == nil
+    native("json_parse", [str])
+
+  function format(value)
+    # @doc
+    #
+    # Writes `value` out as JSON text.
+    #
+    # @param value: a `Map`, `Struct`, `Tuple` or `List` to encode — the
+    #   module doc's type mapping applies to whatever it holds
+    # @return the JSON text, as a `String`
+    #
+    #   Json.format({"a": 1, "b": [true, nil, 2.5]})
+    #   # == "{\"a\":1,\"b\":[true,null,2.5]}"
+    #
+    #   Json.format([1, 2, 3])   # == "[1,2,3]"
+    native("json_format", [value])

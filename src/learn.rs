@@ -18,6 +18,7 @@ pub fn text() -> String {
     out.push_str(LITERALS_AND_OPERATORS);
     out.push_str(&example_section());
     out.push_str(&strict_rules());
+    out.push_str(&stdlib_section());
     out.push_str(FOOTER);
     out
 }
@@ -379,3 +380,76 @@ const PARSER_RULES: &[(&str, &str, &str)] = &[
         "(p, q) = (1, 2)",
     ),
 ];
+
+/// Every module and public function `ramos run` merges in automatically —
+/// walked straight off `loader::STDLIB`, the same embedded sources the
+/// interpreter loads, so this can never list a module or a signature that
+/// isn't really there. Signature and one-line summary only; `ramos doc` (or
+/// `stdlib/src/*.rmo` itself) has the full prose and runnable examples.
+fn stdlib_section() -> String {
+    let mut out = String::from(
+        "## Standard library\n\n\
+         Every module below is merged into every program automatically — no \
+         `alias` needed for a bare `Kernel` call, and every other module is \
+         reachable by name. This is the index: signature and one-line \
+         summary. `ramos doc` renders the full reference (every parameter, \
+         every runnable example); `stdlib/src/*.rmo` is the source, since \
+         the stdlib is written in Ramos itself.\n\n",
+    );
+    let mut modules: Vec<(String, Vec<(String, String)>)> = crate::loader::STDLIB
+        .iter()
+        .map(|(_, source)| stdlib_module_entry(source))
+        .collect();
+    modules.sort_by(|a, b| a.0.cmp(&b.0));
+    for (name, functions) in &modules {
+        out.push_str(&format!("### `{name}`\n\n"));
+        if functions.is_empty() {
+            out.push_str("_No public functions._\n\n");
+            continue;
+        }
+        for (signature, summary) in functions {
+            if summary.is_empty() {
+                out.push_str(&format!("- `{signature}`\n"));
+            } else {
+                out.push_str(&format!("- `{signature}` — {summary}\n"));
+            }
+        }
+        out.push('\n');
+    }
+    out
+}
+
+/// A stdlib module's name and every public function's `name(params)`
+/// signature paired with its `@doc` summary (empty when it has none) — parsed
+/// from the same source `ramos run` embeds, not hand-copied, so it can't drift
+/// from the real module.
+fn stdlib_module_entry(source: &str) -> (String, Vec<(String, String)>) {
+    let tokens = crate::lexer::lex(source).expect("embedded stdlib module lexes");
+    let program = crate::parser::parse(tokens).expect("embedded stdlib module parses");
+    let (name, defined_functions) = program
+        .items
+        .iter()
+        .find_map(|it| match it {
+            crate::ast::Item::Module(m) => Some((m.name.to_string(), &m.functions)),
+            crate::ast::Item::Trait(t) => Some((t.name.to_string(), &t.functions)),
+            crate::ast::Item::Struct(s) => Some((s.name.to_string(), &s.functions)),
+            _ => None,
+        })
+        .expect("embedded stdlib module defines a module, trait, or struct");
+
+    let summaries = crate::doc::summaries(source);
+    let functions = defined_functions
+        .iter()
+        .filter(|f| !f.private)
+        .map(|f| {
+            let signature = format!("{}({})", f.name, f.params.join(", "));
+            let summary = summaries
+                .functions
+                .get(&f.name)
+                .cloned()
+                .unwrap_or_default();
+            (signature, summary)
+        })
+        .collect();
+    (name, functions)
+}
