@@ -68,6 +68,10 @@ pub const STDLIB: &[(&str, &str)] = &[
         "http_request",
         include_str!("../stdlib/src/http_request.rmo"),
     ),
+    (
+        "http_response",
+        include_str!("../stdlib/src/http_response.rmo"),
+    ),
     ("actor", include_str!("../stdlib/src/actor.rmo")),
     ("global", include_str!("../stdlib/src/global.rmo")),
     ("pool", include_str!("../stdlib/src/pool.rmo")),

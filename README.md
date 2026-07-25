@@ -1441,8 +1441,9 @@ Each type ships with a rich, pipe-friendly module. A few highlights (`Kernel`,
 - **`HttpServer`** — a minimal HTTP server built on `Socket`/`ServerSocket`:
   `HttpServer{port: n}.start(f)` accepts connections forever, handing each
   one to its own `Thread` — up to `max_connections` at a time, capped by a
-  `Pool` — which calls `f` with the raw request text and writes back
-  whatever string it returns; see [Sockets](#sockets).
+  `Pool` — which calls `f` with the raw request text and the raw `Socket`;
+  `f` writes its own response, typically through `HttpResponse`, and its
+  return value is ignored; see [Sockets](#sockets).
 - **`HttpRequest`** — parses `HttpServer`'s raw request text into `method`/
   `path`/`version`/`headers`/`request_body`/`params`: `HttpRequest.new(text)`,
   then `get_header`/`get_cookies` on top of the parsed `headers`,
@@ -1459,6 +1460,13 @@ Each type ships with a rich, pipe-friendly module. A few highlights (`Kernel`,
   never `nil`. Every query-string and urlencoded parser here understands PHP-
   style bracket notation — `id[]=1&id[]=2` is `{"id": ["1", "2"]}`,
   `user[name]=Alice` is `{"user": {"name": "Alice"}}`; see
+  [Sockets](#sockets).
+- **`HttpResponse`** — the writable half of a response: a status, a `List`
+  of `(name, value)` headers, and the `Socket` `HttpServer`'s handler was
+  given. `HttpResponse.new(socket)`, `set_status`/`put_header` to build it
+  up (each returns a new instance), `send_headers` to write the status
+  line and headers, `send_chunk` to write a piece of the body — sending
+  headers first if they haven't gone out yet — and `close`. See
   [Sockets](#sockets).
 - **`Actor`** — the trait a module implements to hold state and answer
   messages; driven by `Kernel`'s `start_actor` / `call_actor`.
@@ -1813,13 +1821,19 @@ idempotent from either side.
 `HttpServer` is `Socket`/`ServerSocket` with the accept-loop already written:
 `HttpServer{port: n}.start(f)` binds, then serves connections forever — each
 one handed to its own `Thread`, which calls `f` with the raw request text and
-writes back whatever string it returns as the response, verbatim. A `Pool`
+the raw `Socket`; `f` writes its own response to that socket, typically
+through `HttpResponse` (see below), and its return value is ignored. A `Pool`
 caps how many of those threads run at once (`max_connections`, `100` by
 default): past the cap, `accept` itself waits for one to free up rather than
 starting another thread.
 
 ```elixir
-handler = do request -> "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi"
+handler =
+  do request, socket
+    HttpResponse.new(socket)
+    | HttpResponse.put_header("Content-Length", "2")
+    | HttpResponse.send_chunk("hi")
+
 HttpServer{port: 8080, max_connections: 50}.start(handler)
 ```
 
@@ -1843,11 +1857,18 @@ nowhere on an immutable struct to cache it.
 
 ```elixir
 handler =
-  do text
+  do text, socket
     request = HttpRequest.new(text)
     case request.get_path()
-      "/hello" -> "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi"
-      _        -> "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n"
+      "/hello" ->
+        HttpResponse.new(socket)
+        | HttpResponse.put_header("Content-Length", "2")
+        | HttpResponse.send_chunk("hi")
+      _ ->
+        HttpResponse.new(socket)
+        | HttpResponse.set_status(404)
+        | HttpResponse.put_header("Content-Length", "0")
+        | HttpResponse.send_headers()
 
 HttpServer{port: 8080}.start(handler)
 ```
@@ -1941,6 +1962,47 @@ HttpRequest.new(text).get_multipart_params()
 #   "avatar": {filename: "photo.png", content_type: "image/png", content: "PNGDATA"}
 # }
 ```
+
+`HttpResponse` is the writable half of a response, over the raw `Socket`
+`HttpServer` hands its handler as a second argument: `HttpResponse.new(socket)`
+opens at `status: 200`, no headers. `set_status`/`put_header` each return a
+*new* `HttpResponse`, same as every other struct here — `headers` is a `List`
+of `(name, value)` tuples, not a `Map`, for the same reason as
+`HttpRequest.headers`.
+
+```elixir
+response =
+  HttpResponse.new(socket)
+  | HttpResponse.set_status(404)
+  | HttpResponse.put_header("Content-Type", "text/plain")
+```
+
+`send_headers` writes the status line and every accumulated header, then the
+blank line that ends them; `send_chunk` writes one piece of the body, calling
+`send_headers` first if it hasn't run yet — call it as many times as there
+are pieces, each its own `Socket.send`, rather than building the whole
+response as one string. "In chunks" means repeated writes, not HTTP's
+chunked `Transfer-Encoding`: since `HttpServer` never keeps a connection open
+past one request, a response can simply run until the socket closes, the same
+way HTTP/1.0 always signaled "body ends here."
+
+```elixir
+handler =
+  do request, socket
+    body = "hi"
+    HttpResponse.new(socket)
+    | HttpResponse.put_header("Content-Type", "text/plain")
+    | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
+    | HttpResponse.send_chunk(body)
+
+HttpServer{port: 8080}.start(handler)
+```
+
+`close` sends headers first if they haven't gone out (so a body-less response
+— a bare `204`, say — still reaches the client as valid HTTP), then closes the
+connection. It is a convenience, not a requirement: `HttpServer` already
+closes the connection once the handler returns, and `Socket.close` is
+idempotent.
 
 ### Tests
 

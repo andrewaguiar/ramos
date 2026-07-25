@@ -1,0 +1,245 @@
+struct HttpResponse
+  # @module_doc
+  #
+  # HttpResponse — the writable half of an HTTP response: a status, a `List`
+  # of `(name, value)` headers, and the `Socket` to write them (and the body)
+  # to. The natural companion to `HttpRequest` on the way out, and to
+  # `HttpServer`, whose handler receives the raw connection directly rather
+  # than returning response text (see that module's own doc):
+  #
+  #   handler =
+  #     do request, socket
+  #       body = "hi"
+  #       HttpResponse.new(socket)
+  #       | HttpResponse.put_header("Content-Type", "text/plain")
+  #       | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
+  #       | HttpResponse.send_chunk(body)
+  #
+  #   HttpServer{port: 8080}.start(handler)
+  #
+  # `new` opens with `status: 200` and no headers — set both, then write:
+  #
+  #   response =
+  #     HttpResponse.new(socket)
+  #     | HttpResponse.set_status(404)
+  #     | HttpResponse.put_header("Content-Type", "text/plain")
+  #
+  # **Like every other struct here, an instance is immutable** —
+  # `set_status`, `put_header`, `send_headers`, and `send_chunk` all return a
+  # *new* `HttpResponse` rather than changing the one they were called on,
+  # the same `self | Struct.put(...)` convention `Account.deposit` uses in
+  # the guide. What is mutable is the connection itself: the struct only
+  # remembers whether the status line and headers have gone out yet
+  # (`headers_sent`), never any of the bytes already written — there is
+  # nowhere on an immutable value to buffer them, and `Socket` has no "peek
+  # what I already sent" to check instead.
+  #
+  # **Headers go out exactly once, on the first write.** `send_headers`
+  # writes the status line and every header accumulated so far, then the
+  # blank line that ends them; `send_chunk` calls it first when it hasn't
+  # run yet, so a handler that never calls `send_headers` explicitly still
+  # gets a well-formed response the moment it writes its first chunk.
+  # Calling `send_headers` again afterward — directly, or through a further
+  # `send_chunk` — is a no-op: headers already on the wire can't be
+  # un-sent, so `put_header`/`set_status` after that point stop affecting
+  # what the client sees.
+  #
+  # **"In chunks" means repeated `Socket.send` calls, not HTTP's chunked
+  # `Transfer-Encoding`.** `HttpServer` never keeps a connection open past
+  # one request (see its own doc), so a response can simply run until the
+  # socket closes — the same signal HTTP/1.0 always used for "body ends
+  # here" — with no `Content-Length` and no chunk-length framing required.
+  # A handler that wants a `Content-Length`-bearing response instead sets
+  # one with `put_header` before its first `send_chunk`, same as it always
+  # could when it built the whole response text by hand.
+  #
+  # **`close` is a convenience, not a requirement.** `HttpServer` closes the
+  # connection itself once the handler returns (see its own doc), and
+  # `Socket.close` is idempotent, so calling it here too is harmless. Its
+  # only job is making sure headers go out even for a response whose
+  # handler never writes a body at all (a bare `204`, say).
+
+  attributes
+    socket: nil
+    status: 200
+    headers: []
+    headers_sent: false
+
+  function new(socket)
+    # @doc
+    #
+    # Builds an `HttpResponse` over `socket`: `status: 200`, no headers,
+    # nothing written yet.
+    #
+    # @param socket: a `Socket` — typically the connection `HttpServer`'s
+    #   handler receives as its second argument
+    # @return a new `HttpResponse`
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   (:ok, socket) = Socket.connect("127.0.0.1", port)
+    #   response = HttpResponse.new(socket)
+    #   response.status         # == 200
+    #   response.headers        # == []
+    #   response.headers_sent   # == false
+    HttpResponse{socket: socket}
+
+  function set_status(self, status)
+    # @doc
+    #
+    # A new `HttpResponse` with `status` replaced. Has no effect on what the
+    # client sees once headers are already sent — see the module doc.
+    #
+    # @param self: the `HttpResponse` to build on
+    # @param status: the HTTP status code, e.g. `404`
+    # @return a new `HttpResponse`
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   (:ok, socket) = Socket.connect("127.0.0.1", port)
+    #   HttpResponse.new(socket).set_status(404).status   # == 404
+    self
+    | Struct.put(:status, status)
+
+  function put_header(self, name, value)
+    # @doc
+    #
+    # A new `HttpResponse` with `(name, value)` appended to `headers`. Like
+    # `HttpRequest.headers`, this is a `List`, not a `Map` — a repeated
+    # `put_header` call (`Set-Cookie`, most commonly) keeps every occurrence
+    # rather than overwriting the last. Has no effect on what the client
+    # sees once headers are already sent — see the module doc.
+    #
+    # @param self: the `HttpResponse` to build on
+    # @param name: the header name
+    # @param value: the header value
+    # @return a new `HttpResponse`
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   (:ok, socket) = Socket.connect("127.0.0.1", port)
+    #   HttpResponse.new(socket).put_header("Content-Type", "text/plain").headers
+    #   # == [("Content-Type", "text/plain")]
+    self
+    | Struct.put(:headers, self.headers ++ [(name, value)])
+
+  function send_headers(self)
+    # @doc
+    #
+    # Writes the status line and every accumulated header, then the blank
+    # line that ends them — `"HTTP/1.1 <status> <reason>\r\n"`, one
+    # `"<name>: <value>\r\n"` per header, then `"\r\n"`. A no-op, not a
+    # second write, when headers already went out (via an earlier
+    # `send_headers` or `send_chunk`).
+    #
+    # @param self: the `HttpResponse` to write from
+    # @return a new `HttpResponse` with `headers_sent: true`
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   t = Thread.start(do -> Socket.connect("127.0.0.1", port))
+    #   (:ok, conn) = ServerSocket.accept(server)
+    #   (:ok, client) = Thread.await(t)
+    #   response =
+    #     HttpResponse.new(conn)
+    #     | HttpResponse.set_status(204)
+    #     | HttpResponse.send_headers()
+    #   response.headers_sent   # == true
+    #   Socket.recv(client, 1024)   # == (:ok, "HTTP/1.1 204 No Content\r\n\r\n")
+    case self.headers_sent
+      true -> self
+      false ->
+        Socket.send(self.socket, status_line(self) <> header_text(self.headers) <> "\r\n")
+        self
+        | Struct.put(:headers_sent, true)
+
+  function send_chunk(self, data)
+    # @doc
+    #
+    # Writes one piece of the body, sending the status line and headers
+    # first when `send_headers` hasn't run yet. Call it as many times as
+    # there are pieces — each call is its own `Socket.send`, so the client
+    # sees `data` the moment this returns rather than once the whole
+    # response is built (see the module doc for what "in chunks" means
+    # here).
+    #
+    # @param self: the `HttpResponse` to write to
+    # @param data: the `String` to write next
+    # @return a new `HttpResponse`, `headers_sent: true`
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   t = Thread.start(do -> Socket.connect("127.0.0.1", port))
+    #   (:ok, conn) = ServerSocket.accept(server)
+    #   (:ok, client) = Thread.await(t)
+    #   HttpResponse.new(conn)
+    #   | HttpResponse.send_chunk("hi ")
+    #   | HttpResponse.send_chunk("there")
+    #   Socket.recv(client, 1024)   # == (:ok, "HTTP/1.1 200 OK\r\n\r\nhi there")
+    response = send_headers(self)
+    Socket.send(response.socket, data)
+    response
+
+  function close(self)
+    # @doc
+    #
+    # Sends headers first when they haven't gone out yet — so a response
+    # with no body still reaches the client as valid HTTP — then closes the
+    # connection. `HttpServer` already closes the connection once the
+    # handler returns (see its own doc), so this is only needed to
+    # guarantee headers for a body-less response, or to close early from
+    # inside the handler itself.
+    #
+    # @param self: the `HttpResponse` to close
+    # @return `:ok`
+    #
+    #   (:ok, server) = ServerSocket.bind("127.0.0.1", 0)
+    #   (:ok, port) = ServerSocket.local_port(server)
+    #   t = Thread.start(do -> Socket.connect("127.0.0.1", port))
+    #   (:ok, conn) = ServerSocket.accept(server)
+    #   (:ok, client) = Thread.await(t)
+    #   HttpResponse.new(conn).set_status(204).close()   # == :ok
+    #   Socket.recv(client, 1024)   # == (:ok, "HTTP/1.1 204 No Content\r\n\r\n")
+    response = send_headers(self)
+    Socket.close(response.socket)
+
+  # private functions
+
+  helper status_line(self)
+    "HTTP/1.1 #{self.status} #{reason_phrase(self.status)}\r\n"
+
+  helper header_text(headers)
+    case headers
+      [] -> ""
+      [(name, value) | rest] -> "#{name}: #{value}\r\n" <> header_text(rest)
+
+  # Common status reason phrases — enough to cover what a handler is likely
+  # to set without reaching for a lookup table of its own. An unrecognized
+  # code (a custom one, or simply one not listed here) falls back to `""`
+  # rather than guessing — `"HTTP/1.1 599 \r\n"` is still a well-formed
+  # status line, the reason phrase being informational only.
+  helper reason_phrase(status)
+    case status
+      100 -> "Continue"
+      101 -> "Switching Protocols"
+      200 -> "OK"
+      201 -> "Created"
+      202 -> "Accepted"
+      204 -> "No Content"
+      301 -> "Moved Permanently"
+      302 -> "Found"
+      304 -> "Not Modified"
+      400 -> "Bad Request"
+      401 -> "Unauthorized"
+      403 -> "Forbidden"
+      404 -> "Not Found"
+      405 -> "Method Not Allowed"
+      409 -> "Conflict"
+      410 -> "Gone"
+      422 -> "Unprocessable Entity"
+      429 -> "Too Many Requests"
+      500 -> "Internal Server Error"
+      501 -> "Not Implemented"
+      502 -> "Bad Gateway"
+      503 -> "Service Unavailable"
+      _ -> ""

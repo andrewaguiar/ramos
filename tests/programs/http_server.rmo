@@ -13,6 +13,15 @@ function connect_when_ready(port, attempts)
       sleep(10)
       connect_when_ready(port, attempts - 1)
 
+# `HttpResponse.send_chunk` writes the headers and each chunk as its own
+# `Socket.send`, so the response may arrive as more than one `recv` — read
+# until the server closes the connection (which it does right after the
+# handler returns) rather than assuming one `recv` gets everything.
+function read_all(socket, acc)
+  case Socket.recv(socket, 1024)
+    (:ok, "") -> acc
+    (:ok, chunk) -> read_all(socket, acc <> chunk)
+
 # Reserve a free port with a throwaway bind, then hand the number to the
 # server — avoids hardcoding a port that might already be taken.
 (:ok, probe) = ServerSocket.bind("127.0.0.1", 0)
@@ -20,15 +29,17 @@ function connect_when_ready(port, attempts)
 ServerSocket.close(probe)
 
 handler =
-  do request
+  do request, socket
     body = "you said: #{first_line(request)}"
-    "HTTP/1.1 200 OK\r\nContent-Length: #{String.length(body)}\r\n\r\n#{body}"
+    HttpResponse.new(socket)
+    | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
+    | HttpResponse.send_chunk(body)
 
 Thread.start(do -> HttpServer{port: port}.start(handler))
 
 (:ok, socket) = connect_when_ready(port, 50)
 Socket.send(socket, "GET /hello HTTP/1.1\r\nHost: localhost\r\n\r\n")
-(:ok, response) = Socket.recv(socket, 1024)
+response = read_all(socket, "")
 Socket.close(socket)
 println(response)
 

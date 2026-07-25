@@ -5,25 +5,41 @@ struct HttpServer
   # `Socket`/`ServerSocket`, with a `Pool` capping how many connections it
   # ever handles at once.
   #
-  #   server = HttpServer{port: 8080}
-  #   server.start(do request -> "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi")
+  #   handler =
+  #     do request, socket
+  #       body = "hi"
+  #       HttpResponse.new(socket)
+  #       | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
+  #       | HttpResponse.send_chunk(body)
+  #
+  #   HttpServer{port: 8080}.start(handler)
   #
   # `start` binds the port, then loops forever: accept a connection, hand it
   # off to its own `Thread` to be read, run through the lambda it was given,
-  # and written back to — and immediately accept the next, up to
-  # `max_connections` at a time. There is no framework here — no routing, no
-  # parsing of the request line or headers, no status-line helpers. The
-  # lambda gets raw text in and hands raw text back; everything an HTTP
-  # response needs (the status line, `Content-Length`, `Content-Type`, …) is
-  # on it to write:
+  # and closed — and immediately accept the next, up to `max_connections` at
+  # a time. There is no framework here — no routing, no parsing of the
+  # request line or headers, no status-line helpers. The lambda gets raw
+  # request text and the raw `Socket` in, and writes the response straight to
+  # that socket itself, typically through `HttpResponse` (see its own doc):
   #
   #   handler =
-  #     do request ->
-  #       case String.starts_with(request, "GET / ")
-  #         true -> "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi"
-  #         false -> "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n"
+  #     do request, socket
+  #       response =
+  #         case String.starts_with(request, "GET / ")
+  #           true -> HttpResponse.new(socket)
+  #           false -> HttpResponse.new(socket).set_status(404)
+  #       response
+  #       | HttpResponse.put_header("Content-Length", "2")
+  #       | HttpResponse.send_chunk("hi")
   #
   #   HttpServer{port: 8080}.start(handler)
+  #
+  # **The lambda's return value is ignored.** Whatever reaches the client is
+  # exactly what the lambda wrote to `socket` itself, nothing more — unlike
+  # the old contract where a returned string *was* the response, writing (or
+  # not) is now entirely the lambda's own doing. A handler that writes
+  # nothing sends nothing back; the connection still closes once the lambda
+  # returns (see below), same as any other request.
   #
   # **What "the request text" is.** `Socket.recv` reads bytes, not messages —
   # see its own doc — so this reads chunks until the blank line that ends the
@@ -42,10 +58,11 @@ struct HttpServer
   #
   # **Each connection runs on its own `Thread`, up to `max_connections` at
   # once.** `accept` hands a connection to a freshly started thread — the
-  # reading, the call to the lambda, and the write back all happen there —
-  # and goes straight back to waiting for the next client, so a slow lambda
-  # or a client that trickles its request in slowly only holds up that one
-  # connection, not the others behind it. A `Pool` (see its own module doc)
+  # reading and the call to the lambda, which writes its own response to the
+  # socket it was handed, all happen there — and goes straight back to
+  # waiting for the next client, so a slow lambda or a client that trickles
+  # its request in slowly only holds up that one connection, not the others
+  # behind it. A `Pool` (see its own module doc)
   # tracks how many are in flight: `max_connections` plain integer "slots",
   # `checkin` before a connection is even accepted, `checkout` once its
   # thread finishes. Once every slot is taken, `accept` itself blocks — no
@@ -122,7 +139,8 @@ struct HttpServer
     #
     # Binds `self.port` and serves connections forever: accept, hand the
     # connection to its own `Thread` — which reads the request, calls
-    # `f(request)`, writes its result back, and closes — and immediately
+    # `f(request, socket)` (the lambda writes its own response to `socket`,
+    # typically through `HttpResponse`), and closes — and immediately
     # accept the next, up to `self.max_connections` at a time; past that,
     # `accept` itself waits for one to free up rather than starting another
     # thread. The accept loop runs on the calling thread and does not return
@@ -131,8 +149,9 @@ struct HttpServer
     # how the cap works, and what is and is not handled for you.
     #
     # @param self: an `HttpServer` instance
-    # @param f: a lambda of one argument — the request text — returning the
-    #   response text to write back verbatim
+    # @param f: a lambda of two arguments — the request text and the raw
+    #   `Socket` — that writes the response to that socket itself (typically
+    #   through `HttpResponse`, see its own doc); its return value is ignored
     # @return an error built by `error` if the port cannot be bound; otherwise
     #   this never returns
     #
@@ -140,9 +159,11 @@ struct HttpServer
     # assertion — start it on its own `Thread` and talk to it over `Socket`:
     #
     #   echo =
-    #     do request ->
+    #     do request, socket
     #       body = "you said: #{request}"
-    #       "HTTP/1.1 200 OK\r\nContent-Length: #{String.length(body)}\r\n\r\n#{body}"
+    #       HttpResponse.new(socket)
+    #       | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
+    #       | HttpResponse.send_chunk(body)
     #
     #   Thread.start(do -> HttpServer{port: 8080}.start(echo))
     #   (:ok, socket) = Socket.connect("127.0.0.1", 8080)
@@ -217,7 +238,7 @@ struct HttpServer
   helper handle_connection(conn, f)
     case read_request(conn)
       "" -> :ok
-      request -> Socket.send(conn, f(request))
+      request -> f(request, conn)
     Socket.close(conn)
 
   helper read_request(conn)
