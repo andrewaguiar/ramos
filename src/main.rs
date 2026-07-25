@@ -723,12 +723,19 @@ fn run_loaded(
         );
         return ExitCode::FAILURE;
     }
+    run_program(&program, prog_args, color)
+}
+
+/// Execute an already-loaded program and translate the result into an exit
+/// code — the shared tail of `ramos run <file>` and `ramos run -e CODE`, which
+/// differ only in how the `Program` was built.
+fn run_program(program: &ramos::ast::Program, prog_args: &[String], color: Color) -> ExitCode {
     // Line-buffered (the default `stdout()` behaviour), not block-buffered: a
     // `Thread.start`ed lambda writes to this same sink live, and its output must
     // reach the terminal as it happens rather than sit in an 8 KB buffer. The
     // sink is shared with those threads, so writes serialize through its mutex.
     let stdout = ramos::interp::sink(std::io::stdout());
-    let result = ramos::interp::run_with_args(&program, stdout.clone(), prog_args);
+    let result = ramos::interp::run_with_args(program, stdout.clone(), prog_args);
     let flushed = stdout.lock().unwrap_or_else(|e| e.into_inner()).flush();
     // An `exit(code)` unwinds as an error carrying its status — it is not a
     // failure, so check for it before reporting anything.
@@ -751,6 +758,31 @@ fn run_loaded(
     }
 }
 
+/// `ramos run -e CODE` — run `CODE` as a snippet, without a `.rmo` file on
+/// disk. `CODE` is loaded exactly like a bare top-level script named on the
+/// command line (see [`run_loaded`]'s doc comment): free to hold top-level
+/// statements with no `module`, and not required to expose a `function
+/// main()`. It can still reach a project's own modules under `./src`, since
+/// [`ramos::loader::load_source`] roots the snippet at the current directory.
+fn run_eval(code: &str, stdlib: Option<String>, prog_args: &[String], color: Color) -> ExitCode {
+    let stdlib_dir = stdlib.map(PathBuf::from);
+    let program = match ramos::loader::load_source(code, stdlib_dir.as_deref()) {
+        Ok(p) => p,
+        Err(e) => {
+            // Diagnostics arrive pre-rendered (and already end in a newline);
+            // the loader's own messages are a single line.
+            let text = e.to_string();
+            if text.ends_with('\n') {
+                eprint!("{text}");
+            } else {
+                eprintln!("{text}");
+            }
+            return ExitCode::FAILURE;
+        }
+    };
+    run_program(&program, prog_args, color)
+}
+
 /// Everything runs on a thread with a large stack: the parser is recursive
 /// descent and the stdlib recurses per element, so the default stack overflows
 /// on ordinary input (a few hundred list elements). See `ramos::stack`.
@@ -758,11 +790,19 @@ fn main() -> ExitCode {
     ramos::stack::with_large_stack(run_cli)
 }
 
+/// The crate's own version, from `Cargo.toml` — what `ramos version` and bare
+/// `ramos` print.
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn run_cli() -> ExitCode {
     let mut args: Vec<String> = env::args().skip(1).collect();
     let dump = take_flag(&mut args, "--dump");
     let quietly = take_flag(&mut args, "--quietly");
     let stdlib = take_opt(&mut args, "--stdlib");
+    // Only `run` takes `-e`, but it is pulled out here alongside the other
+    // options rather than deep in the dispatch below, matching how `--stdlib`
+    // and the rest are handled regardless of which command is running.
+    let eval = take_opt(&mut args, "-e");
     // Default to painting a terminal and staying plain when piped; the flags
     // are the override for a pager (`ramos ast --dump f.rmo --color | less -R`).
     let color = if take_flag(&mut args, "--no-color") {
@@ -791,6 +831,20 @@ fn run_cli() -> ExitCode {
         print!("{}", ramos::learn::text());
         return ExitCode::SUCCESS;
     }
+    // `version` (and bare `ramos`, below) print the same line.
+    if args.first().map(String::as_str) == Some("version") {
+        println!("ramos {VERSION}");
+        return ExitCode::SUCCESS;
+    }
+    // `run -e CODE` runs a snippet instead of a `.rmo` file, so it is handled
+    // before the file-based `(cmd, path)` dispatch below, which expects a path
+    // in `args[1]`.
+    if args.first().map(String::as_str) == Some("run") {
+        if let Some(code) = &eval {
+            let prog_args: Vec<String> = args.iter().skip(1).cloned().collect();
+            return run_eval(code, stdlib, &prog_args, color);
+        }
+    }
     // `repl` takes no file either — an interactive session on stdin.
     if args.first().map(String::as_str) == Some("repl") {
         return ramos::repl::run(stdlib, color);
@@ -814,6 +868,7 @@ fn run_cli() -> ExitCode {
         // finds `.`'s `main.rmo` exactly as it would for any named directory.
         (Some("run"), None) => ("run", "."),
         _ => {
+            eprintln!("ramos {VERSION}");
             eprintln!("usage: ramos <command> [args]");
             eprintln!();
             eprintln!(
@@ -826,6 +881,9 @@ fn run_cli() -> ExitCode {
             eprintln!("  run                        same as `run .` — run the current directory's");
             eprintln!("                             `main.rmo`");
             eprintln!(
+                "  run -e CODE                run CODE as a snippet, no `.rmo` file needed"
+            );
+            eprintln!(
                 "  new <project-name>         scaffold a project: <name>/src/<snake>/main.rmo"
             );
             eprintln!(
@@ -835,6 +893,7 @@ fn run_cli() -> ExitCode {
             eprintln!("  learn                      print a crash course on the language: every");
             eprintln!("                             keyword, the syntax, and what not to do");
             eprintln!("  repl                       start an interactive session (persists state)");
+            eprintln!("  version                    print the version");
             eprintln!("  test [--quietly] [filter]");
             eprintln!("                             run every test under the nearest `src/test`");
             eprintln!(

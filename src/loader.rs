@@ -108,6 +108,32 @@ pub fn stdlib(stdlib_dir: Option<&Path>) -> Result<Program, LoadError> {
 ///
 /// `stdlib_dir` overrides the embedded stdlib with sources read from disk.
 pub fn load(entry: &Path, stdlib_dir: Option<&Path>) -> Result<Program, LoadError> {
+    let source = read(entry)?;
+    load_from_source(entry, &source, stdlib_dir)
+}
+
+/// Load `source` as if it were the entry file's text, without reading it from
+/// disk — what `ramos run -e CODE` runs. The virtual entry sits in the current
+/// directory (`./<eval>`), so a snippet can still reach a project's own
+/// modules under `./src` exactly as a real file there would, via the same
+/// [`search_roots`] rule; it just skips the file-name checks a real file is
+/// held to.
+///
+/// `stdlib_dir` overrides the embedded stdlib with sources read from disk.
+pub fn load_source(source: &str, stdlib_dir: Option<&Path>) -> Result<Program, LoadError> {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let entry = cwd.join("<eval>");
+    load_from_source(&entry, source, stdlib_dir)
+}
+
+/// The shared body of [`load`] and [`load_source`]: parse `source` as `entry`,
+/// then resolve every module it reaches against the stdlib and `entry`'s
+/// search roots.
+fn load_from_source(
+    entry: &Path,
+    source: &str,
+    stdlib_dir: Option<&Path>,
+) -> Result<Program, LoadError> {
     let mut loaded = Loaded::default();
     loaded.add_stdlib(stdlib_dir)?;
 
@@ -115,8 +141,7 @@ pub fn load(entry: &Path, stdlib_dir: Option<&Path>) -> Result<Program, LoadErro
     // by namespace — which is what the file-name rule exists for. It is held to
     // the one-definition rule, but not to the naming one, so a scratch file or
     // a demo may be called whatever its author likes.
-    let source = read(entry)?;
-    let mut program = parse_source(entry, &source)?;
+    let mut program = parse_source(entry, source)?;
     check_one_definition(entry, &program)?;
     // Roots depend on the entry's own namespace, so read them before the items
     // are moved into the bundle.
