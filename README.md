@@ -1272,6 +1272,41 @@ point: the value's type is on the page rather than inferred from the call.
 # == "ANA, BOB"
 ```
 
+A step written `| .f(x)` — a dot with nothing before it — leaves the module
+out and makes the piped-in value the dot's *target* instead of its first
+argument: `a | .f(x)` means exactly `a.f(x)`, dispatched on `a`'s own type
+the same way any OO-style call is. It reads naturally after a step that
+already named its module, when the rest of the chain is all calls back on
+the same kind of value:
+
+```elixir
+struct Person
+  attributes
+    name: nil
+    age: 0
+
+  function birthday(self)
+    Person{name: self.name, age: self.age + 1}
+
+  function greeting(self)
+    "Ola #{self.name}, eu tenho #{self.age}"
+
+andrew = Person{name: "Andrew", age: 40}
+andrew
+| .birthday()
+| .greeting()
+# == "Ola Andrew, eu tenho 41"
+```
+
+Without parentheses, `| .f` reads a field instead, the same way `a.f` does:
+
+```elixir
+andrew
+| .birthday()
+| .name
+# == "Andrew"
+```
+
 ### Lambdas
 
 `do` opens an anonymous function — a **lambda**. Single-expression lambdas

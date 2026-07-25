@@ -220,6 +220,91 @@ fn pipe_desugars_to_first_argument() {
 }
 
 #[test]
+fn pipe_dot_call_makes_the_lhs_the_dot_target() {
+    // `a | .f(x)` builds the exact tree `a.f(x)` builds directly — unlike the
+    // general `| M.f(x)` rule, `a` becomes the call's *target*, not an
+    // argument prepended to an unrelated one.
+    assert_eq!(
+        expr("a\n| .birthday()\n| .greeting()"),
+        Expr::Call {
+            callee: Callee::Method {
+                target: b(Expr::Call {
+                    callee: Callee::Method {
+                        target: b(var("a")),
+                        name: "birthday".into(),
+                    },
+                    args: vec![],
+                    line: 2,
+                }),
+                name: "greeting".into(),
+            },
+            args: vec![],
+            line: 3,
+        }
+    );
+}
+
+#[test]
+fn pipe_dot_call_takes_arguments() {
+    assert_eq!(
+        expr("a\n| .set(:age, 41)"),
+        Expr::Call {
+            callee: Callee::Method {
+                target: b(var("a")),
+                name: "set".into(),
+            },
+            args: vec![Expr::Symbol("age".into()), Expr::Int(41)],
+            line: 2,
+        }
+    );
+}
+
+#[test]
+fn pipe_dot_without_parens_is_a_field_read() {
+    assert_eq!(
+        expr("a\n| .name"),
+        Expr::Access {
+            target: b(var("a")),
+            name: "name".into(),
+        }
+    );
+}
+
+#[test]
+fn pipe_dot_call_combines_with_the_general_pipe_rule() {
+    // a | .birthday() | Struct.put(:name, n) | .greeting()
+    assert_eq!(
+        expr("a\n| .birthday()\n| Struct.put(:name, n)\n| .greeting()"),
+        Expr::Call {
+            callee: Callee::Method {
+                target: b(Expr::Call {
+                    callee: Callee::Method {
+                        target: b(Expr::ModuleRef(path(&["Struct"]))),
+                        name: "put".into(),
+                    },
+                    args: vec![
+                        Expr::Call {
+                            callee: Callee::Method {
+                                target: b(var("a")),
+                                name: "birthday".into(),
+                            },
+                            args: vec![],
+                            line: 2,
+                        },
+                        Expr::Symbol("name".into()),
+                        var("n"),
+                    ],
+                    line: 3,
+                }),
+                name: "greeting".into(),
+            },
+            args: vec![],
+            line: 4,
+        }
+    );
+}
+
+#[test]
 fn pipe_must_start_its_own_line() {
     // `x | f()` on one line is rejected; `x` then `| f()` on the next is the
     // only accepted form — same result, different line count.

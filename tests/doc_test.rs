@@ -319,7 +319,12 @@ fn module_groups_cover_every_module_exactly_once_and_the_index_shows_separators(
     ramos::doc::generate(&stdlib_dir(), &out.0).unwrap();
     let doc = load_docs(&out.0);
 
-    let modules: Vec<&str> = doc.get("modules").as_array().iter().map(Json::as_str).collect();
+    let modules: Vec<&str> = doc
+        .get("modules")
+        .as_array()
+        .iter()
+        .map(Json::as_str)
+        .collect();
     let groups = doc.get("module_groups").as_array();
 
     let mut grouped: Vec<&str> = Vec::new();

@@ -135,7 +135,13 @@ const FEATURES: &[(&str, &[&str])] = &[
     ("lambdas.rmo", &["Lambda(x, y)", "Lambda()", "Lambda(x)"]),
     (
         "pipe.rmo",
-        &["Call .map()", "Call .join()", "Call .filter()"],
+        &[
+            "Call .map()",
+            "Call .join()",
+            "Call .filter()",
+            "Call .bump()",
+            "Access .n",
+        ],
     ),
     // modules
     (

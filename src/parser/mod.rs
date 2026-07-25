@@ -5,9 +5,10 @@
 //!   < `<>` / `++` < `+` `-` < `*` `/` `%` < unary `-` < `**` < postfix `.`
 //!
 //! Three forms are desugared here rather than reaching the tree: `|` (the lhs
-//! becomes the call's first argument), `x.field = v` (a `Struct.put` call
-//! rebinding `x`), and a sigil (`N"..."` becomes `NaiveDateTime.parse("...")`)
-//! — so the evaluator sees one pipe-free, one-assignment, sigil-free shape.
+//! becomes the call's first argument, or — for `| .f(x)` — the call's dot
+//! target instead), `x.field = v` (a `Struct.put` call rebinding `x`), and a
+//! sigil (`N"..."` becomes `NaiveDateTime.parse("...")`) — so the evaluator
+//! sees one pipe-free, one-assignment, sigil-free shape.
 
 use crate::ast::*;
 use crate::diagnostics::Example;
@@ -545,6 +546,36 @@ impl Parser {
             }
             let at = self.span();
             self.bump(); // the Pipe
+                         // `| .method(args)` / `| .field` — sugar for `left.method(args)` /
+                         // `left.field`: a pipe chain that dispatches on whatever flowed
+                         // in, without repeating its name. Unlike the general `| f(args)`
+                         // rule below (which *adds* `left` as `f`'s first argument), this
+                         // makes `left` the dot's target — the very tree `left.method(args)`
+                         // builds directly, so it goes through the same runtime-type
+                         // dispatch an OO-style call does, and method dispatch's own
+                         // self-prepending at eval time only happens once.
+            if self.check(&T::Dot) {
+                let line = self.line();
+                self.bump();
+                let name = self.expect_ident("a field or function name after `.`")?;
+                left = if self.check(&T::LParen) {
+                    let args = self.parse_call_args(false)?;
+                    Expr::Call {
+                        callee: Callee::Method {
+                            target: Box::new(left),
+                            name,
+                        },
+                        args,
+                        line,
+                    }
+                } else {
+                    Expr::Access {
+                        target: Box::new(left),
+                        name,
+                    }
+                };
+                continue;
+            }
             let rhs = self.parse_or()?;
             left = match rhs {
                 Expr::Call {

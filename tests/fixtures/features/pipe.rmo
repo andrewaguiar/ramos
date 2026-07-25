@@ -14,3 +14,17 @@ sentence = ["ana", "bob"]
 piped = [1, 2, 3, 4]
 | List.filter(do x -> Integer.is_even(x))
 plain = List.filter([1, 2, 3, 4], do x -> Integer.is_even(x))
+
+# A bare `.` after `|` makes the piped value the call's *target*: `a | .f(x)`
+# means exactly `a.f(x)`; without `(...)`, `| .f` reads a field instead.
+struct Counter
+  attributes
+    n: 0
+
+  function bump(self)
+    Counter{n: self.n + 1}
+
+bumped =
+  Counter{n: 10}
+  | .bump()
+  | .n
