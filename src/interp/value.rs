@@ -242,15 +242,6 @@ impl Map {
             .map(|(_, v)| v)
     }
 
-    /// Look up a symbol-keyed entry by name — how struct/map field patterns and
-    /// map literals address their keys.
-    pub fn get_symbol(&self, name: &str) -> Option<&Value> {
-        self.entries
-            .iter()
-            .find(|(k, _)| matches!(k, Value::Symbol(s) if &**s == name))
-            .map(|(_, v)| v)
-    }
-
     /// A new map with `key` set to `value`: existing keys keep their position
     /// (value replaced), new keys are appended.
     pub fn put(&self, key: Value, value: Value) -> Map {

@@ -19,12 +19,24 @@ struct Date
   #   Date.new(2024, 3, 0)    # == Date{year: 2024, month: 2, day: 29}
   #   Date.new(2024, 1, 32)   # == Date{year: 2024, month: 2, day: 1}
   #
+  # `add_months`/`add_days` chain the same way any other `self`-taking
+  # function does — pipe a `Date` through as many steps as the calculation
+  # needs, ending in whatever the last step returns:
+  #
+  #   Date.new(2024, 2, 1)
+  #   | .add_months(1)
+  #   | .add_days(-1)
+  #   | .to_iso()
+  #   # == "2024-02-29"
+  #
   # Two dates compare structurally with `==`, like any other struct — but
   # there is no built-in `<`/`>`, since arbitrary structs are not ordered.
   # Use `compare` instead, or sort by `to_epoch_day`:
   #
-  #   Date.new(2024, 1, 1) == Date.new(2024, 1, 1)               # == true
-  #   Date.compare(Date.new(2024, 1, 1), Date.new(2024, 1, 2))   # == -1
+  #   Date.new(2024, 1, 1) == Date.new(2024, 1, 1)   # == true
+  #   Date.new(2024, 1, 1)
+  #   | .compare(Date.new(2024, 1, 2))
+  #   # == -1
   #
   # Conventions:
   #   - every date is proleptic Gregorian, with no time zone — `today` reads

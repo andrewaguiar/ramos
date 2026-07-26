@@ -11,9 +11,9 @@ struct HttpResponse
   #     do request, socket
   #       body = "hi"
   #       HttpResponse.new(socket)
-  #       | HttpResponse.put_header("Content-Type", "text/plain")
-  #       | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
-  #       | HttpResponse.send_chunk(body)
+  #       | .put_header("Content-Type", "text/plain")
+  #       | .put_header("Content-Length", "#{String.length(body)}")
+  #       | .send_chunk(body)
   #
   #   HttpServer{port: 8080}.start(handler)
   #
@@ -21,8 +21,8 @@ struct HttpResponse
   #
   #   response =
   #     HttpResponse.new(socket)
-  #     | HttpResponse.set_status(404)
-  #     | HttpResponse.put_header("Content-Type", "text/plain")
+  #     | .set_status(404)
+  #     | .put_header("Content-Type", "text/plain")
   #
   # **Like every other struct here, an instance is immutable** —
   # `set_status`, `put_header`, `send_headers`, and `send_chunk` all return a
@@ -142,8 +142,8 @@ struct HttpResponse
     #   (:ok, client) = Thread.await(t)
     #   response =
     #     HttpResponse.new(conn)
-    #     | HttpResponse.set_status(204)
-    #     | HttpResponse.send_headers()
+    #     | .set_status(204)
+    #     | .send_headers()
     #   response.headers_sent   # == true
     #   Socket.recv(client, 1024)   # == (:ok, "HTTP/1.1 204 No Content\r\n\r\n")
     case self.headers_sent
@@ -173,8 +173,8 @@ struct HttpResponse
     #   (:ok, conn) = ServerSocket.accept(server)
     #   (:ok, client) = Thread.await(t)
     #   HttpResponse.new(conn)
-    #   | HttpResponse.send_chunk("hi ")
-    #   | HttpResponse.send_chunk("there")
+    #   | .send_chunk("hi ")
+    #   | .send_chunk("there")
     #   Socket.recv(client, 1024)   # == (:ok, "HTTP/1.1 200 OK\r\n\r\nhi there")
     response = send_headers(self)
     Socket.send(response.socket, data)

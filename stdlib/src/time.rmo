@@ -10,9 +10,12 @@ struct Time
   #
   # There is no day to carry into, so every field wraps at its own boundary
   # instead of normalizing into the next one the way `Date`'s `day` does —
-  # `add_hours` past `23` wraps back to `0`:
+  # `add_hours` past `23` wraps back to `0`. `add_*` takes `self` first, so it
+  # pipes the same way any other `self`-taking function does:
   #
-  #   Time.add_hours(Time{hour: 23}, 2)   # == Time{hour: 1, minute: 0, second: 0, millisecond: 0}
+  #   Time{hour: 23}
+  #   | .add_hours(2)
+  #   # == Time{hour: 1, minute: 0, second: 0, millisecond: 0}
   #
   # Conventions:
   #   - `compare` follows `Integer.compare`: `-1`, `0`, `1`.

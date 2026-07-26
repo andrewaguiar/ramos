@@ -9,8 +9,8 @@ struct HttpServer
   #     do request, socket
   #       body = "hi"
   #       HttpResponse.new(socket)
-  #       | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
-  #       | HttpResponse.send_chunk(body)
+  #       | .put_header("Content-Length", "#{String.length(body)}")
+  #       | .send_chunk(body)
   #
   #   HttpServer{port: 8080}.start(handler)
   #
@@ -29,8 +29,8 @@ struct HttpServer
   #           true -> HttpResponse.new(socket)
   #           false -> HttpResponse.new(socket).set_status(404)
   #       response
-  #       | HttpResponse.put_header("Content-Length", "2")
-  #       | HttpResponse.send_chunk("hi")
+  #       | .put_header("Content-Length", "2")
+  #       | .send_chunk("hi")
   #
   #   HttpServer{port: 8080}.start(handler)
   #
@@ -162,8 +162,8 @@ struct HttpServer
     #     do request, socket
     #       body = "you said: #{request}"
     #       HttpResponse.new(socket)
-    #       | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
-    #       | HttpResponse.send_chunk(body)
+    #       | .put_header("Content-Length", "#{String.length(body)}")
+    #       | .send_chunk(body)
     #
     #   Thread.start(do -> HttpServer{port: 8080}.start(echo))
     #   (:ok, socket) = Socket.connect("127.0.0.1", 8080)

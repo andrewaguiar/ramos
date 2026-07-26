@@ -1866,8 +1866,8 @@ starting another thread.
 handler =
   do request, socket
     HttpResponse.new(socket)
-    | HttpResponse.put_header("Content-Length", "2")
-    | HttpResponse.send_chunk("hi")
+    | .put_header("Content-Length", "2")
+    | .send_chunk("hi")
 
 HttpServer{port: 8080, max_connections: 50}.start(handler)
 ```
@@ -1897,13 +1897,13 @@ handler =
     case request.get_path()
       "/hello" ->
         HttpResponse.new(socket)
-        | HttpResponse.put_header("Content-Length", "2")
-        | HttpResponse.send_chunk("hi")
+        | .put_header("Content-Length", "2")
+        | .send_chunk("hi")
       _ ->
         HttpResponse.new(socket)
-        | HttpResponse.set_status(404)
-        | HttpResponse.put_header("Content-Length", "0")
-        | HttpResponse.send_headers()
+        | .set_status(404)
+        | .put_header("Content-Length", "0")
+        | .send_headers()
 
 HttpServer{port: 8080}.start(handler)
 ```
@@ -2008,8 +2008,8 @@ of `(name, value)` tuples, not a `Map`, for the same reason as
 ```elixir
 response =
   HttpResponse.new(socket)
-  | HttpResponse.set_status(404)
-  | HttpResponse.put_header("Content-Type", "text/plain")
+  | .set_status(404)
+  | .put_header("Content-Type", "text/plain")
 ```
 
 `send_headers` writes the status line and every accumulated header, then the
@@ -2026,9 +2026,9 @@ handler =
   do request, socket
     body = "hi"
     HttpResponse.new(socket)
-    | HttpResponse.put_header("Content-Type", "text/plain")
-    | HttpResponse.put_header("Content-Length", "#{String.length(body)}")
-    | HttpResponse.send_chunk(body)
+    | .put_header("Content-Type", "text/plain")
+    | .put_header("Content-Length", "#{String.length(body)}")
+    | .send_chunk(body)
 
 HttpServer{port: 8080}.start(handler)
 ```

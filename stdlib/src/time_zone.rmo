@@ -14,6 +14,12 @@ struct TimeZone
   #   ist.offset_minutes   # == 330
   #   DateTime.now_in(ist).offset_minutes   # == 330
   #
+  # `compare` takes `self` first like any other zone function, so it pipes:
+  #
+  #   TimeZone.fixed("A", -300)
+  #   | .compare(TimeZone.fixed("B", 0))
+  #   # == -1
+  #
   # `utc`, `fixed`, and `from_offset_minutes` build one; `DateTime.now_in` and
   # `DateTime.in_time_zone` are the bridge to `DateTime`. A `DateTime` only
   # ever keeps the numeric `offset_minutes`, not the name it arrived with, so
