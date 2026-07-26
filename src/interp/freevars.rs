@@ -106,6 +106,11 @@ fn expr_free(bound: &mut Vec<String>, e: &Expr, out: &mut Vec<String>) {
 fn case_arm_free(bound: &mut Vec<String>, arm: &CaseArm, out: &mut Vec<String>) {
     let mut names = Vec::new();
     collect_pattern(&arm.pattern, &mut names);
+    // `pattern = name` binds `name` to the whole value too — bound in the
+    // guard and body exactly like any name the pattern itself destructures.
+    if let Some(name) = &arm.bind {
+        names.push(name.clone());
+    }
     with_bindings(bound, names, |b| {
         if let Some(g) = &arm.guard {
             expr_free(b, g, out);

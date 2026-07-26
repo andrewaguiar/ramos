@@ -691,6 +691,18 @@ fn single_pipe_still_lexes_as_the_pipe_operator() {
     assert!(lex("x = list | List.sort()").is_ok());
 }
 
+#[test]
+fn pipe_dot_with_no_space_is_a_spacing_error_not_a_removed_feature() {
+    // `| .f(x)` (with the space) is a real, current feature — dispatching `f`
+    // on whatever flowed in. `|.f(x)` (no space) is just that operator missing
+    // its required whitespace, the same as any other; it must not be reported
+    // as if pipe-dot dispatch itself were gone.
+    let err = lex("x\n|.f()").unwrap_err();
+    assert_eq!(err.code, ErrorCode::NoSpaceAroundOperator);
+    assert!(err.message.contains("whitespace"), "{}", err.message);
+    assert!(!err.message.contains("no longer exists"), "{}", err.message);
+}
+
 // ── a larger, README-faithful program ───────────────────────────────────────
 
 #[test]

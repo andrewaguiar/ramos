@@ -198,6 +198,62 @@ case 3
 }
 
 #[test]
+fn case_arm_bind_names_the_whole_matched_value() {
+    // `pattern = name` binds both `value` (from the pattern) and `whole` (the
+    // entire tuple the arm matched) — the point being neither was already a
+    // named variable: the subject is a literal written right in the `case`.
+    let src = "\
+case (:ok, 42)
+  (:ok, value) = whole -> (value, whole)";
+    assert_eq!(eval(src), "(42, (:ok, 42))");
+}
+
+#[test]
+fn case_arm_bind_works_when_the_subject_is_a_call_result() {
+    // The scenario the feature exists for: a value that flows straight from a
+    // function call into `case`, never bound to a name of its own.
+    let src = "\
+function fetch()
+  (:ok, 7)
+
+case fetch()
+  (:ok, n) = whole -> (n, whole)";
+    assert_eq!(eval(src), "(7, (:ok, 7))");
+}
+
+#[test]
+fn case_arm_bind_is_visible_to_its_own_guard() {
+    let src = "\
+case (:ok, 42)
+  (:ok, _) = whole when whole == (:ok, 42) -> :matched
+  _ -> :no";
+    assert_eq!(eval(src), ":matched");
+}
+
+#[test]
+fn case_arm_bind_works_on_a_run_closing_case() {
+    // The exact shape the feature was requested for: a `run` whose result
+    // flows into a subject-less `case`, with no name for it otherwise.
+    let src = "\
+function fetch()
+  (:ok, 7)
+
+run
+  fetch()
+case
+  (:ok, n) = whole -> (:done, n, whole)";
+    assert_eq!(eval(src), "(:done, 7, (:ok, 7))");
+}
+
+#[test]
+fn case_arm_without_bind_is_unaffected() {
+    let src = "\
+case (:ok, 42)
+  (:ok, value) -> value";
+    assert_eq!(eval(src), "42");
+}
+
+#[test]
 fn cond_branches_on_the_first_truthy_condition() {
     let src = "\
 x = -3

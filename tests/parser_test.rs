@@ -600,6 +600,67 @@ case x
 }
 
 #[test]
+fn case_arm_bind_names_the_whole_matched_value() {
+    // `pattern = name` binds `name` to the whole value the arm matched,
+    // alongside whatever `pattern` itself destructures.
+    let e = expr(
+        "\
+case x
+  (:ok, value) = whole -> whole
+  _ -> :other",
+    );
+    let Expr::Case { arms, .. } = e else {
+        panic!("expected case")
+    };
+    assert_eq!(
+        arms[0].pattern,
+        Pattern::Tuple(vec![
+            Pattern::Symbol("ok".into()),
+            Pattern::Binding("value".into())
+        ])
+    );
+    assert_eq!(arms[0].bind, Some("whole".into()));
+    assert_eq!(
+        arms[1].bind, None,
+        "an arm with no `= name` binds nothing extra"
+    );
+}
+
+#[test]
+fn case_arm_bind_comes_before_the_guard() {
+    // The bound name is available to the guard, not just the body, so it must
+    // be bound before the guard runs.
+    let e = expr("case x\n  (:ok, value) = whole when whole != nil -> value");
+    let Expr::Case { arms, .. } = e else {
+        panic!("expected case")
+    };
+    assert_eq!(arms[0].bind, Some("whole".into()));
+    assert!(arms[0].guard.is_some());
+}
+
+#[test]
+fn case_arm_bind_works_on_a_run_closing_case() {
+    let e = expr("run\n  x\ncase\n  (:ok, value) = whole -> whole");
+    let Expr::Run { arms, .. } = e else {
+        panic!("expected run")
+    };
+    assert_eq!(arms[0].bind, Some("whole".into()));
+}
+
+#[test]
+fn case_arm_bind_cannot_repeat_a_pattern_name() {
+    // `= n` already names the whole value, so the pattern binding a part of
+    // it under the same name can never make sense — same rule as `(p, p)`.
+    for src in ["case x\n  (:ok, n) = n -> n", "case x\n  (a, b) = a -> a"] {
+        let err = parse_err(src);
+        assert!(
+            err.contains("cannot bind") && err.contains("twice"),
+            "should be rejected: {src}\ngot: {err}"
+        );
+    }
+}
+
+#[test]
 fn cond_arms() {
     let e = expr(
         "\

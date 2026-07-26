@@ -118,8 +118,11 @@ const KEYWORDS: &[Keyword] = &[
     },
     Keyword {
         signature: "case value",
-        blurb: "Match a value against patterns, top to bottom.",
-        example: "case x\n  0 -> :zero\n  n when n > 0 -> :positive\n  _ -> :negative",
+        blurb: "Match a value against patterns, top to bottom. An arm may also bind the \
+                 whole matched value with `pattern = name`, for when the value has no name \
+                 of its own — the result of a call, say.",
+        example: "case x\n  0 -> :zero\n  n when n > 0 -> :positive\n  _ -> :negative\n\n\
+                  case fetch()\n  (:ok, v) = whole -> (v, whole)",
     },
     Keyword {
         signature: "if cond / else",

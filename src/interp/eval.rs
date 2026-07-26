@@ -2014,6 +2014,12 @@ impl Interp {
             for (name, value) in binds {
                 scope.set(name, value);
             }
+            // `pattern = name` — bind the whole value too, alongside whatever
+            // `pattern` itself destructured. Before the guard, so it may
+            // reference it as well as the body.
+            if let Some(name) = &arm.bind {
+                scope.set(name.clone(), subject.clone());
+            }
             if let Some(guard) = &arm.guard {
                 if !self.eval_expr(guard, &scope)?.is_truthy() {
                     continue;

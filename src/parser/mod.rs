@@ -373,7 +373,7 @@ impl Parser {
                 self.field_assign(*target, name, value, at, line)?
             } else {
                 let pattern = self.expr_to_pattern(expr, at)?;
-                check_bindings_are_unique(&pattern, at)?;
+                check_bindings_are_unique(&pattern, None, at)?;
                 let value = self.parse_assign_rhs()?;
                 Stmt::Assign { pattern, value }
             }
@@ -1077,7 +1077,19 @@ impl Parser {
         while !self.check(&T::Dedent) {
             let at = self.span();
             let pattern = self.parse_pattern()?;
-            check_bindings_are_unique(&pattern, at)?;
+            // `pattern = name` binds the whole value the arm matched to
+            // `name`, alongside whatever `pattern` itself destructures —
+            // `Person{name: n} = p -> ...` gets both `n` and `p`. Checked
+            // for the same collision a repeated pattern name is: binding
+            // `name` to the whole value while `pattern` also binds it (in
+            // part or in full) under the same name can never make sense.
+            let bind = if self.check(&T::Assign) {
+                self.bump();
+                Some(self.expect_ident("a name after `=`")?)
+            } else {
+                None
+            };
+            check_bindings_are_unique(&pattern, bind.as_deref(), at)?;
             let guard = if self.eat(&T::When) {
                 Some(self.parse_or()?)
             } else {
@@ -1087,6 +1099,7 @@ impl Parser {
             let body = self.parse_arm_body()?;
             arms.push(CaseArm {
                 pattern,
+                bind,
                 guard,
                 body,
             });
@@ -1539,6 +1552,11 @@ fn case_arm_calls_public(
 ) -> Option<String> {
     let base = bound.len();
     collect_pattern_names(&arm.pattern, bound);
+    // `pattern = name` shadows `name` locally too, same as any name the
+    // pattern itself binds.
+    if let Some(name) = &arm.bind {
+        bound.push(name.clone());
+    }
     let hit = arm
         .guard
         .as_ref()
@@ -1572,13 +1590,19 @@ fn collect_pattern_names(pattern: &Pattern, bound: &mut Vec<String>) {
     }
 }
 
-/// Reject a pattern that binds the same name twice.
+/// Reject a pattern that binds the same name twice — including, for a `case`
+/// arm, its own `= name` whole-value binding colliding with a name the
+/// pattern itself binds.
 ///
 /// `(p, p)` reads as "these two must be equal", but Ramos has no way to ask for
 /// that comparison — there is no pin operator — so the second `p` would simply
 /// rebind and the pattern could never fail. Rather than silently keeping the
 /// last value, the collision is named. `_` may repeat: it binds nothing.
-fn check_bindings_are_unique(pattern: &Pattern, at: Span) -> Result<(), ParseError> {
+fn check_bindings_are_unique(
+    pattern: &Pattern,
+    bind: Option<&str>,
+    at: Span,
+) -> Result<(), ParseError> {
     let mut seen: Vec<&str> = Vec::new();
     if let Some(name) = first_repeated_binding(pattern, &mut seen) {
         return Err(ParseError {
@@ -1592,6 +1616,22 @@ fn check_bindings_are_unique(pattern: &Pattern, at: Span) -> Result<(), ParseErr
                 correct: "(p, q) = (1, 2)",
             }),
         });
+    }
+    if let Some(name) = bind {
+        if seen.contains(&name) {
+            return Err(ParseError {
+                message: format!(
+                    "a pattern cannot bind `{name}` twice — `= {name}` already names the \
+                     whole value, so the pattern binding the same name to part of it can \
+                     never make sense"
+                ),
+                span: at,
+                example: Some(Example {
+                    wrong: "Person{name: n} = n -> n",
+                    correct: "Person{name: n} = p -> n",
+                }),
+            });
+        }
     }
     Ok(())
 }

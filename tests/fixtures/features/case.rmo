@@ -20,3 +20,9 @@ described =
     [head | tail] ->
       rest = size(tail)
       "head #{head} and #{rest} more"
+
+# An arm may also bind the whole value it matched, alongside whatever the
+# pattern destructures — the pattern, then `= name`.
+summarized =
+  case (:ok, 5)
+    (:ok, value) = whole -> (value, whole)

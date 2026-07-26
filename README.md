@@ -582,6 +582,30 @@ case user
 Tagged tuples like `(:ok, value)` / `(:error, reason)` are the standard result
 type for fallible operations.
 
+A `case` arm may also bind the whole value it matched, alongside whatever the
+pattern destructures — the pattern, then `= name`:
+
+```elixir
+case fetch_person()
+  Person{name: n} = p -> "#{n} is #{p.age}"
+```
+
+Without it, a value that only ever flows into the pattern — the result of a
+call, rather than a variable already in scope — has no name of its own once
+matched; only what the pattern destructures is reachable. `= name` closes that
+gap without a separate binding statement first, and works the same on the
+subject-less `case` that closes a `run`:
+
+```elixir
+run
+  fetch_person()
+case
+  Person{name: n} = p -> (:ok, n, p)
+```
+
+`name` binds once, the same as any other name in the pattern — `Person{name:
+n} = n` is rejected, since `= n` already names the whole value.
+
 Each name in a pattern binds **once**. `(p, p)` looks like it asks for the two
 positions to be equal, but there is no pin operator to ask that with, so the
 second `p` would just rebind and the pattern could never fail — it is rejected

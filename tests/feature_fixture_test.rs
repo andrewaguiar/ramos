@@ -95,7 +95,7 @@ const FEATURES: &[(&str, &[&str])] = &[
     // control flow
     (
         "case.rmo",
-        &["Case", "subject", "arm", "pattern", "Wildcard"],
+        &["Case", "subject", "arm", "pattern", "Wildcard", "as whole"],
     ),
     (
         "cond.rmo",

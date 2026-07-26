@@ -656,17 +656,6 @@ impl<'a> Lexer<'a> {
                 ));
             }
             b'|' => {
-                // `|.` was a second pipe that dispatched on the receiver's own
-                // module. One pipe is the rule now, so name the replacement
-                // rather than letting this fall through to a spacing error.
-                if self.peek_at(1) == Some(b'.') {
-                    return Err(self.err(
-                        ErrorCode::UnexpectedChar,
-                        "`|.` no longer exists — pipe to the module function instead, \
-                         as in `value | Map.put(:key, 1)`",
-                        Span::new(start, start + 2),
-                    ));
-                }
                 // `|` is the pipe operator, so `||` would otherwise lex as two
                 // pipes and report a spacing error — misleading enough that a
                 // user would try `x | | y`. Name the replacement instead.

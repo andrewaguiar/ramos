@@ -298,6 +298,10 @@ impl BinOp {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CaseArm {
     pub pattern: Pattern,
+    /// `pattern = name` — binds the whole value the arm matched to `name`,
+    /// alongside whatever `pattern` itself destructures. `None` when the arm
+    /// has no `= name`.
+    pub bind: Option<String>,
     pub guard: Option<Expr>,
     pub body: Block,
 }
@@ -614,6 +618,9 @@ impl Printer {
         for arm in arms {
             self.label("arm", |p| {
                 p.label("pattern", |p| p.pattern(&arm.pattern));
+                if let Some(name) = &arm.bind {
+                    p.line(Style::Keyword, &format!("as {name}"));
+                }
                 if let Some(guard) = &arm.guard {
                     p.node(Style::Keyword, "when", |p| p.expr(guard));
                 }
