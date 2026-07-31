@@ -37,6 +37,14 @@ struct Parser {
     /// consumed its DEDENT — such expressions terminate a statement without a
     /// NEWLINE token of their own.
     just_closed_block: bool,
+    /// True only while parsing statements directly in a `function`/`helper`
+    /// body — never inside a block nested in it (`if`/`else`, a `case`/`cond`
+    /// arm, `run`, a lambda). `return` is checked against this: it is a
+    /// direct statement of the function it exits, sitting plainly among the
+    /// others (a trailing `when` still counts, since that guards the
+    /// statement in place rather than nesting it in a written `if`), not
+    /// something to go hunting for inside a branch.
+    allow_return: bool,
 }
 
 impl Parser {
@@ -49,6 +57,7 @@ impl Parser {
             tokens,
             pos: 0,
             just_closed_block: false,
+            allow_return: false,
         }
     }
 
@@ -278,7 +287,10 @@ impl Parser {
         self.expect(&T::Newline, "a newline after the function head")?;
         let body = if self.check(&T::Indent) {
             self.bump();
-            self.parse_block_until_dedent()?
+            let saved = std::mem::replace(&mut self.allow_return, true);
+            let body = self.parse_block_until_dedent();
+            self.allow_return = saved;
+            body?
         } else {
             Vec::new() // declaration: trait requirement or native seam
         };
@@ -357,32 +369,81 @@ impl Parser {
         Ok(stmts)
     }
 
+    /// Like [`Self::parse_block_until_dedent`], but for a block that is not
+    /// the direct body of a `function`/`helper` — an `if`/`else` body, a
+    /// `case`/`cond` arm body, a `run` body, or a lambda's. `return` is
+    /// valid only as a direct statement of the function/helper body itself,
+    /// so it is turned off for the length of any of these, then restored —
+    /// nesting one inside another (an `if` inside a `case` arm, say) just
+    /// finds it already off.
+    fn parse_nested_block(&mut self) -> Result<Block, ParseError> {
+        let saved = std::mem::replace(&mut self.allow_return, false);
+        let block = self.parse_block_until_dedent();
+        self.allow_return = saved;
+        block
+    }
+
     fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
         if self.check(&T::Alias) {
             let (name, module) = self.parse_alias()?;
             return Ok(Stmt::Alias { module, name });
         }
-        let expr = self.parse_expr()?;
-        let stmt = if self.check(&T::Assign) {
-            let at = self.span();
-            let line = self.line();
-            self.bump();
-            // `andrew.age = 41` is field-assignment sugar, not a pattern.
-            if let Expr::Access { target, name } = expr {
-                let value = self.parse_assign_rhs()?;
-                self.field_assign(*target, name, value, at, line)?
-            } else {
-                let pattern = self.expr_to_pattern(expr, at)?;
-                check_bindings_are_unique(&pattern, None, at)?;
-                let value = self.parse_assign_rhs()?;
-                Stmt::Assign { pattern, value }
-            }
+        let stmt = if self.check(&T::Return) {
+            self.parse_return()?
         } else {
-            Stmt::Expr(expr)
+            let expr = self.parse_expr()?;
+            if self.check(&T::Assign) {
+                let at = self.span();
+                let line = self.line();
+                self.bump();
+                // `andrew.age = 41` is field-assignment sugar, not a pattern.
+                if let Expr::Access { target, name } = expr {
+                    let value = self.parse_assign_rhs()?;
+                    self.field_assign(*target, name, value, at, line)?
+                } else {
+                    let pattern = self.expr_to_pattern(expr, at)?;
+                    check_bindings_are_unique(&pattern, None, at)?;
+                    let value = self.parse_assign_rhs()?;
+                    Stmt::Assign { pattern, value }
+                }
+            } else {
+                Stmt::Expr(expr)
+            }
         };
         let stmt = self.parse_when_modifier(stmt)?;
         self.stmt_end()?;
         Ok(stmt)
+    }
+
+    /// `return <expr>` — an early exit from the function/helper body it sits
+    /// in. Always takes a value (`return nil` spells the empty one) so a
+    /// function's result is never ambiguous between "returned" and "fell off
+    /// the end" — both leave a value behind, which is what a function is
+    /// meant to always do.
+    ///
+    /// Restricted to a direct statement of the function/helper body — never
+    /// nested inside a written `if`/`case`/`cond`/`run`, and never a lambda's
+    /// — by `allow_return`. A trailing `when` still reaches it, since that
+    /// guards the statement in place rather than nesting it in a block the
+    /// source actually writes out; `cond`, whose whole point is choosing one
+    /// of several results, covers the multi-way version of the same guard.
+    fn parse_return(&mut self) -> Result<Stmt, ParseError> {
+        let at = self.span();
+        self.bump(); // return
+        if !self.allow_return {
+            return Err(self.err_at_ex(
+                at,
+                "`return` is only valid as a direct statement of a `function`/`helper` \
+                 body — not at the top level, not nested inside an `if`/`case`/`cond`/`run`, \
+                 and not inside a lambda",
+                Example {
+                    wrong: "function classify(n)\n  if n == 0\n    return :zero\n  :other",
+                    correct: "function classify(n)\n  return :zero when n == 0\n  :other",
+                },
+            ));
+        }
+        let value = self.parse_expr()?;
+        Ok(Stmt::Return(value))
     }
 
     /// `andrew.age = 41` — sugar for `andrew = Struct.put(andrew, :age, 41)`.
@@ -446,17 +507,20 @@ impl Parser {
     }
 
     /// The trailing `when`: `print(x) when ready`, one statement guarded by one
-    /// condition. It builds the same `Expr::If` the block form does, so there is
-    /// one conditional in the tree and nothing downstream has to know.
+    /// condition. On a plain expression statement it builds the same
+    /// `Expr::If` the block form does, so there is one conditional in the
+    /// tree and nothing downstream has to know.
     ///
     /// `when` rather than `if` so that `if` means exactly one thing — the
     /// two-branch block — and the guard reads as the guard it already is in a
     /// `case` arm. The two never collide: a guard is parsed inside an arm head,
     /// before `->`, and an arm body takes no modifier at all.
     ///
-    /// Assignment is rejected: the guarded statement runs in a child scope, so
-    /// the binding in `x = 1 when ready` could never escape to the next line,
-    /// and a binding that silently goes nowhere is worse than a parse error.
+    /// On an assignment, the guard wraps the *value* instead of the statement:
+    /// `x = 1 when ready` becomes `x = (if ready then 1)`, which — by the same
+    /// rule an `if` without `else` already follows — is `nil` when `ready` is
+    /// false. The assignment itself still runs in the enclosing scope, so
+    /// `x` is always bound afterward, either to the value or to `nil`.
     fn parse_when_modifier(&mut self, stmt: Stmt) -> Result<Stmt, ParseError> {
         // A block expression consumes its own line ending, so a `when` sitting
         // after one starts the *next* statement — only a `when` still on this
@@ -464,25 +528,23 @@ impl Parser {
         if self.just_closed_block || !self.check(&T::When) {
             return Ok(stmt);
         }
-        let at = self.span();
-        if matches!(stmt, Stmt::Assign { .. }) {
-            return Err(self.err_at_ex(
-                at,
-                "a trailing `when` cannot guard an assignment — the binding would not \
-                 escape the branch; use a block `if` around it",
-                Example {
-                    wrong: "x = 1 when ready",
-                    correct: "if ready\n  x = 1",
-                },
-            ));
-        }
         self.bump();
         let condition = self.parse_expr()?;
-        Ok(Stmt::Expr(Expr::If {
-            condition: Box::new(condition),
-            then_body: vec![stmt],
-            else_body: None,
-        }))
+        Ok(match stmt {
+            Stmt::Assign { pattern, value } => Stmt::Assign {
+                pattern,
+                value: Expr::If {
+                    condition: Box::new(condition),
+                    then_body: vec![Stmt::Expr(value)],
+                    else_body: None,
+                },
+            },
+            other => Stmt::Expr(Expr::If {
+                condition: Box::new(condition),
+                then_body: vec![other],
+                else_body: None,
+            }),
+        })
     }
 
     /// The value of an assignment: normally the rest of the line, but a block
@@ -1050,7 +1112,7 @@ impl Parser {
         } else {
             self.expect(&T::Newline, "`->` or an indented lambda body")?;
             self.expect(&T::Indent, "an indented lambda body")?;
-            let block = self.parse_block_until_dedent()?;
+            let block = self.parse_nested_block()?;
             self.just_closed_block = true;
             block
         };
@@ -1114,7 +1176,7 @@ impl Parser {
         self.expect(&T::Run, "`run`")?;
         self.expect(&T::Newline, "a newline after `run`")?;
         self.expect(&T::Indent, "an indented run body")?;
-        let body = self.parse_block_until_dedent()?;
+        let body = self.parse_nested_block()?;
         let mut arms = Vec::new();
         if self.check(&T::Case) {
             self.bump();
@@ -1155,7 +1217,7 @@ impl Parser {
         let condition = self.parse_expr()?;
         self.expect(&T::Newline, "a newline after the `if` condition")?;
         self.expect(&T::Indent, "an indented `if` body")?;
-        let then_body = self.parse_block_until_dedent()?;
+        let then_body = self.parse_nested_block()?;
         let else_body = self.parse_else_body()?;
         self.just_closed_block = true;
         Ok(Expr::If {
@@ -1179,7 +1241,7 @@ impl Parser {
         }
         self.expect(&T::Newline, "a newline after `else`")?;
         self.expect(&T::Indent, "an indented `else` body")?;
-        Ok(Some(self.parse_block_until_dedent()?))
+        Ok(Some(self.parse_nested_block()?))
     }
 
     /// Arm body: either an inline expression ending the line, or `->` at end
@@ -1187,7 +1249,7 @@ impl Parser {
     fn parse_arm_body(&mut self) -> Result<Block, ParseError> {
         if self.eat(&T::Newline) {
             self.expect(&T::Indent, "an indented arm body")?;
-            let block = self.parse_block_until_dedent()?;
+            let block = self.parse_nested_block()?;
             Ok(block)
         } else {
             let expr = self.parse_expr()?;
@@ -1459,6 +1521,7 @@ fn block_calls_public(block: &Block, bound: &mut Vec<String>, public: &[&str]) -
                 hit
             }
             Stmt::Alias { .. } => None,
+            Stmt::Return(e) => expr_calls_public(e, bound, public),
         };
         if found.is_some() {
             break;

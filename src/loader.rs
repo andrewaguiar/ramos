@@ -501,6 +501,7 @@ fn stmt_refs(stmt: &Stmt, out: &mut Vec<ModulePath>) {
         Stmt::Expr(e) => expr_refs(e, out),
         Stmt::Assign { value, .. } => expr_refs(value, out),
         Stmt::Alias { module, .. } => out.push(module.clone()),
+        Stmt::Return(e) => expr_refs(e, out),
     }
 }
 

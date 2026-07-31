@@ -740,9 +740,109 @@ fn trailing_if_is_no_longer_a_modifier() {
 }
 
 #[test]
-fn trailing_when_cannot_guard_an_assignment() {
-    let err = parse_err("x = 1 when ready");
-    assert!(err.contains("cannot guard an assignment"), "{err}");
+fn trailing_when_guards_an_assignment_by_wrapping_the_value() {
+    // `x = 1 when ready` becomes `x = (if ready then 1)`: the assignment
+    // itself runs in the enclosing scope, only the value is guarded.
+    let Stmt::Assign { pattern, value } = stmt("x = 1 when ready") else {
+        panic!("expected an assignment");
+    };
+    assert_eq!(pattern, Pattern::Binding("x".into()));
+    let Expr::If {
+        condition,
+        then_body,
+        else_body,
+    } = value
+    else {
+        panic!("expected the value to be an if");
+    };
+    assert_eq!(*condition, var("ready"));
+    assert_eq!(then_body, vec![Stmt::Expr(Expr::Int(1))]);
+    assert_eq!(else_body, None, "falls back to nil, not an explicit else");
+}
+
+// ── `return` ──────────────────────────────────────────────────────────────
+
+fn fn_body(src: &str) -> Block {
+    let mut p = program(src);
+    assert_eq!(p.items.len(), 1, "expected exactly one item");
+    match p.items.remove(0) {
+        Item::Function(f) => f.body,
+        other => panic!("expected a function, got {other:?}"),
+    }
+}
+
+#[test]
+fn return_always_carries_a_value() {
+    let body = fn_body("function f()\n  return 1");
+    assert_eq!(body, vec![Stmt::Return(Expr::Int(1))]);
+}
+
+#[test]
+fn return_combines_with_trailing_when() {
+    // Like any other statement, the trailing modifier wraps the whole thing
+    // in a one-branch `if` — `return` included.
+    let body = fn_body("function f()\n  return 1 when ready");
+    let [Stmt::Expr(Expr::If {
+        condition,
+        then_body,
+        else_body,
+    })] = body.as_slice()
+    else {
+        panic!("expected a one-branch if, got {body:?}");
+    };
+    assert_eq!(**condition, var("ready"));
+    assert_eq!(then_body, &vec![Stmt::Return(Expr::Int(1))]);
+    assert_eq!(*else_body, None);
+}
+
+#[test]
+fn return_requires_a_value() {
+    let err = parse_err("function f()\n  return");
+    assert!(err.contains("expected an expression"), "{err}");
+}
+
+#[test]
+fn return_is_rejected_at_top_level() {
+    let err = parse_err("return 1");
+    assert!(
+        err.contains(
+            "`return` is only valid as a direct statement of a `function`/`helper` \
+                       body"
+        ),
+        "{err}"
+    );
+}
+
+#[test]
+fn return_is_rejected_when_nested_in_an_if_case_cond_or_run() {
+    let via_if = "function f()\n  if true\n    return 1\n  2";
+    assert!(parse_err(via_if).contains("not nested inside"));
+
+    let via_case = "function f()\n  case 1\n    _ ->\n      return 1";
+    assert!(parse_err(via_case).contains("not nested inside"));
+
+    let via_cond = "function f()\n  cond\n    true ->\n      return 1";
+    assert!(parse_err(via_cond).contains("not nested inside"));
+
+    let via_run = "function f()\n  run\n    return 1";
+    assert!(parse_err(via_run).contains("not nested inside"));
+
+    // But a trailing `when` still reaches it — it guards the statement in
+    // place rather than nesting it in a written block.
+    let ok = fn_body("function f()\n  return 1 when true");
+    assert!(matches!(ok.as_slice(), [Stmt::Expr(Expr::If { .. })]));
+}
+
+#[test]
+fn return_is_rejected_inside_a_lambda_even_within_a_function() {
+    let src = "\
+function f()
+  callback =
+    do x
+      return x
+  callback(1)";
+    let err = parse_err(src);
+    assert!(err.contains("not inside a lambda"), "{err}");
 }
 
 // ── assignment & destructuring ───────────────────────────────────────────────

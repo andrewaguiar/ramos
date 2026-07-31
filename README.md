@@ -281,6 +281,7 @@ are no redundant constructs.
 | `attributes` | Declare struct fields with default values |
 | `function`        | Define a public function |
 | `helper`        | Define a private function (module-scoped) |
+| `return`     | Exit a `function`/`helper` body early with a value |
 | `case`       | Pattern match a value against patterns |
 | `if`         | Branch two ways on a condition (no `else if` — use `cond`) |
 | `else`       | The other branch of an `if` |
@@ -1055,9 +1056,16 @@ and the trailing guard reads as the guard it already is in a `case` arm. The
 parser builds the same conditional either way, so a trailing `when` takes no
 `else` and guards exactly one statement.
 
-It cannot guard an assignment: the guarded statement has its own scope, so the
-binding in `x = 1 when ready` could never be read on the next line, and the
-interpreter rejects it rather than binding into nowhere.
+On an assignment, the guard wraps the *value* rather than the statement:
+`x = 1 when ready` is `x = (if ready then 1)`, and by the same rule an `if`
+without `else` already follows, that is `nil` when `ready` is false. The
+assignment itself is not inside the branch, so `x` is always bound
+afterward — to the value, or to `nil`:
+
+```elixir
+x = 1 when ready
+x           # 1 if `ready` was truthy, nil otherwise
+```
 
 **Any value works as a condition**, not just a boolean: only `false` and `nil`
 are falsy, so `0`, `""` and `[]` all take the `if` branch. `Kernel.is_truthy`
@@ -1095,6 +1103,45 @@ case list
     doubled = head * 2
     [doubled] ++ keep_positive_doubled(tail)
   [_ | tail] -> keep_positive_doubled(tail)
+```
+
+### `return`
+
+A function's result is ordinarily whatever its last statement evaluates to —
+there is no need for `return` most of the time. `return` exists for the other
+case: leaving a `function` or `helper` **before** its last line, typically
+guarded by a trailing `when`:
+
+```elixir
+function classify(n)
+  return :zero when n == 0
+  return :negative when n < 0
+  :positive
+```
+
+`return` always takes a value — `return nil` spells the empty one — so a
+function's result is never ambiguous between "returned early" and "fell off
+the end"; both leave a value behind, which a function always does anyway.
+
+`return` is valid only as a **direct statement** of a `function`/`helper`
+body: not at the top level, not inside a `do` lambda (even one defined inside
+that same body — a lambda can be stored and called later, by code that has no
+function of its own on the stack for `return` to exit), and not nested inside
+a written `if`, `case`, `cond`, or `run`. A trailing `when` still reaches it —
+that guards the statement in place rather than nesting it in a block the
+source actually writes out — but a value that depends on a branch is what
+`cond` (or a `case`/`if` used as the function's own last expression) is for:
+
+```elixir
+function grade(score)
+  if score > 8
+    return :high     # error: `return` is only valid as a direct statement
+  :other              # of a function/helper body — not nested inside `if`
+
+function grade(score)
+  cond
+    score > 8  -> :high
+    true       -> :other
 ```
 
 ### Sequential matching with `run`

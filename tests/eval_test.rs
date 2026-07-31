@@ -338,6 +338,18 @@ inner";
 }
 
 #[test]
+fn trailing_when_guards_an_assignment_by_falling_back_to_nil() {
+    // Unlike a guarded block statement, a guarded assignment's binding is not
+    // scoped to the branch: `x` is always bound afterward, either to the
+    // value or to `nil`.
+    assert_eq!(eval("x = 1 when true\nx"), "1");
+    assert_eq!(eval("x = 1 when false\nx"), "nil");
+    // A prior value is overwritten by the fallback `nil`, exactly as writing
+    // out `x = (if ready then 1)` by hand would overwrite it.
+    assert_eq!(eval("x = 5\nx = 1 when false\nx"), "nil");
+}
+
+#[test]
 fn there_is_no_else_if() {
     // `if` is the two-branch form; a chain of conditions is `cond`.
     let src = "\
@@ -521,6 +533,106 @@ function fact(n)
     true -> n * fact(n - 1)
 fact(10)";
     assert_eq!(eval(src), "3628800");
+}
+
+// ── `return` ──────────────────────────────────────────────────────────────
+
+#[test]
+fn return_exits_the_function_early_with_its_value() {
+    let src = "\
+function classify(n)
+  return :zero when n == 0
+  return :negative when n < 0
+  :positive
+classify(0)";
+    assert_eq!(eval(src), ":zero");
+    let src = "\
+function classify(n)
+  return :zero when n == 0
+  return :negative when n < 0
+  :positive
+classify(-5)";
+    assert_eq!(eval(src), ":negative");
+    let src = "\
+function classify(n)
+  return :zero when n == 0
+  return :negative when n < 0
+  :positive
+classify(5)";
+    assert_eq!(eval(src), ":positive");
+}
+
+#[test]
+fn return_is_rejected_inside_a_nested_if_case_or_run() {
+    // `return` is only a direct statement of the function/helper body — never
+    // nested inside a written `if`/`case`/`cond`/`run`. `cond` (or a trailing
+    // `when`, for the single-guard case) is how the multi-way version reads.
+    let via_if = "\
+function grade(score)
+  if score > 8
+    return :high
+  :other";
+    assert!(eval_err(via_if).contains("not nested inside"));
+
+    let via_case = "\
+function grade(score)
+  case score
+    0 ->
+      return :zero
+    _ -> :other";
+    assert!(eval_err(via_case).contains("not nested inside"));
+
+    let via_run = "\
+function grade(score)
+  run
+    return :zero when score == 0
+    :other";
+    assert!(eval_err(via_run).contains("not nested inside"));
+}
+
+#[test]
+fn return_works_alongside_cond_for_the_multi_way_case() {
+    // The direct replacement for "return from inside a branch": a `cond` arm
+    // is itself a direct statement's worth of result, no nesting involved.
+    let src = "\
+function grade(score)
+  cond
+    score > 8 -> :high
+    score == 0 -> :zero
+    true -> :other
+grade(9)";
+    assert_eq!(eval(src), ":high");
+}
+
+#[test]
+fn return_stops_a_self_recursive_loop_immediately() {
+    // A `return` inside a tail-recursive loop exits the function outright —
+    // it does not just end the current iteration.
+    let src = "\
+function find_first(xs, target)
+  return nil when xs == []
+  [h | t] = xs
+  return h when h == target
+  find_first(t, target)
+find_first([1, 2, 3, 4], 3)";
+    assert_eq!(eval(src), "3");
+    let src = "\
+function find_first(xs, target)
+  return nil when xs == []
+  [h | t] = xs
+  return h when h == target
+  find_first(t, target)
+find_first([1, 2, 3, 4], 9)";
+    assert_eq!(eval(src), "nil");
+}
+
+#[test]
+fn return_nil_is_how_a_function_returns_nothing() {
+    let src = "\
+function f()
+  return nil
+f()";
+    assert_eq!(eval(src), "nil");
 }
 
 // ── Kernel natives: the seed that makes `ramos run` observable ─────────────────

@@ -33,6 +33,10 @@ fn block_free(bound: &mut Vec<String>, block: &Block, out: &mut Vec<String>) {
                 collect_pattern(pattern, bound);
             }
             Stmt::Alias { .. } => {}
+            // Structurally unreachable inside a lambda body — the parser
+            // never lets `return` appear there — but the match still has to
+            // be exhaustive over every `Stmt`.
+            Stmt::Return(e) => expr_free(bound, e, out),
         }
     }
     bound.truncate(base);

@@ -104,6 +104,11 @@ pub enum Stmt {
         module: ModulePath,
         name: String,
     },
+    /// `return <expr>` — an early exit from the innermost `function`/`helper`
+    /// body. Always carries a value (`return nil` spells the empty one) so a
+    /// function's result is never ambiguous between "returned" and "fell off
+    /// the end". Parser-restricted to function/helper bodies, not a lambda's.
+    Return(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -475,6 +480,7 @@ impl Printer {
             Stmt::Alias { module, name } => {
                 self.line(Style::Keyword, &format!("Alias {module} as {name}"))
             }
+            Stmt::Return(e) => self.node(Style::Keyword, "Return", |p| p.expr(e)),
         }
     }
 

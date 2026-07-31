@@ -106,6 +106,15 @@ const KEYWORDS: &[Keyword] = &[
         example: "helper log(amount)\n  print(\"charged #{amount}\")",
     },
     Keyword {
+        signature: "return expr",
+        blurb: "Exit the current `function`/`helper` body early with a value — always one, \
+                 `return nil` spells the empty one. Only valid as a direct statement of that \
+                 body: not at the top level, not inside a `do` lambda, and not nested inside \
+                 an `if`/`case`/`cond`/`run` — a trailing `when` still reaches it, but a \
+                 branch-dependent value is what `cond` is for.",
+        example: "function classify(n)\n  return :zero when n == 0\n  :other",
+    },
+    Keyword {
         signature: "alias Path [as Name]",
         blurb: "A short local name for a module — inside a module or struct body, or \
                  at the top level.",
@@ -373,14 +382,20 @@ const PARSER_RULES: &[(&str, &str, &str)] = &[
         "{name: 1}",
     ),
     (
-        "a trailing `when` cannot guard an assignment",
-        "x = 1 when ready",
-        "if ready\n  x = 1",
-    ),
-    (
         "a pattern cannot bind the same name twice",
         "(p, p) = (1, 2)",
         "(p, q) = (1, 2)",
+    ),
+    (
+        "`return` cannot cross a lambda boundary, even one nested in the same function",
+        "function greet(name)\n  List.each([name], do n ->\n    return n)",
+        "function greet(name)\n  return name when name != nil\n  \"stranger\"",
+    ),
+    (
+        "`return` cannot nest inside a written `if`/`case`/`cond`/`run` — only a \
+         trailing `when` reaches it",
+        "function grade(score)\n  if score > 8\n    return :high\n  :other",
+        "function grade(score)\n  return :high when score > 8\n  :other",
     ),
 ];
 

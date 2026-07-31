@@ -73,6 +73,7 @@ pub enum TokenKind {
     Else,
     Run,
     Do,
+    Return,
     /// Purely decorative: an optional block-closing marker with no semantic
     /// effect (indentation alone determines block structure). Stripped from
     /// the token stream by `lex` before the parser ever sees it — see
@@ -776,6 +777,7 @@ impl<'a> Lexer<'a> {
             "else" => TokenKind::Else,
             "run" => TokenKind::Run,
             "do" => TokenKind::Do,
+            "return" => TokenKind::Return,
             "end" => TokenKind::End,
             "alias" => TokenKind::Alias,
             "as" => TokenKind::As,

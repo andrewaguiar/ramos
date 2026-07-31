@@ -36,13 +36,19 @@ pub fn sink(writer: impl Write + Send + 'static) -> Sink {
     Arc::new(Mutex::new(writer))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct RuntimeError {
     pub message: String,
     /// Set when the program called `exit(code)`. This is not a failure — it
     /// rides the error path only because that is how the interpreter unwinds.
     /// A caller must check it before reporting anything: `exit(0)` is success.
     pub exit_code: Option<i64>,
+    /// Set when a `return` statement unwound this far. Not a failure either —
+    /// same trick as `exit_code`: `?` carries it straight out through every
+    /// nested block (if/case/cond/run bodies) without those needing to know
+    /// early return exists, and `run_function` is the one place that catches
+    /// it, converting it back into the ordinary `Ok(value)` a call produces.
+    return_value: Option<Value>,
 }
 
 impl RuntimeError {
@@ -50,6 +56,7 @@ impl RuntimeError {
         RuntimeError {
             message: message.into(),
             exit_code: None,
+            return_value: None,
         }
     }
 
@@ -60,6 +67,7 @@ impl RuntimeError {
         RuntimeError {
             message: format!("exit({code})"),
             exit_code: Some(code),
+            return_value: None,
         }
     }
 
@@ -67,11 +75,36 @@ impl RuntimeError {
     pub fn is_exit(&self) -> bool {
         self.exit_code.is_some()
     }
+
+    /// The unwind a `return <value>` statement raises.
+    fn return_signal(value: Value) -> Self {
+        RuntimeError {
+            message: "return outside a function".to_string(),
+            exit_code: None,
+            return_value: Some(value),
+        }
+    }
 }
 
 impl std::fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.message)
+    }
+}
+
+/// `Value` has no `Debug` of its own (a closure or actor handle cannot spell
+/// one), so this reports the message and — for a `return` unwind — the
+/// returned value's `inspect` form rather than deriving.
+impl std::fmt::Debug for RuntimeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RuntimeError")
+            .field("message", &self.message)
+            .field("exit_code", &self.exit_code)
+            .field(
+                "return_value",
+                &self.return_value.as_ref().map(Value::inspect),
+            )
+            .finish()
     }
 }
 
@@ -642,6 +675,14 @@ impl Interp {
             Stmt::Alias { module, name } => {
                 self.aliases.insert(name.clone(), module.to_string());
                 Ok(Value::Nil)
+            }
+            // An early exit: evaluate the value, then unwind — via the error
+            // path, like `exit` — straight out of every enclosing block until
+            // `run_function` catches it and hands the value back as the
+            // call's result.
+            Stmt::Return(e) => {
+                let v = self.eval_expr(e, env)?;
+                Err(RuntimeError::return_signal(v))
             }
         }
     }
@@ -1746,9 +1787,15 @@ impl Interp {
             for (param, arg) in f.params.iter().zip(&args) {
                 scope.set(param.clone(), arg.clone());
             }
-            match me.eval_body_tail(&f.body, &scope, &target)? {
-                Flow::Return(value) => return Ok(value),
-                Flow::TailCall(next) => args = next,
+            match me.eval_body_tail(&f.body, &scope, &target) {
+                Ok(Flow::Return(value)) => return Ok(value),
+                Ok(Flow::TailCall(next)) => args = next,
+                // `return` unwinds past any tail-call trampolining: it exits
+                // right here, not just the innermost if/case/cond/run arm.
+                Err(e) if e.return_value.is_some() => {
+                    return Ok(e.return_value.expect("checked by is_some above"))
+                }
+                Err(e) => return Err(e),
             }
         });
         self.current_file = saved_file;
