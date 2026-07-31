@@ -14,6 +14,17 @@ use super::value::{values_equal, List, Map, ServerSocketHandle, SocketHandle, St
 use std::fs;
 use std::io::{Read, Write};
 use std::sync::Arc;
+use std::time::Duration;
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
+
+use crossterm::{
+    execute,
+    terminal::{Clear, ClearType},
+    cursor::MoveTo,
+};
+
+
+use std::io::stdout;
 
 /// The program's command-line arguments (everything after the script path),
 /// passed to `get_args` / `get_arg`.
@@ -72,6 +83,10 @@ fn dispatch(
                 .map(|s| Value::Str(s.into()))
                 .unwrap_or(Value::Nil))
         }),
+        "read_key" => arity_then(name, args, 0, |_| Ok(read_key())),
+        "has_key" => arity_then(name, args, 0, |_| Ok(has_key())),
+        "clear" => arity_then(name, args, 0, |_| Ok(clear())),
+        "move_cursor" => two(name, args, move_cursor),
 
         // ── process / command line ───────────────────────────────────────
         "get_args" => arity_then(name, args, 0, |_| {
@@ -639,6 +654,8 @@ fn string_split(s: &Value, sep: &Value) -> Result<Value, RuntimeError> {
     };
     Ok(Value::List(List::from_vec(parts)))
 }
+
+
 
 fn string_repeat(s: &Value, n: &Value) -> Result<Value, RuntimeError> {
     let s = as_str(s)?;
@@ -1465,6 +1482,83 @@ fn read_all(out: &Sink) -> Result<Value, RuntimeError> {
         Ok(_) => Ok(Value::Str(text.into())),
         Err(e) => err(format!("could not read input: {e}")),
     }
+}
+
+/// Read a single keypress from the terminal. Printable characters come back as
+/// themselves; special keys return symbolic names like `"ENTER"`, `"ESC"`,
+/// `"LEFT"`, `"TAB"`, or `"DELETE"`. `Nil` means the read failed.
+fn read_key() -> Value {
+    loop {
+        match event::read() {
+            Ok(Event::Key(KeyEvent { code, .. })) => {
+                let key = match code {
+                    KeyCode::Char(c) => c.to_string(),
+
+                    KeyCode::Enter => "ENTER".to_string(),
+                    KeyCode::Esc => "ESC".to_string(),
+                    KeyCode::Backspace => "BACKSPACE".to_string(),
+
+                    KeyCode::Left => "LEFT".to_string(),
+                    KeyCode::Right => "RIGHT".to_string(),
+                    KeyCode::Up => "UP".to_string(),
+                    KeyCode::Down => "DOWN".to_string(),
+
+                    KeyCode::Home => "HOME".to_string(),
+                    KeyCode::End => "END".to_string(),
+                    KeyCode::PageUp => "PAGE_UP".to_string(),
+                    KeyCode::PageDown => "PAGE_DOWN".to_string(),
+                    KeyCode::Tab => "TAB".to_string(),
+                    KeyCode::Delete => "DELETE".to_string(),
+
+                    _ => "UNKNOWN".to_string(),
+                };
+
+                return Value::Str(Arc::from(key));
+            }
+
+            Err(_) => {
+                return Value::Nil;
+            }
+
+            _ => {}
+        }
+    }
+}
+
+/// Clear the terminal display.
+fn clear() -> Value {
+    let mut out = stdout();
+
+    execute!(
+        out,
+        Clear(ClearType::All)
+    ).unwrap();
+
+    Value::Nil
+}
+
+/// Poll the terminal for a pending keypress without blocking.
+fn has_key() -> Value {
+    match event::poll(Duration::from_millis(0)) {
+        Ok(true) => Value::Bool(true),
+        Ok(false) => Value::Bool(false),
+        Err(_) => Value::Bool(false),
+    }
+}
+
+/// Move the terminal cursor to the zero-based coordinate `(x, y)`.
+fn move_cursor(x: &Value, y: &Value) -> Result<Value, RuntimeError> {
+    let x = as_int(x)? as u16;
+    let y = as_int(y)? as u16;
+
+    let mut out = stdout();
+
+    execute!(
+        out,
+        MoveTo(x, y)
+    ).unwrap();
+
+    Ok(Value::Nil)
 }
 
 // ── calendar ─────────────────────────────────────────────────────────────────
