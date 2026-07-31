@@ -149,6 +149,56 @@ module Kernel
     #   text = read_all()      # `cat file | ramos run app.rmo`
     native("read_all", [])
 
+  function read_key()
+    # @doc
+    #
+    # Reads a single keypress from the terminal and returns it as a `String`.
+    # Printable characters come back as themselves, while special keys report a
+    # symbolic name such as `"ENTER"`, `"ESC"`, `"LEFT"`, `"TAB"`, or
+    # `"DELETE"`. Returns `nil` when the terminal is not readable or the read
+    # itself fails.
+    #
+    # @return the pressed key as a `String`, or `nil` on read error
+    #
+    #   key = read_key()
+    native("read_key", [])
+
+  function has_key()
+    # @doc
+    #
+    # Polls the terminal for a pending keypress without blocking. Returns `true`
+    # when `read_key()` is ready to consume a key immediately, and `false`
+    # otherwise.
+    #
+    # @return `true` when input is ready, otherwise `false`
+    #
+    #   if has_key()
+    #     key = read_key()
+    native("has_key", [])
+
+  function clear()
+    # @doc
+    #
+    # Clears the entire terminal screen and leaves the cursor at the top-left
+    # corner of the terminal (`(0, 0)`).
+    #
+    # @return `nil`
+    #
+    #   clear()
+    native("clear", [])
+
+  function move_cursor(x, y)
+    # @doc
+    #
+    # Moves the terminal cursor to the zero-based coordinates `(x, y)`.
+    #
+    # @param x: the cursor column to move to
+    # @param y: the cursor row to move to
+    # @return `nil`
+    #
+    #   move_cursor(0, 0)
+    native("move_cursor", [x, y])
+
   function eprint(value)
     # @doc
     #

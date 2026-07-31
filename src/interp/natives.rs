@@ -1484,6 +1484,9 @@ fn read_all(out: &Sink) -> Result<Value, RuntimeError> {
     }
 }
 
+/// Read a single keypress from the terminal. Printable characters come back as
+/// themselves; special keys return symbolic names like `"ENTER"`, `"ESC"`,
+/// `"LEFT"`, `"TAB"`, or `"DELETE"`. `Nil` means the read failed.
 fn read_key() -> Value {
     loop {
         match event::read() {
@@ -1522,6 +1525,7 @@ fn read_key() -> Value {
     }
 }
 
+/// Clear the terminal display.
 fn clear() -> Value {
     let mut out = stdout();
 
@@ -1533,7 +1537,7 @@ fn clear() -> Value {
     Value::Nil
 }
 
-
+/// Poll the terminal for a pending keypress without blocking.
 fn has_key() -> Value {
     match event::poll(Duration::from_millis(0)) {
         Ok(true) => Value::Bool(true),
@@ -1542,6 +1546,7 @@ fn has_key() -> Value {
     }
 }
 
+/// Move the terminal cursor to the zero-based coordinate `(x, y)`.
 fn move_cursor(x: &Value, y: &Value) -> Result<Value, RuntimeError> {
     let x = as_int(x)? as u16;
     let y = as_int(y)? as u16;
